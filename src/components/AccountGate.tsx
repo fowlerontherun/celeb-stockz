@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChartNoAxesCombined, Sparkles } from "lucide-react";
 import { useAuthSession } from "@/lib/auth-client";
 import { MarketTicker } from "@/components/MarketTicker";
+import { MarketDiscovery } from "@/components/MarketDiscovery";
 
 export function AccountGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useAuthSession();
@@ -19,6 +20,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
     return (
       <>
         <MarketTicker />
+        <MarketDiscovery />
         {children}
       </>
     );
