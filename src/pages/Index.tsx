@@ -1,11 +1,10 @@
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import {
   Bell,
   ChartNoAxesCombined,
   Flame,
   Home,
   LayoutGrid,
-  Search,
   Star,
   Trophy,
   Users,
@@ -23,50 +22,87 @@ import {
 } from "@/components/ExperiencePanels";
 import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
+import { showError } from "@/utils/toast";
 
-const celebs: Celebrity[] = [
+type CelebrityMarket = Celebrity & {
+  signals: {
+    socialFollowersMillions: number;
+    hashtagViewsBillions: number;
+    trendScore: number;
+    monthlySearchesMillions: number;
+    newsStories: number;
+  };
+};
+
+const fallbackMarkets: CelebrityMarket[] = [
   {
-    name: "Amara Vale",
-    ticker: "AMARA",
-    price: 38.42,
-    change: 14.8,
+    name: "Taylor Swift",
+    ticker: "TSWIFT",
+    price: 108.15,
+    change: 12.6,
     image:
-      "https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=280&q=85",
+      "https://images.unsplash.com/photo-1516280440614-37939bbacd81?auto=format&fit=crop&w=280&q=85",
+    signals: {
+      socialFollowersMillions: 282,
+      hashtagViewsBillions: 38.4,
+      trendScore: 94,
+      monthlySearchesMillions: 18.6,
+      newsStories: 860,
+    },
   },
   {
-    name: "Leo March",
-    ticker: "LEO",
-    price: 22.18,
-    change: 8.3,
+    name: "Cristiano Ronaldo",
+    ticker: "CR7",
+    price: 215.51,
+    change: 7.8,
+    image:
+      "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&w=280&q=85",
+    signals: {
+      socialFollowersMillions: 935,
+      hashtagViewsBillions: 95.2,
+      trendScore: 89,
+      monthlySearchesMillions: 15.1,
+      newsStories: 740,
+    },
+  },
+  {
+    name: "Selena Gomez",
+    ticker: "SELENA",
+    price: 108.93,
+    change: -2.4,
+    image:
+      "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=280&q=85",
+    signals: {
+      socialFollowersMillions: 490,
+      hashtagViewsBillions: 22.1,
+      trendScore: 77,
+      monthlySearchesMillions: 8.4,
+      newsStories: 390,
+    },
+  },
+  {
+    name: "MrBeast",
+    ticker: "MRBEAST",
+    price: 143.92,
+    change: 10.2,
     image:
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=280&q=85",
-  },
-  {
-    name: "Sienna Rae",
-    ticker: "SIENNA",
-    price: 51.07,
-    change: -3.1,
-    image:
-      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=280&q=85",
-  },
-  {
-    name: "Dante Cruz",
-    ticker: "DANTE",
-    price: 17.63,
-    change: 6.9,
-    image:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=280&q=85",
+    signals: {
+      socialFollowersMillions: 520,
+      hashtagViewsBillions: 41.8,
+      trendScore: 91,
+      monthlySearchesMillions: 11.7,
+      newsStories: 680,
+    },
   },
 ];
 
 type Page = "Home" | "Markets" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs";
 
-type NavItem = {
+const navItems: Array<{
   page: Page;
   icon: ComponentType<{ size?: number; className?: string }>;
-};
-
-const navItems: NavItem[] = [
+}> = [
   { page: "Home", icon: Home },
   { page: "Markets", icon: LayoutGrid },
   { page: "Watchlist", icon: Star },
@@ -75,232 +111,65 @@ const navItems: NavItem[] = [
   { page: "Clubs", icon: Users },
 ];
 
-function MarketSearch({
-  query,
-  onQuery,
-  onTrade,
-}: {
-  query: string;
-  onQuery: (value: string) => void;
-  onTrade: (celeb: Celebrity) => void;
-}) {
-  const matches = query.trim()
-    ? celebs.filter((celeb) =>
-        `${celeb.name} ${celeb.ticker}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-      )
-    : [];
-
-  return (
-    <div className="relative hidden w-[310px] lg:block">
-      <Search
-        className="absolute left-4 top-3 z-10 text-[#a597b4]"
-        size={17}
-      />
-      <input
-        value={query}
-        onChange={(event) => onQuery(event.target.value)}
-        className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 pl-11 pr-4 text-sm outline-none placeholder:text-[#8e819e] focus:border-[#a97cff]"
-        placeholder="Search celebrities"
-      />
-      {matches.length > 0 && (
-        <div className="absolute top-12 z-30 w-full overflow-hidden rounded-xl border border-white/10 bg-[#211230] p-1 shadow-2xl">
-          {matches.map((celeb) => (
-            <button
-              key={celeb.ticker}
-              type="button"
-              onClick={() => {
-                onTrade(celeb);
-                onQuery("");
-              }}
-              className="flex w-full items-center gap-3 rounded-lg p-2 text-left transition hover:bg-white/5"
-            >
-              <img
-                src={celeb.image}
-                alt=""
-                className="h-8 w-8 rounded-lg object-cover"
-              />
-              <span className="flex-1 text-xs font-bold">{celeb.name}</span>
-              <span className="text-[10px] text-[#b19cbf]">
-                ${celeb.ticker}
-              </span>
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function HomeDashboard({
-  onTrade,
-  goTo,
-}: {
-  onTrade: (celeb: Celebrity) => void;
-  goTo: (page: Page) => void;
-}) {
-  return (
-    <div className="animate-in fade-in duration-300">
-      <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-        <div>
-          <p className="mb-1 text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
-            Your spotlight
-          </p>
-          <h1 className="font-display text-3xl font-black tracking-tight sm:text-4xl">
-            The market is <span className="text-[#ff7282]">buzzing.</span>
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 rounded-xl border border-[#3ed9a3]/20 bg-[#12382f]/60 px-3 py-2 text-xs font-bold text-[#80ebc5]">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-[#3ed9a3]" />
-          Markets open · live STKZ balances enabled
-        </div>
-      </div>
-
-      <div className="grid gap-5 xl:grid-cols-[1.42fr_.8fr]">
-        <article className="relative min-h-[330px] overflow-hidden rounded-[28px] border border-white/10 bg-[#2a1740] p-7">
-          <img
-            src="https://images.unsplash.com/photo-1506157786151-b8491531f063?auto=format&fit=crop&w=1200&q=85"
-            alt="Premiere lights"
-            className="absolute inset-0 h-full w-full object-cover opacity-30 mix-blend-luminosity"
-          />
-          <div className="absolute inset-0 bg-[#2a1740]/70" />
-          <div className="relative flex h-full flex-col">
-            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
-              <Flame size={15} fill="currentColor" />
-              Hype rising fast
-            </div>
-            <div className="mt-auto max-w-sm">
-              <p className="font-display text-3xl font-black leading-none sm:text-5xl">
-                Amara Vale is having a moment.
-              </p>
-              <p className="mt-4 text-sm leading-6 text-[#dccfe6]">
-                Premiere week chatter has pushed her hype score to a new
-                30-day high.
-              </p>
-              <button
-                type="button"
-                onClick={() => onTrade(celebs[0])}
-                className="mt-6 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-extrabold text-[#35132a] transition hover:bg-[#ff8e9a]"
-              >
-                Trade AMARA
-              </button>
-            </div>
-          </div>
-        </article>
-
-        <article className="rounded-[28px] border border-white/10 bg-[#1e112f] p-6">
-          <p className="text-xs font-bold uppercase tracking-[.16em] text-[#a99ab7]">
-            Trading wallet
-          </p>
-          <p className="font-display mt-3 text-3xl font-black">
-            10,000 <span className="text-lg text-[#c4b6cf]">STKZ</span>
-          </p>
-          <p className="mt-3 text-sm leading-6 text-[#b8a9c4]">
-            Your balance updates instantly after every completed buy or sell
-            order.
-          </p>
-          <button
-            type="button"
-            onClick={() => goTo("Markets")}
-            className="mt-7 w-full rounded-xl border border-white/10 bg-white/5 py-3 text-sm font-bold transition hover:bg-white/10"
-          >
-            Explore markets
-          </button>
-        </article>
-      </div>
-
-      <section className="mt-8">
-        <div className="mb-4 flex items-end justify-between">
-          <div>
-            <h2 className="font-display text-2xl font-black">Hot right now</h2>
-            <p className="mt-1 text-sm text-[#a99ab7]">
-              Buy, sell, and manage your STKZ holdings.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => goTo("Markets")}
-            className="text-sm font-bold text-[#c99bff]"
-          >
-            See all
-          </button>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {celebs.map((celeb) => (
-            <button
-              key={celeb.ticker}
-              type="button"
-              onClick={() => onTrade(celeb)}
-              className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#1e112f] p-3 text-left transition hover:border-[#a97cff]/50 hover:bg-[#241538]"
-            >
-              <img
-                src={celeb.image}
-                alt={celeb.name}
-                className="h-[60px] w-[60px] rounded-xl object-cover"
-              />
-              <div className="flex-1">
-                <p className="text-sm font-extrabold">{celeb.name}</p>
-                <p className="text-[11px] font-bold text-[#9b8ba8]">
-                  ${celeb.ticker}
-                </p>
-                <p className="mt-1 text-sm font-black">
-                  {celeb.price.toFixed(2)}{" "}
-                  <span className="text-xs text-[#a99ab7]">STKZ</span>
-                </p>
-              </div>
-              <div
-                className={`rounded-lg px-2 py-1 text-xs font-extrabold ${
-                  celeb.change > 0
-                    ? "bg-[#183b33] text-[#62e7b6]"
-                    : "bg-[#482332] text-[#ff9ca5]"
-                }`}
-              >
-                {celeb.change > 0 ? "+" : ""}
-                {celeb.change}%
-              </div>
-            </button>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
 export default function Index() {
   const [page, setPage] = useState<Page>("Home");
-  const [selected, setSelected] = useState(celebs[0]);
+  const [markets, setMarkets] = useState<CelebrityMarket[]>(fallbackMarkets);
+  const [selected, setSelected] = useState<CelebrityMarket>(fallbackMarkets[0]);
   const [tradeOpen, setTradeOpen] = useState(false);
   const [watchlist, setWatchlist] = useState<Celebrity[]>([
-    celebs[0],
-    celebs[2],
+    fallbackMarkets[0],
+    fallbackMarkets[2],
   ]);
-  const [search, setSearch] = useState("");
   const [openOrders, setOpenOrders] = useState<OpenOrder[]>([]);
 
-  const openTrade = (celeb: Celebrity) => {
-    setSelected(celeb);
+  useEffect(() => {
+    const loadMarkets = async () => {
+      const response = await fetch("/api/markets", { credentials: "include" });
+      if (!response.ok) {
+        throw new Error("Could not refresh celebrity market signals.");
+      }
+
+      const data = (await response.json()) as { markets: CelebrityMarket[] };
+      setMarkets(data.markets);
+      setSelected((current) =>
+        data.markets.find((market) => market.ticker === current.ticker) ??
+        data.markets[0],
+      );
+      setWatchlist((current) =>
+        current
+          .map((item) =>
+            data.markets.find((market) => market.ticker === item.ticker),
+          )
+          .filter((item): item is CelebrityMarket => Boolean(item)),
+      );
+    };
+
+    void loadMarkets().catch((error: Error) => showError(error.message));
+  }, []);
+
+  const openTrade = (market: Celebrity) => {
+    const selectedMarket =
+      markets.find((item) => item.ticker === market.ticker) ?? markets[0];
+    setSelected(selectedMarket);
     setTradeOpen(true);
   };
 
   const content =
-    page === "Home" ? (
-      <HomeDashboard onTrade={openTrade} goTo={setPage} />
-    ) : page === "Markets" ? (
-      <MarketsPanel celebs={celebs} onTrade={openTrade} />
+    page === "Markets" ? (
+      <MarketsPanel celebs={markets} onTrade={openTrade} />
     ) : page === "Watchlist" ? (
       <WatchlistPanel
         celebs={watchlist}
         onTrade={openTrade}
         onRemove={(ticker) =>
           setWatchlist((current) =>
-            current.filter((celeb) => celeb.ticker !== ticker),
+            current.filter((market) => market.ticker !== ticker),
           )
         }
       />
     ) : page === "Portfolio" ? (
       <PortfolioPanel
-        celebs={celebs}
+        celebs={markets}
         onTrade={openTrade}
         openOrders={openOrders}
         onCancelOrder={(id) =>
@@ -311,8 +180,64 @@ export default function Index() {
       />
     ) : page === "Rankings" ? (
       <RankingsPanel />
-    ) : (
+    ) : page === "Clubs" ? (
       <ClubsPanel />
+    ) : (
+      <div className="animate-in fade-in duration-300">
+        <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
+          Signal-priced practice markets
+        </p>
+        <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">
+          Fame moves the <span className="text-[#ff7282]">market.</span>
+        </h1>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">
+          Each STKZ price is calculated from social reach, hashtag activity,
+          search demand, trend momentum, and current news coverage.
+        </p>
+
+        <section className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {markets.map((market) => (
+            <button
+              key={market.ticker}
+              type="button"
+              onClick={() => openTrade(market)}
+              className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f] text-left transition hover:-translate-y-1 hover:border-[#a97cff]/60"
+            >
+              <img
+                src={market.image}
+                alt={market.name}
+                className="h-36 w-full object-cover"
+              />
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-display text-lg font-black">{market.name}</p>
+                    <p className="text-xs font-bold text-[#a99ab7]">${market.ticker}</p>
+                  </div>
+                  <span
+                    className={`rounded-lg px-2 py-1 text-xs font-black ${
+                      market.change > 0
+                        ? "bg-[#183b33] text-[#62e7b6]"
+                        : "bg-[#482332] text-[#ff9ca5]"
+                    }`}
+                  >
+                    {market.change > 0 ? "+" : ""}
+                    {market.change}%
+                  </span>
+                </div>
+                <p className="mt-4 text-2xl font-black">
+                  {market.price.toFixed(2)}{" "}
+                  <span className="text-xs text-[#a99ab7]">STKZ</span>
+                </p>
+                <p className="mt-2 text-[11px] font-bold text-[#c99bff]">
+                  Trend score {market.signals.trendScore}/100 ·{" "}
+                  {market.signals.newsStories} news signals
+                </p>
+              </div>
+            </button>
+          ))}
+        </section>
+      </div>
     );
 
   return (
@@ -327,7 +252,6 @@ export default function Index() {
               Celeb<span className="text-[#ff7282]">Stockz</span>
             </span>
           </div>
-
           <div className="mt-11 space-y-2">
             {navItems.map(({ page: itemPage, icon: Icon }) => (
               <button
@@ -345,31 +269,22 @@ export default function Index() {
               </button>
             ))}
           </div>
-
           <p className="mt-auto px-2 text-[10px] leading-4 text-[#7c6d8e]">
-            Synthetic celebrity assets. Entertainment only. Not investment
-            advice.
+            Synthetic celebrity assets for entertainment only. Not investment advice.
           </p>
         </aside>
 
         <section className="w-full overflow-hidden">
           <header className="flex items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
-            <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex items-center gap-2">
               <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]">
                 <ChartNoAxesCombined size={19} />
               </div>
-              <span className="font-display text-lg font-black">
+              <span className="font-display text-lg font-black lg:hidden">
                 Celeb<span className="text-[#ff7282]">Stockz</span>
               </span>
             </div>
-
-            <MarketSearch
-              query={search}
-              onQuery={setSearch}
-              onTrade={openTrade}
-            />
-
-            <div className="ml-auto flex items-center gap-3 lg:ml-4">
+            <div className="flex items-center gap-3">
               <button
                 type="button"
                 aria-label="Market alerts"
@@ -379,12 +294,8 @@ export default function Index() {
                 <i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff7282]" />
               </button>
               <WalletBalance />
-              <div className="grid h-10 w-10 place-items-center rounded-xl bg-[#eeb19e] text-sm font-black text-[#45253d]">
-                AJ
-              </div>
             </div>
           </header>
-
           <div className="px-5 pb-28 sm:px-8 lg:px-10">{content}</div>
         </section>
       </div>
@@ -411,7 +322,7 @@ export default function Index() {
             <div className="flex items-start justify-between">
               <div>
                 <p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">
-                  Live practice market
+                  Signal-priced practice market
                 </p>
                 <h2 className="font-display mt-1 text-2xl font-black">
                   Trade {selected.ticker}
@@ -421,12 +332,11 @@ export default function Index() {
                 type="button"
                 onClick={() => setTradeOpen(false)}
                 aria-label="Close trade sheet"
-                className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1] transition hover:bg-white/10"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1]"
               >
                 <X size={18} />
               </button>
             </div>
-
             <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3">
               <img
                 src={selected.image}
@@ -436,13 +346,11 @@ export default function Index() {
               <div>
                 <p className="font-bold">{selected.name}</p>
                 <p className="text-xs text-[#9b8ba8]">
-                  {selected.price.toFixed(2)} STKZ ·{" "}
-                  {selected.change > 0 ? "+" : ""}
-                  {selected.change}% today
+                  {selected.signals.socialFollowersMillions}M followers ·{" "}
+                  {selected.signals.hashtagViewsBillions}B hashtag views
                 </p>
               </div>
             </div>
-
             <div className="mt-5">
               <TradeControls
                 key={selected.ticker}
@@ -451,10 +359,8 @@ export default function Index() {
                 onTradeComplete={() => setTradeOpen(false)}
               />
             </div>
-
             <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">
-              Trades use your persistent STKZ practice wallet. Celebrity shares
-              are synthetic entertainment assets.
+              Prices use a reproducible fame-signal model and are for practice trading only.
             </p>
           </section>
         </div>
