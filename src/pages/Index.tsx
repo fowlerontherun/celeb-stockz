@@ -6,6 +6,7 @@ import {
   LayoutGrid,
   Star,
   Trophy,
+  TrendingUp,
   Users,
   Wallet,
   X,
@@ -21,6 +22,7 @@ import {
 } from "@/components/CategoryMarkets";
 import { LivePortfolio } from "@/components/LivePortfolio";
 import { LiveRankings } from "@/components/LiveRankings";
+import { TopMovers } from "@/components/TopMovers";
 import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { showError } from "@/utils/toast";
@@ -83,7 +85,14 @@ const fallbackMarkets: CelebrityMarket[] = [
   },
 ];
 
-type Page = "Home" | "Markets" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs";
+type Page =
+  | "Home"
+  | "Markets"
+  | "Movers"
+  | "Watchlist"
+  | "Portfolio"
+  | "Rankings"
+  | "Clubs";
 
 const navItems: Array<{
   page: Page;
@@ -91,6 +100,7 @@ const navItems: Array<{
 }> = [
   { page: "Home", icon: Home },
   { page: "Markets", icon: LayoutGrid },
+  { page: "Movers", icon: TrendingUp },
   { page: "Watchlist", icon: Star },
   { page: "Portfolio", icon: Wallet },
   { page: "Rankings", icon: Trophy },
@@ -131,6 +141,7 @@ export default function Index() {
 
   const content =
     page === "Markets" ? <CategoryMarkets markets={markets} onTrade={openTrade} /> :
+    page === "Movers" ? <TopMovers markets={markets} onTrade={openTrade} /> :
     page === "Watchlist" ? (
       <WatchlistPanel
         celebs={watchlist}
@@ -172,7 +183,7 @@ export default function Index() {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex justify-around border-t border-white/10 bg-[#1a0e2a]/95 px-2 py-3 backdrop-blur lg:hidden">
-        {navItems.slice(0, 4).map(({ page: itemPage, icon: Icon }) => (
+        {navItems.slice(0, 5).map(({ page: itemPage, icon: Icon }) => (
           <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex flex-col items-center gap-1 text-[10px] font-bold ${page === itemPage ? "text-[#c99bff]" : "text-[#897b95]"}`}><Icon size={19} />{itemPage}</button>
         ))}
       </nav>
