@@ -63,7 +63,7 @@ export function MarketTicker() {
   );
 
   return (
-    <div className="fixed left-3 right-3 top-3 z-40 mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-[#a97cff]/30 bg-[#211230]/95 px-4 py-3 text-xs shadow-2xl backdrop-blur sm:left-auto sm:right-5 sm:max-w-none">
+    <div className="fixed bottom-20 left-3 right-3 z-30 mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-[#a97cff]/30 bg-[#211230]/95 px-4 py-3 text-xs shadow-2xl backdrop-blur sm:bottom-5 sm:left-auto sm:right-5 sm:max-w-none">
       <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#7c3aed]/25 text-[#c99bff]">
         {isRefreshing ? (
           <RefreshCw size={16} className="animate-spin" />
