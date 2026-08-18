@@ -1,7 +1,15 @@
 import { additionalCelebrityMarkets } from "./additional-markets";
 
 export type MarketTicker = string;
-export type MarketCategory = "Music" | "Sport" | "Film" | "TV" | "Politics";
+export type MarketCategory =
+  | "Music"
+  | "Sport"
+  | "Film"
+  | "TV"
+  | "Politics"
+  | "Fashion"
+  | "Digital"
+  | "Comedy";
 
 export type CelebrityMarket = {
   name: string;
@@ -50,6 +58,15 @@ const originalMarkets: CelebrityMarket[] = [
   { name: "Nigel Farage", ticker: "FARAGE", category: "Politics", image: commonsImage("Nigel Farage 2020.jpg"), change: -4.2, birthYear: 1964, nationality: "British", signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 2.2, trendScore: 72, monthlySearchesMillions: 4.1, newsStories: 620 } },
   { name: "Rishi Sunak", ticker: "SUNAK", category: "Politics", image: commonsImage("Rishi Sunak official portrait.jpg"), change: 1.8, birthYear: 1980, nationality: "British", signals: { socialFollowersMillions: 1.8, hashtagViewsBillions: 2.5, trendScore: 69, monthlySearchesMillions: 4.8, newsStories: 540 } },
   { name: "Sadiq Khan", ticker: "SADIQ", category: "Politics", image: commonsImage("Sadiq Khan 2016.jpg"), change: 5.1, birthYear: 1970, nationality: "British", signals: { socialFollowersMillions: 1.1, hashtagViewsBillions: 1.6, trendScore: 76, monthlySearchesMillions: 3.1, newsStories: 380 } },
+  { name: "Zendaya", ticker: "ZENDAYA", category: "Fashion", image: "https://ui-avatars.com/api/?name=Zendaya&background=2a1740&color=fff8f2&bold=true&size=512", change: 9.4, birthYear: 1996, nationality: "American", signals: { socialFollowersMillions: 184, hashtagViewsBillions: 31.6, trendScore: 95, monthlySearchesMillions: 13.2, newsStories: 740 } },
+  { name: "Rihanna", ticker: "RIHANNA", category: "Fashion", image: "https://ui-avatars.com/api/?name=Rihanna&background=2a1740&color=fff8f2&bold=true&size=512", change: 7.7, birthYear: 1988, nationality: "Barbadian", signals: { socialFollowersMillions: 282, hashtagViewsBillions: 44.8, trendScore: 91, monthlySearchesMillions: 11.4, newsStories: 620 } },
+  { name: "Bella Hadid", ticker: "BELLAH", category: "Fashion", image: "https://ui-avatars.com/api/?name=Bella+Hadid&background=2a1740&color=fff8f2&bold=true&size=512", change: 5.3, birthYear: 1996, nationality: "American", signals: { socialFollowersMillions: 61, hashtagViewsBillions: 14.3, trendScore: 82, monthlySearchesMillions: 5.6, newsStories: 340 } },
+  { name: "Amelia Dimoldenberg", ticker: "AMELIAD", category: "Digital", image: "https://ui-avatars.com/api/?name=Amelia+Dimoldenberg&background=2a1740&color=fff8f2&bold=true&size=512", change: 11.8, birthYear: 1994, nationality: "British", signals: { socialFollowersMillions: 3.4, hashtagViewsBillions: 5.7, trendScore: 91, monthlySearchesMillions: 3.9, newsStories: 290 } },
+  { name: "KSI", ticker: "KSI", category: "Digital", image: "https://ui-avatars.com/api/?name=KSI&background=2a1740&color=fff8f2&bold=true&size=512", change: 8.1, birthYear: 1993, nationality: "British", signals: { socialFollowersMillions: 68, hashtagViewsBillions: 18.9, trendScore: 89, monthlySearchesMillions: 7.1, newsStories: 490 } },
+  { name: "Molly-Mae Hague", ticker: "MOLLYMAE", category: "Digital", image: "https://ui-avatars.com/api/?name=Molly-Mae+Hague&background=2a1740&color=fff8f2&bold=true&size=512", change: 6.5, birthYear: 1999, nationality: "British", signals: { socialFollowersMillions: 8.2, hashtagViewsBillions: 8.8, trendScore: 84, monthlySearchesMillions: 4.6, newsStories: 310 } },
+  { name: "Romesh Ranganathan", ticker: "ROMESH", category: "Comedy", image: "https://ui-avatars.com/api/?name=Romesh+Ranganathan&background=2a1740&color=fff8f2&bold=true&size=512", change: 4.7, birthYear: 1978, nationality: "British", signals: { socialFollowersMillions: 1.6, hashtagViewsBillions: 2.8, trendScore: 78, monthlySearchesMillions: 2.7, newsStories: 220 } },
+  { name: "Aisling Bea", ticker: "AISLING", category: "Comedy", image: "https://ui-avatars.com/api/?name=Aisling+Bea&background=2a1740&color=fff8f2&bold=true&size=512", change: 6.9, birthYear: 1984, nationality: "Irish", signals: { socialFollowersMillions: 1.2, hashtagViewsBillions: 2.1, trendScore: 81, monthlySearchesMillions: 2.2, newsStories: 180 } },
+  { name: "James Acaster", ticker: "JACASTER", category: "Comedy", image: "https://ui-avatars.com/api/?name=James+Acaster&background=2a1740&color=fff8f2&bold=true&size=512", change: 5.8, birthYear: 1985, nationality: "British", signals: { socialFollowersMillions: 1.1, hashtagViewsBillions: 3.4, trendScore: 80, monthlySearchesMillions: 2.5, newsStories: 170 } },
 ];
 
 export const celebrityMarkets: CelebrityMarket[] = [
