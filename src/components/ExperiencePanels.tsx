@@ -1,30 +1,466 @@
 import { useState } from "react";
-import { Crown, Flame, Gem, LockKeyhole, Star, TrendingUp, Users } from "lucide-react";
+import {
+  Crown,
+  Flame,
+  Gem,
+  LockKeyhole,
+  Star,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
-export type Celebrity = { name: string; ticker: string; price: number; change: number; image: string };
-export type OpenOrder = { id: number; ticker: string; side: "Buy" | "Sell"; price: string; shares: string; mode: "Practice" | "Live" };
-type SharedProps = { celebs: Celebrity[]; onTrade: (celeb: Celebrity) => void };
+export type Celebrity = {
+  name: string;
+  ticker: string;
+  price: number;
+  change: number;
+  image: string;
+};
+export type OpenOrder = {
+  id: number;
+  ticker: string;
+  side: "Buy" | "Sell";
+  price: string;
+  shares: string;
+  mode: "Practice" | "Live";
+};
+type SharedProps = {
+  celebs: Celebrity[];
+  onTrade: (celeb: Celebrity) => void;
+};
 
 export function MarketsPanel({ celebs, onTrade }: SharedProps) {
-  return <div className="animate-in fade-in duration-300"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Explore</p><h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">The hype exchange</h1></div><div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">4 markets · prices refresh every 2 min</div></div><div className="mt-7 grid gap-4 md:grid-cols-2">{celebs.map((celeb, index) => <article key={celeb.ticker} className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"><div className="flex gap-4 p-4"><img src={celeb.image} alt={celeb.name} className="h-24 w-24 rounded-2xl object-cover"/><div className="min-w-0 flex-1"><div className="flex items-start justify-between"><div><p className="font-display text-xl font-black">{celeb.name}</p><p className="mt-0.5 text-xs font-bold text-[#9f90ac]">${celeb.ticker}</p></div><span className={`rounded-lg px-2 py-1 text-xs font-black ${celeb.change > 0 ? "bg-[#183b33] text-[#62e7b6]" : "bg-[#482332] text-[#ff9ca5]"}`}>{celeb.change > 0 ? "+" : ""}{celeb.change}%</span></div><p className="mt-3 text-lg font-black">{celeb.price.toFixed(2)} <span className="text-xs text-[#aaa0b4]">STKZ</span></p></div></div><div className="flex items-center justify-between border-t border-white/5 bg-white/[.02] px-4 py-3"><span className="flex items-center gap-1 text-xs font-bold text-[#ffd17b]"><Flame size={14} fill="currentColor"/> {94 - index * 7} hype score</span><button onClick={() => onTrade(celeb)} className="rounded-lg bg-[#7c3aed] px-3 py-1.5 text-xs font-black hover:bg-[#9361f5]">Trade</button></div></article>)}</div></div>;
+  return (
+    <div className="animate-in fade-in duration-300">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+        <div>
+          <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
+            Explore
+          </p>
+          <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">
+            The hype exchange
+          </h1>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">
+          4 markets · prices refresh every 2 min
+        </div>
+      </div>
+      <div className="mt-7 grid gap-4 md:grid-cols-2">
+        {celebs.map((celeb, index) => (
+          <article
+            key={celeb.ticker}
+            className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"
+          >
+            <div className="flex gap-4 p-4">
+              <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#160c25] p-2">
+                <img
+                  src={celeb.image}
+                  alt={celeb.name}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="font-display text-xl font-black">{celeb.name}</p>
+                    <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">
+                      ${celeb.ticker}
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-lg px-2 py-1 text-xs font-black ${
+                      celeb.change > 0
+                        ? "bg-[#183b33] text-[#62e7b6]"
+                        : "bg-[#482332] text-[#ff9ca5]"
+                    }`}
+                  >
+                    {celeb.change > 0 ? "+" : ""}
+                    {celeb.change}%
+                  </span>
+                </div>
+                <p className="mt-3 text-lg font-black">
+                  {celeb.price.toFixed(2)}{" "}
+                  <span className="text-xs text-[#aaa0b4]">STKZ</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/5 bg-white/[.02] px-4 py-3">
+              <span className="flex items-center gap-1 text-xs font-bold text-[#ffd17b]">
+                <Flame size={14} fill="currentColor" /> {94 - index * 7} hype
+                score
+              </span>
+              <button
+                onClick={() => onTrade(celeb)}
+                className="rounded-lg bg-[#7c3aed] px-3 py-1.5 text-xs font-black hover:bg-[#9361f5]"
+              >
+                Trade
+              </button>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-export function PortfolioPanel({ celebs, onTrade, openOrders, onCancelOrder }: SharedProps & { openOrders: OpenOrder[]; onCancelOrder: (id: number) => void }) {
-  const positions = [{ celeb: celebs[0], quantity: "0.87", pnl: "+0.38 STKZ" }, { celeb: celebs[1], quantity: "1.42", pnl: "+0.16 STKZ" }, { celeb: celebs[3], quantity: "0.64", pnl: "+0.04 STKZ" }];
-  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Your assets</p><div className="mt-1 flex flex-wrap items-end justify-between gap-4"><h1 className="font-display text-3xl font-black sm:text-4xl">Portfolio</h1><p className="text-sm font-bold text-[#62e7b6]">↑ 6.91% all time</p></div><section className="mt-7 rounded-[28px] border border-white/10 bg-[#2a1740] p-6 sm:p-8"><p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#b8a6c9]">Net worth</p><p className="font-display mt-2 text-5xl font-black">2.847 <span className="text-xl text-[#c3b5cf]">STKZ</span></p><div className="mt-4 flex flex-wrap gap-3 text-xs font-bold"><span className="rounded-xl bg-[#173a31] px-3 py-2 text-[#78e8bd]">Today +0.184 STKZ</span><span className="rounded-xl bg-white/10 px-3 py-2 text-[#d7c9e0]">Available 0.524 STKZ</span></div></section><section className="mt-7"><h2 className="font-display text-2xl font-black">Your positions</h2><div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">{positions.map(({ celeb, quantity, pnl }) => <div key={celeb.ticker} className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"><img src={celeb.image} alt="" className="h-11 w-11 rounded-xl object-cover"/><div className="flex-1"><p className="text-sm font-black">{celeb.ticker}</p><p className="text-xs text-[#9f90ac]">{quantity} shares · {celeb.price.toFixed(2)} STKZ</p></div><p className="mr-2 text-sm font-black text-[#62e7b6]">{pnl}</p><button onClick={() => onTrade(celeb)} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold">Trade</button></div>)}</div></section><section className="mt-7"><div className="flex items-center justify-between"><h2 className="font-display text-2xl font-black">Open orders</h2><span className="rounded-lg bg-[#7c3aed]/20 px-2 py-1 text-xs font-bold text-[#c99bff]">{openOrders.length} pending</span></div>{openOrders.length === 0 ? <div className="mt-3 rounded-[22px] border border-dashed border-white/15 bg-white/[.03] p-5 text-sm text-[#a99ab7]">No pending limit orders. Create one from any market card.</div> : <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">{openOrders.map(order => <div key={order.id} className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"><div className={`grid h-10 w-10 place-items-center rounded-xl text-xs font-black ${order.side === "Buy" ? "bg-[#173a31] text-[#78e8bd]" : "bg-[#482332] text-[#ff9ca5]"}`}>{order.side[0]}</div><div className="flex-1"><p className="text-sm font-black">{order.side} {order.ticker}</p><p className="text-xs text-[#9f90ac]">{order.shares} shares at {order.price} STKZ · {order.mode}</p></div><button onClick={() => onCancelOrder(order.id)} className="rounded-lg border border-[#ff7282]/30 px-3 py-2 text-xs font-bold text-[#ff9ca5]">Cancel</button></div>)}</div>}</section></div>;
+export function PortfolioPanel({
+  celebs,
+  onTrade,
+  openOrders,
+  onCancelOrder,
+}: SharedProps & {
+  openOrders: OpenOrder[];
+  onCancelOrder: (id: number) => void;
+}) {
+  const positions = [
+    { celeb: celebs[0], quantity: "0.87", pnl: "+0.38 STKZ" },
+    { celeb: celebs[1], quantity: "1.42", pnl: "+0.16 STKZ" },
+    { celeb: celebs[3], quantity: "0.64", pnl: "+0.04 STKZ" },
+  ];
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
+        Your assets
+      </p>
+      <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
+        <h1 className="font-display text-3xl font-black sm:text-4xl">Portfolio</h1>
+        <p className="text-sm font-bold text-[#62e7b6]">↑ 6.91% all time</p>
+      </div>
+      <section className="mt-7 rounded-[28px] border border-white/10 bg-[#2a1740] p-6 sm:p-8">
+        <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#b8a6c9]">
+          Net worth
+        </p>
+        <p className="font-display mt-2 text-5xl font-black">
+          2.847 <span className="text-xl text-[#c3b5cf]">STKZ</span>
+        </p>
+        <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold">
+          <span className="rounded-xl bg-[#173a31] px-3 py-2 text-[#78e8bd]">
+            Today +0.184 STKZ
+          </span>
+          <span className="rounded-xl bg-white/10 px-3 py-2 text-[#d7c9e0]">
+            Available 0.524 STKZ
+          </span>
+        </div>
+      </section>
+      <section className="mt-7">
+        <h2 className="font-display text-2xl font-black">Your positions</h2>
+        <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">
+          {positions.map(({ celeb, quantity, pnl }) => (
+            <div
+              key={celeb.ticker}
+              className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"
+            >
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1">
+                <img src={celeb.image} alt="" className="h-full w-full object-contain" />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm font-black">{celeb.ticker}</p>
+                <p className="text-xs text-[#9f90ac]">
+                  {quantity} shares · {celeb.price.toFixed(2)} STKZ
+                </p>
+              </div>
+              <p className="mr-2 text-sm font-black text-[#62e7b6]">{pnl}</p>
+              <button
+                onClick={() => onTrade(celeb)}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold"
+              >
+                Trade
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="mt-7">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-2xl font-black">Open orders</h2>
+          <span className="rounded-lg bg-[#7c3aed]/20 px-2 py-1 text-xs font-bold text-[#c99bff]">
+            {openOrders.length} pending
+          </span>
+        </div>
+        {openOrders.length === 0 ? (
+          <div className="mt-3 rounded-[22px] border border-dashed border-white/15 bg-white/[.03] p-5 text-sm text-[#a99ab7]">
+            No pending limit orders. Create one from any market card.
+          </div>
+        ) : (
+          <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">
+            {openOrders.map((order) => (
+              <div
+                key={order.id}
+                className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"
+              >
+                <div
+                  className={`grid h-10 w-10 place-items-center rounded-xl text-xs font-black ${
+                    order.side === "Buy"
+                      ? "bg-[#173a31] text-[#78e8bd]"
+                      : "bg-[#482332] text-[#ff9ca5]"
+                  }`}
+                >
+                  {order.side[0]}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-black">
+                    {order.side} {order.ticker}
+                  </p>
+                  <p className="text-xs text-[#9f90ac]">
+                    {order.shares} shares at {order.price} STKZ · {order.mode}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onCancelOrder(order.id)}
+                  className="rounded-lg border border-[#ff7282]/30 px-3 py-2 text-xs font-bold text-[#ff9ca5]"
+                >
+                  Cancel
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  );
 }
 
 export function RankingsPanel() {
-  const rankings = [["1", "Nova K.", "11.92 STKZ", "#ffd17b"], ["2", "AJ — you", "8.35 STKZ", "#bd9cff"], ["3", "Mila H.", "7.89 STKZ", "#6ce0bd"], ["4", "Rex Allen", "6.61 STKZ", "#ff9fa9"]];
-  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Season 01 · ends in 18d</p><h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Rankings</h1><div className="mt-7 rounded-[28px] border border-white/10 bg-[#1e112f] p-4 sm:p-6"><div className="flex items-center justify-between border-b border-white/10 pb-4 text-xs font-extrabold uppercase tracking-[.16em] text-[#a99ab7]"><span>Trader</span><span>Season P&L</span></div>{rankings.map(([rank, name, pnl, color]) => <div key={rank} className={`flex items-center gap-4 py-4 ${name.includes("you") ? "rounded-xl bg-[#7c3aed]/15 px-3" : "border-b border-white/5"}`}><span className="grid h-9 w-9 place-items-center rounded-xl font-black" style={{ backgroundColor: `${color}20`, color }}>{rank === "1" ? <Crown size={18} fill="currentColor"/> : rank}</span><div className="grid h-10 w-10 place-items-center rounded-full bg-[#513266] font-black">{name[0]}</div><p className="flex-1 text-sm font-bold">{name}</p><p className="font-display text-lg font-black text-[#62e7b6]">+{pnl}</p></div>)}</div><div className="mt-5 flex gap-3 rounded-2xl border border-[#f5ab43]/30 bg-[#2e1e30] p-4"><Gem className="shrink-0 text-[#ffd17b]"/><p className="text-sm leading-5 text-[#e2d5dd]">Finish in the top 10 this season to earn the <b>Spotlight Crown</b> badge.</p></div></div>;
+  const rankings = [
+    ["1", "Nova K.", "11.92 STKZ", "#ffd17b"],
+    ["2", "AJ — you", "8.35 STKZ", "#bd9cff"],
+    ["3", "Mila H.", "7.89 STKZ", "#6ce0bd"],
+    ["4", "Rex Allen", "6.61 STKZ", "#ff9fa9"],
+  ];
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
+        Season 01 · ends in 18d
+      </p>
+      <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Rankings</h1>
+      <div className="mt-7 rounded-[28px] border border-white/10 bg-[#1e112f] p-4 sm:p-6">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4 text-xs font-extrabold uppercase tracking-[.16em] text-[#a99ab7]">
+          <span>Trader</span>
+          <span>Season P&L</span>
+        </div>
+        {rankings.map(([rank, name, pnl, color]) => (
+          <div
+            key={rank}
+            className={`flex items-center gap-4 py-4 ${
+              name.includes("you")
+                ? "rounded-xl bg-[#7c3aed]/15 px-3"
+                : "border-b border-white/5"
+            }`}
+          >
+            <span
+              className="grid h-9 w-9 place-items-center rounded-xl font-black"
+              style={{ backgroundColor: `${color}20`, color }}
+            >
+              {rank === "1" ? <Crown size={18} fill="currentColor" /> : rank}
+            </span>
+            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#513266] font-black">
+              {name[0]}
+            </div>
+            <p className="flex-1 text-sm font-bold">{name}</p>
+            <p className="font-display text-lg font-black text-[#62e7b6]">+{pnl}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 flex gap-3 rounded-2xl border border-[#f5ab43]/30 bg-[#2e1e30] p-4">
+        <Gem className="shrink-0 text-[#ffd17b]" />
+        <p className="text-sm leading-5 text-[#e2d5dd]">
+          Finish in the top 10 this season to earn the <b>Spotlight Crown</b>{" "}
+          badge.
+        </p>
+      </div>
+    </div>
+  );
 }
 
 export function ClubsPanel() {
   const [hubOpen, setHubOpen] = useState(false);
   const [tipShared, setTipShared] = useState(false);
-  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Trade together</p><h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Clubs</h1><section className="mt-7 overflow-hidden rounded-[28px] border border-white/10 bg-[#2b183f] p-6 sm:p-8"><div className="flex items-start gap-4"><div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ff7282] text-[#3c1630]"><Users size={26}/></div><div><p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#ffb4bd]">Your club</p><h2 className="font-display mt-1 text-2xl font-black">The Afterparty</h2><p className="mt-1 text-sm text-[#d4bdcf]">18 members · #12 this season</p></div></div><div className="mt-7 grid grid-cols-3 gap-3"><div className="rounded-xl bg-white/10 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">Club P&L</p><p className="mt-1 text-lg font-black text-[#62e7b6]">+17.4</p></div><div className="rounded-xl bg-white/10 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">Volume</p><p className="mt-1 text-lg font-black">38.1</p></div><div className="rounded-xl bg-white/10 p-3"><p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">Streak</p><p className="mt-1 text-lg font-black">6 days</p></div></div><button onClick={() => setHubOpen(!hubOpen)} className="mt-6 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#431a33]">{hubOpen ? "Hide club hub" : "Open club hub"}</button>{hubOpen && <div className="mt-5 animate-in fade-in rounded-2xl border border-white/10 bg-[#190f28]/60 p-4"><p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#c99bff]">Tonight’s thread</p><div className="mt-3 space-y-3 text-sm"><p><b>Nova K.</b> is watching AMARA after the premiere spike.</p><p><b>Mila H.</b> completed the “Catch the heat” challenge.</p>{tipShared && <p className="rounded-xl border border-[#62e7b6]/20 bg-[#173a31]/70 p-3 text-[#bff8dc]"><b>AJ — you</b> shared: “AMARA looks hot after the premiere spike. Watching the next hype tick.”</p>}<button onClick={() => setTipShared(true)} disabled={tipShared} className={`rounded-lg px-3 py-2 text-xs font-bold ${tipShared ? "bg-[#3ed9a3]/15 text-[#83e8c3]" : "border border-white/15 text-[#e6d8ff]"}`}>{tipShared ? "✓ Tip shared with The Afterparty" : "Share a market tip"}</button></div></div>}</section><section className="mt-7 rounded-[24px] border border-white/10 bg-[#1e112f] p-5"><div className="flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-[#c9a4ff]"><LockKeyhole size={19}/></div><div><h3 className="font-display text-lg font-black">Club challenges</h3><p className="text-xs text-[#a99ab7]">Coming after your first club trade.</p></div></div><div className="mt-4 rounded-xl bg-white/[.04] p-3 text-sm text-[#c0b1cc]"><TrendingUp className="mr-2 inline text-[#62e7b6]" size={16}/>Your club is 3.2% ahead of the league average.</div></section></div>;
+
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
+        Trade together
+      </p>
+      <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Clubs</h1>
+      <section className="mt-7 overflow-hidden rounded-[28px] border border-white/10 bg-[#2b183f] p-6 sm:p-8">
+        <div className="flex items-start gap-4">
+          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ff7282] text-[#3c1630]">
+            <Users size={26} />
+          </div>
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#ffb4bd]">
+              Your club
+            </p>
+            <h2 className="font-display mt-1 text-2xl font-black">The Afterparty</h2>
+            <p className="mt-1 text-sm text-[#d4bdcf]">18 members · #12 this season</p>
+          </div>
+        </div>
+        <div className="mt-7 grid grid-cols-3 gap-3">
+          <div className="rounded-xl bg-white/10 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">
+              Club P&L
+            </p>
+            <p className="mt-1 text-lg font-black text-[#62e7b6]">+17.4</p>
+          </div>
+          <div className="rounded-xl bg-white/10 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">
+              Volume
+            </p>
+            <p className="mt-1 text-lg font-black">38.1</p>
+          </div>
+          <div className="rounded-xl bg-white/10 p-3">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">
+              Streak
+            </p>
+            <p className="mt-1 text-lg font-black">6 days</p>
+          </div>
+        </div>
+        <button
+          onClick={() => setHubOpen(!hubOpen)}
+          className="mt-6 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#431a33]"
+        >
+          {hubOpen ? "Hide club hub" : "Open club hub"}
+        </button>
+        {hubOpen && (
+          <div className="mt-5 animate-in fade-in rounded-2xl border border-white/10 bg-[#190f28]/60 p-4">
+            <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#c99bff]">
+              Tonight’s thread
+            </p>
+            <div className="mt-3 space-y-3 text-sm">
+              <p>
+                <b>Nova K.</b> is watching AMARA after the premiere spike.
+              </p>
+              <p>
+                <b>Mila H.</b> completed the “Catch the heat” challenge.
+              </p>
+              {tipShared && (
+                <p className="rounded-xl border border-[#62e7b6]/20 bg-[#173a31]/70 p-3 text-[#bff8dc]">
+                  <b>AJ — you</b> shared: “AMARA looks hot after the premiere spike.
+                  Watching the next hype tick.”
+                </p>
+              )}
+              <button
+                onClick={() => setTipShared(true)}
+                disabled={tipShared}
+                className={`rounded-lg px-3 py-2 text-xs font-bold ${
+                  tipShared
+                    ? "bg-[#3ed9a3]/15 text-[#83e8c3]"
+                    : "border border-white/15 text-[#e6d8ff]"
+                }`}
+              >
+                {tipShared
+                  ? "✓ Tip shared with The Afterparty"
+                  : "Share a market tip"}
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+      <section className="mt-7 rounded-[24px] border border-white/10 bg-[#1e112f] p-5">
+        <div className="flex items-center gap-3">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-[#c9a4ff]">
+            <LockKeyhole size={19} />
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-black">Club challenges</h3>
+            <p className="text-xs text-[#a99ab7]">Coming after your first club trade.</p>
+          </div>
+        </div>
+        <div className="mt-4 rounded-xl bg-white/[.04] p-3 text-sm text-[#c0b1cc]">
+          <TrendingUp className="mr-2 inline text-[#62e7b6]" size={16} />
+          Your club is 3.2% ahead of the league average.
+        </div>
+      </section>
+    </div>
+  );
 }
 
-export function WatchlistPanel({ celebs, onTrade, onRemove }: { celebs: Celebrity[]; onTrade: (celeb: Celebrity) => void; onRemove: (ticker: string) => void }) {
-  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Your picks</p><div className="mt-1 flex items-end justify-between"><div><h1 className="font-display text-3xl font-black sm:text-4xl">Watchlist</h1><p className="mt-1 text-sm text-[#a99ab7]">Track the names you want to catch next.</p></div><Star className="text-[#ffd17b]" fill="currentColor"/></div>{celebs.length === 0 ? <div className="mt-7 rounded-[28px] border border-dashed border-white/20 bg-white/[.03] p-8 text-center"><Star className="mx-auto text-[#c99bff]" size={28}/><h2 className="font-display mt-3 text-xl font-black">Your watchlist is empty</h2><p className="mt-2 text-sm text-[#a99ab7]">Star a celebrity from their trade sheet to follow their hype.</p></div> : <div className="mt-7 grid gap-4 md:grid-cols-2">{celebs.map(celeb => <article key={celeb.ticker} className="flex gap-4 rounded-[24px] border border-white/10 bg-[#1e112f] p-4"><img src={celeb.image} alt={celeb.name} className="h-20 w-20 rounded-2xl object-cover"/><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><div><p className="font-display text-lg font-black">{celeb.name}</p><p className="text-xs font-bold text-[#9b8ba8]">${celeb.ticker}</p></div><button onClick={() => onRemove(celeb.ticker)} className="text-[#ffd17b]" aria-label={`Remove ${celeb.name} from watchlist`}><Star size={18} fill="currentColor"/></button></div><p className="mt-2 text-sm font-black">{celeb.price.toFixed(2)} <span className="text-xs text-[#a99ab7]">STKZ</span> <span className={celeb.change > 0 ? "ml-1 text-[#62e7b6]" : "ml-1 text-[#ff9ca5]"}>{celeb.change > 0 ? "+" : ""}{celeb.change}%</span></p><button onClick={() => onTrade(celeb)} className="mt-3 rounded-lg bg-[#7c3aed] px-3 py-2 text-xs font-black">Trade {celeb.ticker}</button></div></article>)}</div>}</div>;
+export function WatchlistPanel({
+  celebs,
+  onTrade,
+  onRemove,
+}: {
+  celebs: Celebrity[];
+  onTrade: (celeb: Celebrity) => void;
+  onRemove: (ticker: string) => void;
+}) {
+  return (
+    <div className="animate-in fade-in duration-300">
+      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
+        Your picks
+      </p>
+      <div className="mt-1 flex items-end justify-between">
+        <div>
+          <h1 className="font-display text-3xl font-black sm:text-4xl">Watchlist</h1>
+          <p className="mt-1 text-sm text-[#a99ab7]">
+            Track the names you want to catch next.
+          </p>
+        </div>
+        <Star className="text-[#ffd17b]" fill="currentColor" />
+      </div>
+      {celebs.length === 0 ? (
+        <div className="mt-7 rounded-[28px] border border-dashed border-white/20 bg-white/[.03] p-8 text-center">
+          <Star className="mx-auto text-[#c99bff]" size={28} />
+          <h2 className="font-display mt-3 text-xl font-black">Your watchlist is empty</h2>
+          <p className="mt-2 text-sm text-[#a99ab7]">
+            Star a celebrity from their trade sheet to follow their hype.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-7 grid gap-4 md:grid-cols-2">
+          {celebs.map((celeb) => (
+            <article
+              key={celeb.ticker}
+              className="flex gap-4 rounded-[24px] border border-white/10 bg-[#1e112f] p-4"
+            >
+              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#160c25] p-2">
+                <img
+                  src={celeb.image}
+                  alt={celeb.name}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex justify-between gap-2">
+                  <div>
+                    <p className="font-display text-lg font-black">{celeb.name}</p>
+                    <p className="text-xs font-bold text-[#9b8ba8]">${celeb.ticker}</p>
+                  </div>
+                  <button
+                    onClick={() => onRemove(celeb.ticker)}
+                    className="text-[#ffd17b]"
+                    aria-label={`Remove ${celeb.name} from watchlist`}
+                  >
+                    <Star size={18} fill="currentColor" />
+                  </button>
+                </div>
+                <p className="mt-2 text-sm font-black">
+                  {celeb.price.toFixed(2)}{" "}
+                  <span className="text-xs text-[#a99ab7]">STKZ</span>{" "}
+                  <span
+                    className={
+                      celeb.change > 0
+                        ? "ml-1 text-[#62e7b6]"
+                        : "ml-1 text-[#ff9ca5]"
+                    }
+                  >
+                    {celeb.change > 0 ? "+" : ""}
+                    {celeb.change}%
+                  </span>
+                </p>
+                <button
+                  onClick={() => onTrade(celeb)}
+                  className="mt-3 rounded-lg bg-[#7c3aed] px-3 py-2 text-xs font-black"
+                >
+                  Trade {celeb.ticker}
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

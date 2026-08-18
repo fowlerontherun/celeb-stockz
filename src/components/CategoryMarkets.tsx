@@ -1,15 +1,22 @@
 import { useMemo, useState } from "react";
-import { Clapperboard, Landmark, Music2, Trophy } from "lucide-react";
+import {
+  Clapperboard,
+  Landmark,
+  Music2,
+  Trophy,
+  Tv,
+} from "lucide-react";
 import type { Celebrity } from "@/components/ExperiencePanels";
 
 export type CategorizedCelebrity = Celebrity & {
-  category: "Music" | "Sport" | "Film & TV" | "Politics";
+  category: "Music" | "Sport" | "Film" | "TV" | "Politics";
 };
 
 const categories = [
   { name: "Music", icon: Music2, color: "text-[#ff9ca5]" },
   { name: "Sport", icon: Trophy, color: "text-[#62e7b6]" },
-  { name: "Film & TV", icon: Clapperboard, color: "text-[#ffd17b]" },
+  { name: "Film", icon: Clapperboard, color: "text-[#ffd17b]" },
+  { name: "TV", icon: Tv, color: "text-[#72c8ff]" },
   { name: "Politics", icon: Landmark, color: "text-[#c99bff]" },
 ] as const;
 
@@ -56,7 +63,10 @@ export function CategoryMarkets({
                 : "border border-white/10 bg-white/[.04] text-[#b9acc9] hover:bg-white/10"
             }`}
           >
-            <Icon size={17} className={activeCategory === name ? "text-white" : color} />
+            <Icon
+              size={17}
+              className={activeCategory === name ? "text-white" : color}
+            />
             {name}
           </button>
         ))}
@@ -68,11 +78,13 @@ export function CategoryMarkets({
             key={market.ticker}
             className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"
           >
-            <img
-              src={market.image}
-              alt={market.name}
-              className="h-44 w-full object-cover"
-            />
+            <div className="flex h-48 items-center justify-center bg-[#160c25] p-3">
+              <img
+                src={market.image}
+                alt={market.name}
+                className="h-full w-full object-contain"
+              />
+            </div>
             <div className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -81,17 +93,21 @@ export function CategoryMarkets({
                     ${market.ticker} · {market.category}
                   </p>
                 </div>
-                <span className={`rounded-lg px-2 py-1 text-xs font-black ${
-                  market.change > 0
-                    ? "bg-[#183b33] text-[#62e7b6]"
-                    : "bg-[#482332] text-[#ff9ca5]"
-                }`}>
-                  {market.change > 0 ? "+" : ""}{market.change}%
+                <span
+                  className={`rounded-lg px-2 py-1 text-xs font-black ${
+                    market.change > 0
+                      ? "bg-[#183b33] text-[#62e7b6]"
+                      : "bg-[#482332] text-[#ff9ca5]"
+                  }`}
+                >
+                  {market.change > 0 ? "+" : ""}
+                  {market.change}%
                 </span>
               </div>
               <div className="mt-5 flex items-end justify-between">
                 <p className="text-2xl font-black">
-                  {market.price.toFixed(2)} <span className="text-xs text-[#aaa0b4]">STKZ</span>
+                  {market.price.toFixed(2)}{" "}
+                  <span className="text-xs text-[#aaa0b4]">STKZ</span>
                 </p>
                 <button
                   type="button"
