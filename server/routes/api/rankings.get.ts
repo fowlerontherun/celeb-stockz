@@ -1,7 +1,7 @@
 import { defineHandler } from "nitro";
 import { createError } from "nitro/h3";
 import { sql } from "../../utils/db";
-import { marketPrices } from "../../utils/markets";
+import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
 
 type RankingRow = {
   user_id: string;
@@ -18,35 +18,33 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  const rows = await sql<RankingRow[]>`
-    SELECT
-      wallets.user_id,
-      profiles.display_name,
-      wallets.balance_stkz,
-      positions.ticker,
-      positions.quantity
-    FROM user_wallets AS wallets
-    LEFT JOIN user_profiles AS profiles ON profiles.user_id = wallets.user_id
-    LEFT JOIN user_positions AS positions
-      ON positions.user_id = wallets.user_id
-      AND positions.quantity > 0
-  `;
+  const [rows, prices] = await Promise.all([
+    sql<RankingRow[]>`
+      SELECT
+        wallets.user_id,
+        profiles.display_name,
+        wallets.balance_stkz,
+        positions.ticker,
+        positions.quantity
+      FROM user_wallets AS wallets
+      LEFT JOIN user_profiles AS profiles ON profiles.user_id = wallets.user_id
+      LEFT JOIN user_positions AS positions
+        ON positions.user_id = wallets.user_id
+        AND positions.quantity > 0
+    `,
+    getLatestVerifiedPrices(),
+  ]);
 
-  const traders = new Map<
-    string,
-    { name: string; netWorth: number }
-  >();
+  const traders = new Map<string, { name: string; netWorth: number }>();
 
   for (const row of rows) {
     const existing = traders.get(row.user_id) ?? {
-      name:
-        row.display_name?.trim() ||
-        `Trader ${row.user_id.slice(-4).toUpperCase()}`,
+      name: row.display_name?.trim() || `Trader ${row.user_id.slice(-4).toUpperCase()}`,
       netWorth: Number(row.balance_stkz),
     };
 
     if (row.ticker && row.quantity) {
-      existing.netWorth += Number(row.quantity) * (marketPrices[row.ticker] ?? 0);
+      existing.netWorth += Number(row.quantity) * (prices.get(row.ticker) ?? 0);
     }
 
     traders.set(row.user_id, existing);

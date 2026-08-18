@@ -2,7 +2,8 @@ import { defineHandler } from "nitro";
 import { createError, readBody } from "nitro/h3";
 import { sql } from "../../utils/db";
 import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
-import { isMarketTicker, marketPrices } from "../../utils/markets";
+import { isMarketTicker } from "../../utils/markets";
+import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
 
 type TradeRequest = {
   ticker?: string;
@@ -31,12 +32,19 @@ export default defineHandler(async (event) => {
   ) {
     throw createError({
       statusCode: 400,
-      statusMessage:
-        "Choose an active market, valid trade side, and STKZ amount.",
+      statusMessage: "Choose an active market, valid trade side, and STKZ amount.",
     });
   }
 
-  const price = marketPrices[ticker];
+  const price = (await getLatestVerifiedPrices()).get(ticker);
+
+  if (!price) {
+    throw createError({
+      statusCode: 409,
+      statusMessage: "This market has no verified snapshot yet. Please try again after the next refresh.",
+    });
+  }
+
   const quantity = Number((amountStkz / price).toFixed(6));
   const total = Number((quantity * price).toFixed(2));
 
@@ -76,26 +84,20 @@ export default defineHandler(async (event) => {
             FROM updated_position
             RETURNING id
           )
-          SELECT
-            updated_wallet.balance_stkz,
-            updated_position.quantity
-          FROM updated_wallet
-          CROSS JOIN updated_position
+          SELECT updated_wallet.balance_stkz, updated_position.quantity
+          FROM updated_wallet CROSS JOIN updated_position
         `
       : await sql`
           WITH updated_position AS (
             UPDATE user_positions
             SET quantity = quantity - ${quantity}, updated_at = now()
-            WHERE user_id = ${userId}
-              AND ticker = ${ticker}
-              AND quantity >= ${quantity}
+            WHERE user_id = ${userId} AND ticker = ${ticker} AND quantity >= ${quantity}
             RETURNING quantity
           ),
           updated_wallet AS (
             UPDATE user_wallets
             SET balance_stkz = balance_stkz + ${total}, updated_at = now()
-            WHERE user_id = ${userId}
-              AND EXISTS (SELECT 1 FROM updated_position)
+            WHERE user_id = ${userId} AND EXISTS (SELECT 1 FROM updated_position)
             RETURNING balance_stkz
           ),
           recorded_trade AS (
@@ -104,11 +106,8 @@ export default defineHandler(async (event) => {
             FROM updated_wallet
             RETURNING id
           )
-          SELECT
-            updated_wallet.balance_stkz,
-            updated_position.quantity
-          FROM updated_wallet
-          CROSS JOIN updated_position
+          SELECT updated_wallet.balance_stkz, updated_position.quantity
+          FROM updated_wallet CROSS JOIN updated_position
         `;
 
   if (!result[0]) {

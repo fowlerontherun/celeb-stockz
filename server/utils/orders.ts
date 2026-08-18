@@ -1,6 +1,6 @@
 import { sql } from "./db";
 import { isTradeableCelebrityMarket } from "./market-eligibility";
-import { marketPrices } from "./markets";
+import { getLatestVerifiedPrices } from "./market-snapshots";
 
 type OpenOrder = {
   id: number;
@@ -80,19 +80,20 @@ async function fillOrder(order: OpenOrder, price: number) {
 }
 
 export async function processOpenOrders() {
-  const orders = await sql<OpenOrder[]>`
-    SELECT id, user_id, ticker, side, order_type, amount_stkz, limit_price, stop_price, triggered_at
-    FROM trade_orders
-    WHERE status = 'open'
-    ORDER BY created_at ASC
-  `;
+  const [orders, prices] = await Promise.all([
+    sql<OpenOrder[]>`
+      SELECT id, user_id, ticker, side, order_type, amount_stkz, limit_price, stop_price, triggered_at
+      FROM trade_orders
+      WHERE status = 'open'
+      ORDER BY created_at ASC
+    `,
+    getLatestVerifiedPrices(),
+  ]);
 
   for (const order of orders) {
-    if (!isTradeableCelebrityMarket(order.ticker)) {
-      continue;
-    }
+    if (!isTradeableCelebrityMarket(order.ticker)) continue;
 
-    const price = marketPrices[order.ticker];
+    const price = prices.get(order.ticker);
     if (!price) continue;
 
     const limitPrice = Number(order.limit_price);
