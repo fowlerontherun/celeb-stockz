@@ -12,7 +12,6 @@ import {
 } from "lucide-react";
 import {
   ClubsPanel,
-  RankingsPanel,
   WatchlistPanel,
   type Celebrity,
 } from "@/components/ExperiencePanels";
@@ -21,6 +20,7 @@ import {
   type CategorizedCelebrity,
 } from "@/components/CategoryMarkets";
 import { LivePortfolio } from "@/components/LivePortfolio";
+import { LiveRankings } from "@/components/LiveRankings";
 import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { showError } from "@/utils/toast";
@@ -139,7 +139,7 @@ export default function Index() {
       />
     ) :
     page === "Portfolio" ? <LivePortfolio markets={markets} onTrade={openTrade} /> :
-    page === "Rankings" ? <RankingsPanel /> :
+    page === "Rankings" ? <LiveRankings /> :
     page === "Clubs" ? <ClubsPanel /> : (
       <div className="animate-in fade-in duration-300">
         <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Signal-priced practice markets</p>
