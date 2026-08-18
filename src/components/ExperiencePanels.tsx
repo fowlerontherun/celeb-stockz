@@ -1,13 +1,14 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Crown,
   Flame,
   Gem,
-  LockKeyhole,
+  LoaderCircle,
   Star,
   TrendingUp,
   Users,
 } from "lucide-react";
+import { showError, showSuccess } from "@/utils/toast";
 
 export type Celebrity = {
   name: string;
@@ -47,54 +48,22 @@ export function MarketsPanel({ celebs, onTrade }: SharedProps) {
       </div>
       <div className="mt-7 grid gap-4 md:grid-cols-2">
         {celebs.map((celeb, index) => (
-          <article
-            key={celeb.ticker}
-            className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"
-          >
+          <article key={celeb.ticker} className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]">
             <div className="flex gap-4 p-4">
               <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-[#160c25] p-2">
-                <img
-                  src={celeb.image}
-                  alt={celeb.name}
-                  className="h-full w-full object-contain"
-                />
+                <img src={celeb.image} alt={celeb.name} className="h-full w-full object-contain" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-display text-xl font-black">{celeb.name}</p>
-                    <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">
-                      ${celeb.ticker}
-                    </p>
-                  </div>
-                  <span
-                    className={`rounded-lg px-2 py-1 text-xs font-black ${
-                      celeb.change > 0
-                        ? "bg-[#183b33] text-[#62e7b6]"
-                        : "bg-[#482332] text-[#ff9ca5]"
-                    }`}
-                  >
-                    {celeb.change > 0 ? "+" : ""}
-                    {celeb.change}%
-                  </span>
+                  <div><p className="font-display text-xl font-black">{celeb.name}</p><p className="mt-0.5 text-xs font-bold text-[#9f90ac]">${celeb.ticker}</p></div>
+                  <span className={`rounded-lg px-2 py-1 text-xs font-black ${celeb.change > 0 ? "bg-[#183b33] text-[#62e7b6]" : "bg-[#482332] text-[#ff9ca5]"}`}>{celeb.change > 0 ? "+" : ""}{celeb.change}%</span>
                 </div>
-                <p className="mt-3 text-lg font-black">
-                  {celeb.price.toFixed(2)}{" "}
-                  <span className="text-xs text-[#aaa0b4]">STKZ</span>
-                </p>
+                <p className="mt-3 text-lg font-black">{celeb.price.toFixed(2)} <span className="text-xs text-[#aaa0b4]">STKZ</span></p>
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-white/5 bg-white/[.02] px-4 py-3">
-              <span className="flex items-center gap-1 text-xs font-bold text-[#ffd17b]">
-                <Flame size={14} fill="currentColor" /> {94 - index * 7} hype
-                score
-              </span>
-              <button
-                onClick={() => onTrade(celeb)}
-                className="rounded-lg bg-[#7c3aed] px-3 py-1.5 text-xs font-black hover:bg-[#9361f5]"
-              >
-                Trade
-              </button>
+              <span className="flex items-center gap-1 text-xs font-bold text-[#ffd17b]"><Flame size={14} fill="currentColor" /> {94 - index * 7} hype score</span>
+              <button onClick={() => onTrade(celeb)} className="rounded-lg bg-[#7c3aed] px-3 py-1.5 text-xs font-black hover:bg-[#9361f5]">Trade</button>
             </div>
           </article>
         ))}
@@ -103,15 +72,7 @@ export function MarketsPanel({ celebs, onTrade }: SharedProps) {
   );
 }
 
-export function PortfolioPanel({
-  celebs,
-  onTrade,
-  openOrders,
-  onCancelOrder,
-}: SharedProps & {
-  openOrders: OpenOrder[];
-  onCancelOrder: (id: number) => void;
-}) {
+export function PortfolioPanel({ celebs, onTrade, openOrders, onCancelOrder }: SharedProps & { openOrders: OpenOrder[]; onCancelOrder: (id: number) => void }) {
   const positions = [
     { celeb: celebs[0], quantity: "0.87", pnl: "+0.38 STKZ" },
     { celeb: celebs[1], quantity: "1.42", pnl: "+0.16 STKZ" },
@@ -120,347 +81,109 @@ export function PortfolioPanel({
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
-        Your assets
-      </p>
-      <div className="mt-1 flex flex-wrap items-end justify-between gap-4">
-        <h1 className="font-display text-3xl font-black sm:text-4xl">Portfolio</h1>
-        <p className="text-sm font-bold text-[#62e7b6]">↑ 6.91% all time</p>
-      </div>
-      <section className="mt-7 rounded-[28px] border border-white/10 bg-[#2a1740] p-6 sm:p-8">
-        <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#b8a6c9]">
-          Net worth
-        </p>
-        <p className="font-display mt-2 text-5xl font-black">
-          2.847 <span className="text-xl text-[#c3b5cf]">STKZ</span>
-        </p>
-        <div className="mt-4 flex flex-wrap gap-3 text-xs font-bold">
-          <span className="rounded-xl bg-[#173a31] px-3 py-2 text-[#78e8bd]">
-            Today +0.184 STKZ
-          </span>
-          <span className="rounded-xl bg-white/10 px-3 py-2 text-[#d7c9e0]">
-            Available 0.524 STKZ
-          </span>
-        </div>
-      </section>
-      <section className="mt-7">
-        <h2 className="font-display text-2xl font-black">Your positions</h2>
-        <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">
-          {positions.map(({ celeb, quantity, pnl }) => (
-            <div
-              key={celeb.ticker}
-              className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"
-            >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1">
-                <img src={celeb.image} alt="" className="h-full w-full object-contain" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-black">{celeb.ticker}</p>
-                <p className="text-xs text-[#9f90ac]">
-                  {quantity} shares · {celeb.price.toFixed(2)} STKZ
-                </p>
-              </div>
-              <p className="mr-2 text-sm font-black text-[#62e7b6]">{pnl}</p>
-              <button
-                onClick={() => onTrade(celeb)}
-                className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold"
-              >
-                Trade
-              </button>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="mt-7">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-2xl font-black">Open orders</h2>
-          <span className="rounded-lg bg-[#7c3aed]/20 px-2 py-1 text-xs font-bold text-[#c99bff]">
-            {openOrders.length} pending
-          </span>
-        </div>
-        {openOrders.length === 0 ? (
-          <div className="mt-3 rounded-[22px] border border-dashed border-white/15 bg-white/[.03] p-5 text-sm text-[#a99ab7]">
-            No pending limit orders. Create one from any market card.
-          </div>
-        ) : (
-          <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">
-            {openOrders.map((order) => (
-              <div
-                key={order.id}
-                className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"
-              >
-                <div
-                  className={`grid h-10 w-10 place-items-center rounded-xl text-xs font-black ${
-                    order.side === "Buy"
-                      ? "bg-[#173a31] text-[#78e8bd]"
-                      : "bg-[#482332] text-[#ff9ca5]"
-                  }`}
-                >
-                  {order.side[0]}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-black">
-                    {order.side} {order.ticker}
-                  </p>
-                  <p className="text-xs text-[#9f90ac]">
-                    {order.shares} shares at {order.price} STKZ · {order.mode}
-                  </p>
-                </div>
-                <button
-                  onClick={() => onCancelOrder(order.id)}
-                  className="rounded-lg border border-[#ff7282]/30 px-3 py-2 text-xs font-bold text-[#ff9ca5]"
-                >
-                  Cancel
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
+      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Your assets</p>
+      <div className="mt-1 flex flex-wrap items-end justify-between gap-4"><h1 className="font-display text-3xl font-black sm:text-4xl">Portfolio</h1><p className="text-sm font-bold text-[#62e7b6]">↑ 6.91% all time</p></div>
+      <section className="mt-7 rounded-[28px] border border-white/10 bg-[#2a1740] p-6 sm:p-8"><p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#b8a6c9]">Net worth</p><p className="font-display mt-2 text-5xl font-black">2.847 <span className="text-xl text-[#c3b5cf]">STKZ</span></p><div className="mt-4 flex flex-wrap gap-3 text-xs font-bold"><span className="rounded-xl bg-[#173a31] px-3 py-2 text-[#78e8bd]">Today +0.184 STKZ</span><span className="rounded-xl bg-white/10 px-3 py-2 text-[#d7c9e0]">Available 0.524 STKZ</span></div></section>
+      <section className="mt-7"><h2 className="font-display text-2xl font-black">Your positions</h2><div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">{positions.map(({ celeb, quantity, pnl }) => <div key={celeb.ticker} className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1"><img src={celeb.image} alt="" className="h-full w-full object-contain" /></div><div className="flex-1"><p className="text-sm font-black">{celeb.ticker}</p><p className="text-xs text-[#9f90ac]">{quantity} shares · {celeb.price.toFixed(2)} STKZ</p></div><p className="mr-2 text-sm font-black text-[#62e7b6]">{pnl}</p><button onClick={() => onTrade(celeb)} className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold">Trade</button></div>)}</div></section>
+      <section className="mt-7"><div className="flex items-center justify-between"><h2 className="font-display text-2xl font-black">Open orders</h2><span className="rounded-lg bg-[#7c3aed]/20 px-2 py-1 text-xs font-bold text-[#c99bff]">{openOrders.length} pending</span></div>{openOrders.length === 0 ? <div className="mt-3 rounded-[22px] border border-dashed border-white/15 bg-white/[.03] p-5 text-sm text-[#a99ab7]">No pending limit orders. Create one from any market card.</div> : <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">{openOrders.map((order) => <div key={order.id} className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"><div className={`grid h-10 w-10 place-items-center rounded-xl text-xs font-black ${order.side === "Buy" ? "bg-[#173a31] text-[#78e8bd]" : "bg-[#482332] text-[#ff9ca5]"}`}>{order.side[0]}</div><div className="flex-1"><p className="text-sm font-black">{order.side} {order.ticker}</p><p className="text-xs text-[#9f90ac]">{order.shares} shares at {order.price} STKZ · {order.mode}</p></div><button onClick={() => onCancelOrder(order.id)} className="rounded-lg border border-[#ff7282]/30 px-3 py-2 text-xs font-bold text-[#ff9ca5]">Cancel</button></div>)}</div>}</section>
     </div>
   );
 }
 
 export function RankingsPanel() {
-  const rankings = [
-    ["1", "Nova K.", "11.92 STKZ", "#ffd17b"],
-    ["2", "AJ — you", "8.35 STKZ", "#bd9cff"],
-    ["3", "Mila H.", "7.89 STKZ", "#6ce0bd"],
-    ["4", "Rex Allen", "6.61 STKZ", "#ff9fa9"],
-  ];
-
-  return (
-    <div className="animate-in fade-in duration-300">
-      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
-        Season 01 · ends in 18d
-      </p>
-      <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Rankings</h1>
-      <div className="mt-7 rounded-[28px] border border-white/10 bg-[#1e112f] p-4 sm:p-6">
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 text-xs font-extrabold uppercase tracking-[.16em] text-[#a99ab7]">
-          <span>Trader</span>
-          <span>Season P&L</span>
-        </div>
-        {rankings.map(([rank, name, pnl, color]) => (
-          <div
-            key={rank}
-            className={`flex items-center gap-4 py-4 ${
-              name.includes("you")
-                ? "rounded-xl bg-[#7c3aed]/15 px-3"
-                : "border-b border-white/5"
-            }`}
-          >
-            <span
-              className="grid h-9 w-9 place-items-center rounded-xl font-black"
-              style={{ backgroundColor: `${color}20`, color }}
-            >
-              {rank === "1" ? <Crown size={18} fill="currentColor" /> : rank}
-            </span>
-            <div className="grid h-10 w-10 place-items-center rounded-full bg-[#513266] font-black">
-              {name[0]}
-            </div>
-            <p className="flex-1 text-sm font-bold">{name}</p>
-            <p className="font-display text-lg font-black text-[#62e7b6]">+{pnl}</p>
-          </div>
-        ))}
-      </div>
-      <div className="mt-5 flex gap-3 rounded-2xl border border-[#f5ab43]/30 bg-[#2e1e30] p-4">
-        <Gem className="shrink-0 text-[#ffd17b]" />
-        <p className="text-sm leading-5 text-[#e2d5dd]">
-          Finish in the top 10 this season to earn the <b>Spotlight Crown</b>{" "}
-          badge.
-        </p>
-      </div>
-    </div>
-  );
+  const rankings = [["1", "Nova K.", "11.92 STKZ", "#ffd17b"], ["2", "AJ — you", "8.35 STKZ", "#bd9cff"], ["3", "Mila H.", "7.89 STKZ", "#6ce0bd"], ["4", "Rex Allen", "6.61 STKZ", "#ff9fa9"]];
+  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Season 01 · ends in 18d</p><h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Rankings</h1><div className="mt-7 rounded-[28px] border border-white/10 bg-[#1e112f] p-4 sm:p-6"><div className="flex items-center justify-between border-b border-white/10 pb-4 text-xs font-extrabold uppercase tracking-[.16em] text-[#a99ab7]"><span>Trader</span><span>Season P&L</span></div>{rankings.map(([rank, name, pnl, color]) => <div key={rank} className={`flex items-center gap-4 py-4 ${name.includes("you") ? "rounded-xl bg-[#7c3aed]/15 px-3" : "border-b border-white/5"}`}><span className="grid h-9 w-9 place-items-center rounded-xl font-black" style={{ backgroundColor: `${color}20`, color }}>{rank === "1" ? <Crown size={18} fill="currentColor" /> : rank}</span><div className="grid h-10 w-10 place-items-center rounded-full bg-[#513266] font-black">{name[0]}</div><p className="flex-1 text-sm font-bold">{name}</p><p className="font-display text-lg font-black text-[#62e7b6]">+{pnl}</p></div>)}</div><div className="mt-5 flex gap-3 rounded-2xl border border-[#f5ab43]/30 bg-[#2e1e30] p-4"><Gem className="shrink-0 text-[#ffd17b]" /><p className="text-sm leading-5 text-[#e2d5dd]">Finish in the top 10 this season to earn the <b>Spotlight Crown</b> badge.</p></div></div>;
 }
+
+type Club = {
+  id: string;
+  name: string;
+  description: string;
+  role: "owner" | "member";
+  memberCount: number;
+  members: Array<{ name: string; role: "owner" | "member"; joinedAt: string }>;
+};
 
 export function ClubsPanel() {
-  const [hubOpen, setHubOpen] = useState(false);
-  const [tipShared, setTipShared] = useState(false);
+  const [club, setClub] = useState<Club | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isWorking, setIsWorking] = useState(false);
+  const [clubName, setClubName] = useState("");
+  const [description, setDescription] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
 
-  return (
-    <div className="animate-in fade-in duration-300">
-      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
-        Trade together
-      </p>
-      <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Clubs</h1>
-      <section className="mt-7 overflow-hidden rounded-[28px] border border-white/10 bg-[#2b183f] p-6 sm:p-8">
-        <div className="flex items-start gap-4">
-          <div className="grid h-14 w-14 place-items-center rounded-2xl bg-[#ff7282] text-[#3c1630]">
-            <Users size={26} />
-          </div>
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#ffb4bd]">
-              Your club
-            </p>
-            <h2 className="font-display mt-1 text-2xl font-black">The Afterparty</h2>
-            <p className="mt-1 text-sm text-[#d4bdcf]">18 members · #12 this season</p>
-          </div>
-        </div>
-        <div className="mt-7 grid grid-cols-3 gap-3">
-          <div className="rounded-xl bg-white/10 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">
-              Club P&L
-            </p>
-            <p className="mt-1 text-lg font-black text-[#62e7b6]">+17.4</p>
-          </div>
-          <div className="rounded-xl bg-white/10 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">
-              Volume
-            </p>
-            <p className="mt-1 text-lg font-black">38.1</p>
-          </div>
-          <div className="rounded-xl bg-white/10 p-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#b9a9c5]">
-              Streak
-            </p>
-            <p className="mt-1 text-lg font-black">6 days</p>
-          </div>
-        </div>
-        <button
-          onClick={() => setHubOpen(!hubOpen)}
-          className="mt-6 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#431a33]"
-        >
-          {hubOpen ? "Hide club hub" : "Open club hub"}
-        </button>
-        {hubOpen && (
-          <div className="mt-5 animate-in fade-in rounded-2xl border border-white/10 bg-[#190f28]/60 p-4">
-            <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#c99bff]">
-              Tonight’s thread
-            </p>
-            <div className="mt-3 space-y-3 text-sm">
-              <p>
-                <b>Nova K.</b> is watching AMARA after the premiere spike.
-              </p>
-              <p>
-                <b>Mila H.</b> completed the “Catch the heat” challenge.
-              </p>
-              {tipShared && (
-                <p className="rounded-xl border border-[#62e7b6]/20 bg-[#173a31]/70 p-3 text-[#bff8dc]">
-                  <b>AJ — you</b> shared: “AMARA looks hot after the premiere spike.
-                  Watching the next hype tick.”
-                </p>
-              )}
-              <button
-                onClick={() => setTipShared(true)}
-                disabled={tipShared}
-                className={`rounded-lg px-3 py-2 text-xs font-bold ${
-                  tipShared
-                    ? "bg-[#3ed9a3]/15 text-[#83e8c3]"
-                    : "border border-white/15 text-[#e6d8ff]"
-                }`}
-              >
-                {tipShared
-                  ? "✓ Tip shared with The Afterparty"
-                  : "Share a market tip"}
-              </button>
-            </div>
-          </div>
-        )}
-      </section>
-      <section className="mt-7 rounded-[24px] border border-white/10 bg-[#1e112f] p-5">
-        <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-[#c9a4ff]">
-            <LockKeyhole size={19} />
-          </div>
-          <div>
-            <h3 className="font-display text-lg font-black">Club challenges</h3>
-            <p className="text-xs text-[#a99ab7]">Coming after your first club trade.</p>
-          </div>
-        </div>
-        <div className="mt-4 rounded-xl bg-white/[.04] p-3 text-sm text-[#c0b1cc]">
-          <TrendingUp className="mr-2 inline text-[#62e7b6]" size={16} />
-          Your club is 3.2% ahead of the league average.
-        </div>
-      </section>
-    </div>
-  );
+  const loadClub = useCallback(async () => {
+    try {
+      const response = await fetch("/api/clubs", { credentials: "include" });
+      const data = (await response.json()) as { club: Club | null; statusMessage?: string };
+      if (!response.ok) throw new Error(data.statusMessage ?? "Could not load your club.");
+      setClub(data.club);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not load your club.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadClub(); }, [loadClub]);
+
+  const createClub = async () => {
+    setIsWorking(true);
+    try {
+      const response = await fetch("/api/clubs", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: clubName, description }) });
+      const data = (await response.json()) as { statusMessage?: string };
+      if (!response.ok) throw new Error(data.statusMessage ?? "Could not create your club.");
+      showSuccess("Your club is ready for its first members.");
+      setClubName("");
+      setDescription("");
+      await loadClub();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not create your club.");
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  const joinClub = async () => {
+    setIsWorking(true);
+    try {
+      const response = await fetch("/api/clubs/join", { method: "POST", credentials: "include", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: inviteCode }) });
+      const data = (await response.json()) as { statusMessage?: string };
+      if (!response.ok) throw new Error(data.statusMessage ?? "Could not join that club.");
+      showSuccess("Welcome to your new club.");
+      setInviteCode("");
+      await loadClub();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not join that club.");
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  const createInvite = async () => {
+    setIsWorking(true);
+    try {
+      const response = await fetch("/api/clubs/invites", { method: "POST", credentials: "include" });
+      const data = (await response.json()) as { code?: string; statusMessage?: string };
+      if (!response.ok || !data.code) throw new Error(data.statusMessage ?? "Could not create an invitation.");
+      await navigator.clipboard.writeText(data.code);
+      showSuccess(`Invite code ${data.code} copied. It expires in 7 days.`);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not create an invitation.");
+    } finally {
+      setIsWorking(false);
+    }
+  };
+
+  if (isLoading) return <div className="grid min-h-64 place-items-center"><LoaderCircle className="animate-spin text-[#c99bff]" /></div>;
+
+  if (!club) {
+    return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Trade together</p><h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Find your trading circle.</h1><p className="mt-3 max-w-xl text-sm leading-6 text-[#b9a9c5]">Create a crew for your friends, or enter an invitation code to join one. Each trader can belong to one club.</p><div className="mt-7 grid gap-5 lg:grid-cols-2"><section className="rounded-[28px] border border-white/10 bg-[#2b183f] p-6"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#ff7282] text-[#431a33]"><Users size={24} /></div><h2 className="font-display mt-5 text-2xl font-black">Create a club</h2><label className="mt-5 block text-xs font-bold uppercase tracking-[.14em] text-[#c5b5d0]">Club name<input value={clubName} maxLength={60} onChange={(event) => setClubName(event.target.value)} placeholder="The Afterparty" className="mt-2 w-full rounded-xl border border-white/10 bg-[#160c25] px-4 py-3 text-sm text-white outline-none focus:border-[#c99bff]" /></label><label className="mt-4 block text-xs font-bold uppercase tracking-[.14em] text-[#c5b5d0]">Short description<textarea value={description} maxLength={240} onChange={(event) => setDescription(event.target.value)} placeholder="Who is your crew backing?" className="mt-2 min-h-24 w-full rounded-xl border border-white/10 bg-[#160c25] px-4 py-3 text-sm text-white outline-none focus:border-[#c99bff]" /></label><button type="button" disabled={isWorking || clubName.trim().length < 3} onClick={() => void createClub()} className="mt-5 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#431a33] disabled:opacity-50">{isWorking ? "Creating…" : "Create club"}</button></section><section className="rounded-[28px] border border-white/10 bg-[#1e112f] p-6"><div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#7c3aed] text-white"><TrendingUp size={24} /></div><h2 className="font-display mt-5 text-2xl font-black">Join with an invite</h2><p className="mt-2 text-sm leading-6 text-[#b9a9c5]">Ask a club member to create a seven-day invite code for you.</p><label className="mt-6 block text-xs font-bold uppercase tracking-[.14em] text-[#c5b5d0]">Invitation code<input value={inviteCode} onChange={(event) => setInviteCode(event.target.value.toUpperCase())} placeholder="ABC123DEF4" className="mt-2 w-full rounded-xl border border-white/10 bg-[#160c25] px-4 py-3 font-mono text-sm font-bold tracking-widest text-white outline-none focus:border-[#c99bff]" /></label><button type="button" disabled={isWorking || !inviteCode.trim()} onClick={() => void joinClub()} className="mt-5 rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white disabled:opacity-50">{isWorking ? "Joining…" : "Join club"}</button></section></div></div>;
+  }
+
+  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Your trading circle</p><div className="mt-1 flex flex-wrap items-end justify-between gap-4"><div><h1 className="font-display text-3xl font-black sm:text-4xl">{club.name}</h1><p className="mt-2 text-sm text-[#c7b7d2]">{club.description || "A private club for practice-market traders."}</p></div><span className="rounded-xl bg-[#ff7282]/15 px-3 py-2 text-xs font-black text-[#ffb2bc]">{club.role === "owner" ? "Founder" : "Member"}</span></div><section className="mt-7 rounded-[28px] border border-white/10 bg-[#2b183f] p-6 sm:p-8"><div className="flex flex-wrap items-center justify-between gap-5"><div><p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#ffb4bd]">Grow your crew</p><h2 className="font-display mt-1 text-2xl font-black">Invite your people</h2><p className="mt-2 text-sm text-[#d4bdcf]">Create a shareable code with up to 25 uses, valid for seven days.</p></div><button type="button" onClick={() => void createInvite()} disabled={isWorking} className="rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#431a33] disabled:opacity-50">{isWorking ? "Creating…" : "Copy invite code"}</button></div></section><section className="mt-7"><div className="flex items-center justify-between"><h2 className="font-display text-2xl font-black">Members</h2><span className="rounded-lg bg-[#7c3aed]/20 px-2 py-1 text-xs font-bold text-[#c99bff]">{club.memberCount} total</span></div><div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">{club.members.map((member, index) => <div key={`${member.name}-${index}`} className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"><div className="grid h-11 w-11 place-items-center rounded-full bg-[#513266] font-black text-[#fff8f2]">{member.name[0]?.toUpperCase() ?? "M"}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-black">{member.name}</p><p className="text-xs text-[#9f90ac]">Joined {new Intl.DateTimeFormat([], { month: "short", day: "numeric" }).format(new Date(member.joinedAt))}</p></div>{member.role === "owner" && <span className="flex items-center gap-1 rounded-lg bg-[#ffd17b]/15 px-2 py-1 text-[10px] font-black text-[#ffd17b]"><Crown size={12} fill="currentColor" /> Founder</span>}</div>)}</div></section></div>;
 }
 
-export function WatchlistPanel({
-  celebs,
-  onTrade,
-  onRemove,
-}: {
-  celebs: Celebrity[];
-  onTrade: (celeb: Celebrity) => void;
-  onRemove: (ticker: string) => void;
-}) {
-  return (
-    <div className="animate-in fade-in duration-300">
-      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
-        Your picks
-      </p>
-      <div className="mt-1 flex items-end justify-between">
-        <div>
-          <h1 className="font-display text-3xl font-black sm:text-4xl">Watchlist</h1>
-          <p className="mt-1 text-sm text-[#a99ab7]">
-            Track the names you want to catch next.
-          </p>
-        </div>
-        <Star className="text-[#ffd17b]" fill="currentColor" />
-      </div>
-      {celebs.length === 0 ? (
-        <div className="mt-7 rounded-[28px] border border-dashed border-white/20 bg-white/[.03] p-8 text-center">
-          <Star className="mx-auto text-[#c99bff]" size={28} />
-          <h2 className="font-display mt-3 text-xl font-black">Your watchlist is empty</h2>
-          <p className="mt-2 text-sm text-[#a99ab7]">
-            Star a celebrity from their trade sheet to follow their hype.
-          </p>
-        </div>
-      ) : (
-        <div className="mt-7 grid gap-4 md:grid-cols-2">
-          {celebs.map((celeb) => (
-            <article
-              key={celeb.ticker}
-              className="flex gap-4 rounded-[24px] border border-white/10 bg-[#1e112f] p-4"
-            >
-              <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#160c25] p-2">
-                <img
-                  src={celeb.image}
-                  alt={celeb.name}
-                  className="h-full w-full object-contain"
-                />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex justify-between gap-2">
-                  <div>
-                    <p className="font-display text-lg font-black">{celeb.name}</p>
-                    <p className="text-xs font-bold text-[#9b8ba8]">${celeb.ticker}</p>
-                  </div>
-                  <button
-                    onClick={() => onRemove(celeb.ticker)}
-                    className="text-[#ffd17b]"
-                    aria-label={`Remove ${celeb.name} from watchlist`}
-                  >
-                    <Star size={18} fill="currentColor" />
-                  </button>
-                </div>
-                <p className="mt-2 text-sm font-black">
-                  {celeb.price.toFixed(2)}{" "}
-                  <span className="text-xs text-[#a99ab7]">STKZ</span>{" "}
-                  <span
-                    className={
-                      celeb.change > 0
-                        ? "ml-1 text-[#62e7b6]"
-                        : "ml-1 text-[#ff9ca5]"
-                    }
-                  >
-                    {celeb.change > 0 ? "+" : ""}
-                    {celeb.change}%
-                  </span>
-                </p>
-                <button
-                  onClick={() => onTrade(celeb)}
-                  className="mt-3 rounded-lg bg-[#7c3aed] px-3 py-2 text-xs font-black"
-                >
-                  Trade {celeb.ticker}
-                </button>
-              </div>
-            </article>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+export function WatchlistPanel({ celebs, onTrade, onRemove }: { celebs: Celebrity[]; onTrade: (celeb: Celebrity) => void; onRemove: (ticker: string) => void }) {
+  return <div className="animate-in fade-in duration-300"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Your picks</p><div className="mt-1 flex items-end justify-between"><div><h1 className="font-display text-3xl font-black sm:text-4xl">Watchlist</h1><p className="mt-1 text-sm text-[#a99ab7]">Track the names you want to catch next.</p></div><Star className="text-[#ffd17b]" fill="currentColor" /></div>{celebs.length === 0 ? <div className="mt-7 rounded-[28px] border border-dashed border-white/20 bg-white/[.03] p-8 text-center"><Star className="mx-auto text-[#c99bff]" size={28} /><h2 className="font-display mt-3 text-xl font-black">Your watchlist is empty</h2><p className="mt-2 text-sm text-[#a99ab7]">Star a celebrity from their trade sheet to follow their hype.</p></div> : <div className="mt-7 grid gap-4 md:grid-cols-2">{celebs.map((celeb) => <article key={celeb.ticker} className="flex gap-4 rounded-[24px] border border-white/10 bg-[#1e112f] p-4"><div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-[#160c25] p-2"><img src={celeb.image} alt={celeb.name} className="h-full w-full object-contain" /></div><div className="min-w-0 flex-1"><div className="flex justify-between gap-2"><div><p className="font-display text-lg font-black">{celeb.name}</p><p className="text-xs font-bold text-[#9b8ba8]">${celeb.ticker}</p></div><button onClick={() => onRemove(celeb.ticker)} className="text-[#ffd17b]" aria-label={`Remove ${celeb.name} from watchlist`}><Star size={18} fill="currentColor" /></button></div><p className="mt-2 text-sm font-black">{celeb.price.toFixed(2)} <span className="text-xs text-[#a99ab7]">STKZ</span> <span className={celeb.change > 0 ? "ml-1 text-[#62e7b6]" : "ml-1 text-[#ff9ca5]"}>{celeb.change > 0 ? "+" : ""}{celeb.change}%</span></p><button onClick={() => onTrade(celeb)} className="mt-3 rounded-lg bg-[#7c3aed] px-3 py-2 text-xs font-black">Trade {celeb.ticker}</button></div></article>)}</div>}</div>;
 }
