@@ -25,6 +25,7 @@ import { LiveRankings } from "@/components/LiveRankings";
 import { TopMovers } from "@/components/TopMovers";
 import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
+import { OnboardingRecap } from "@/components/OnboardingRecap";
 import { showError } from "@/utils/toast";
 
 type CelebrityMarket = CategorizedCelebrity & {
@@ -157,6 +158,7 @@ export default function Index() {
         <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for practice trading only.</p>
         <button type="button" onClick={() => setPage("Markets")} className="mt-6 rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white hover:bg-[#9361f5]">Browse market categories</button>
+        <OnboardingRecap onStartTrading={() => setPage("Markets")} />
       </div>
     );
 

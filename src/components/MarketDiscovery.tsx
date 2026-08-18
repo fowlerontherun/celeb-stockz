@@ -37,6 +37,7 @@ export function MarketDiscovery() {
   const [isOpen, setIsOpen] = useState(false);
   const [markets, setMarkets] = useState<Market[]>([]);
   const [follows, setFollows] = useState<Follow[]>([]);
+  const [alertsAllowed, setAlertsAllowed] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
   const followsByTicker = useMemo(
@@ -47,12 +48,18 @@ export function MarketDiscovery() {
   useEffect(() => {
     const loadDiscovery = async () => {
       try {
-        const [marketsResponse, followsResponse] = await Promise.all([
-          fetch("/api/markets", { credentials: "include" }),
-          fetch("/api/follows", { credentials: "include" }),
-        ]);
+        const [marketsResponse, followsResponse, preferencesResponse] =
+          await Promise.all([
+            fetch("/api/markets", { credentials: "include" }),
+            fetch("/api/follows", { credentials: "include" }),
+            fetch("/api/preferences", { credentials: "include" }),
+          ]);
 
-        if (!marketsResponse.ok || !followsResponse.ok) {
+        if (
+          !marketsResponse.ok ||
+          !followsResponse.ok ||
+          !preferencesResponse.ok
+        ) {
           throw new Error("Could not load your market discovery settings.");
         }
 
@@ -62,9 +69,13 @@ export function MarketDiscovery() {
         const followData = (await followsResponse.json()) as {
           follows: Follow[];
         };
+        const preferences = (await preferencesResponse.json()) as {
+          market_alerts: boolean;
+        };
 
         setMarkets(marketData.markets);
         setFollows(followData.follows);
+        setAlertsAllowed(preferences.market_alerts);
       } catch (error) {
         showError(
           error instanceof Error
@@ -78,6 +89,8 @@ export function MarketDiscovery() {
   }, []);
 
   useEffect(() => {
+    if (!alertsAllowed) return;
+
     const alertedTickers = new Set(
       JSON.parse(sessionStorage.getItem("market-alerts") ?? "[]") as string[],
     );
@@ -104,7 +117,7 @@ export function MarketDiscovery() {
       "market-alerts",
       JSON.stringify(Array.from(alertedTickers)),
     );
-  }, [followsByTicker, markets]);
+  }, [alertsAllowed, followsByTicker, markets]);
 
   const updateFollow = async (
     ticker: string,
@@ -134,7 +147,11 @@ export function MarketDiscovery() {
             ]
           : current.filter((follow) => follow.ticker !== ticker),
       );
-      showSuccess(following ? `${ticker} added to your follows.` : `${ticker} removed from your follows.`);
+      showSuccess(
+        following
+          ? `${ticker} added to your follows.`
+          : `${ticker} removed from your follows.`,
+      );
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Could not update this follow.",
@@ -175,42 +192,101 @@ export function MarketDiscovery() {
                   Save markets you want to track and choose which ones can send in-app movement alerts.
                 </p>
               </div>
-              <button type="button" onClick={() => setIsOpen(false)} aria-label="Close discovery" className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-[#cdbed9] hover:bg-white/10">
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                aria-label="Close discovery"
+                className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-[#cdbed9] hover:bg-white/10"
+              >
                 <X size={18} />
               </button>
             </div>
 
             <div className="mt-7 grid gap-4 md:grid-cols-3">
               {collections.map((collection) => (
-                <article key={collection.title} className="rounded-[22px] border border-white/10 bg-[#180d29] p-4">
+                <article
+                  key={collection.title}
+                  className="rounded-[22px] border border-white/10 bg-[#180d29] p-4"
+                >
                   <p className="text-xs font-extrabold uppercase tracking-[.13em] text-[#ffd17b]">
                     Collection
                   </p>
-                  <h3 className="font-display mt-2 text-xl font-black">{collection.title}</h3>
-                  <p className="mt-1 text-xs leading-5 text-[#af9fbb]">{collection.detail}</p>
+                  <h3 className="font-display mt-2 text-xl font-black">
+                    {collection.title}
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-[#af9fbb]">
+                    {collection.detail}
+                  </p>
                   <div className="mt-4 space-y-2">
                     {collectionMarkets(collection.tickers).map((market) => {
                       const follow = followsByTicker.get(market.ticker);
 
                       return (
-                        <div key={market.ticker} className="rounded-xl bg-white/[.05] p-3">
+                        <div
+                          key={market.ticker}
+                          className="rounded-xl bg-white/[.05] p-3"
+                        >
                           <div className="flex items-center justify-between gap-2">
                             <div>
                               <p className="text-sm font-black">{market.name}</p>
-                              <p className="text-[10px] font-bold text-[#a99ab7]">${market.ticker} · {market.price.toFixed(2)} STKZ</p>
+                              <p className="text-[10px] font-bold text-[#a99ab7]">
+                                ${market.ticker} · {market.price.toFixed(2)} STKZ
+                              </p>
                             </div>
-                            <span className={market.change >= 0 ? "text-xs font-black text-[#62e7b6]" : "text-xs font-black text-[#ff9ca5]"}>
-                              {market.change >= 0 ? "+" : ""}{market.change}%
+                            <span
+                              className={
+                                market.change >= 0
+                                  ? "text-xs font-black text-[#62e7b6]"
+                                  : "text-xs font-black text-[#ff9ca5]"
+                              }
+                            >
+                              {market.change >= 0 ? "+" : ""}
+                              {market.change}%
                             </span>
                           </div>
                           <div className="mt-3 flex gap-2">
-                            <button type="button" disabled={isLoading} onClick={() => void updateFollow(market.ticker, !follow, follow?.alertsEnabled ?? true)} className={`flex-1 rounded-lg px-2 py-2 text-[11px] font-black disabled:opacity-50 ${follow ? "bg-[#7c3aed]/25 text-[#d9c2ff]" : "bg-[#7c3aed] text-white"}`}>
-                              <Bookmark size={13} className="mr-1 inline" fill={follow ? "currentColor" : "none"} />
+                            <button
+                              type="button"
+                              disabled={isLoading}
+                              onClick={() =>
+                                void updateFollow(
+                                  market.ticker,
+                                  !follow,
+                                  follow?.alertsEnabled ?? true,
+                                )
+                              }
+                              className={`flex-1 rounded-lg px-2 py-2 text-[11px] font-black disabled:opacity-50 ${
+                                follow
+                                  ? "bg-[#7c3aed]/25 text-[#d9c2ff]"
+                                  : "bg-[#7c3aed] text-white"
+                              }`}
+                            >
+                              <Bookmark
+                                size={13}
+                                className="mr-1 inline"
+                                fill={follow ? "currentColor" : "none"}
+                              />
                               {follow ? "Following" : "Follow"}
                             </button>
                             {follow && (
-                              <button type="button" disabled={isLoading} onClick={() => void updateFollow(market.ticker, true, !follow.alertsEnabled)} aria-label={`${follow.alertsEnabled ? "Disable" : "Enable"} ${market.name} alerts`} className="grid w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-[#c99bff] disabled:opacity-50">
-                                {follow.alertsEnabled ? <Bell size={14} /> : <BellOff size={14} />}
+                              <button
+                                type="button"
+                                disabled={isLoading}
+                                onClick={() =>
+                                  void updateFollow(
+                                    market.ticker,
+                                    true,
+                                    !follow.alertsEnabled,
+                                  )
+                                }
+                                aria-label={`${follow.alertsEnabled ? "Disable" : "Enable"} ${market.name} alerts`}
+                                className="grid w-9 place-items-center rounded-lg border border-white/10 bg-white/5 text-[#c99bff] disabled:opacity-50"
+                              >
+                                {follow.alertsEnabled ? (
+                                  <Bell size={14} />
+                                ) : (
+                                  <BellOff size={14} />
+                                )}
                               </button>
                             )}
                           </div>
