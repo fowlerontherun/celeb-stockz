@@ -7,9 +7,12 @@ import {
   Tv,
 } from "lucide-react";
 import type { Celebrity } from "@/components/ExperiencePanels";
+import { PriceChart } from "@/components/PriceChart";
 
 export type CategorizedCelebrity = Celebrity & {
   category: "Music" | "Sport" | "Film" | "TV" | "Politics";
+  birthYear: number;
+  nationality: string;
 };
 
 const categories = [
@@ -47,7 +50,7 @@ export function CategoryMarkets({
           </h1>
         </div>
         <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">
-          Public celebrity images · modeled signals
+          {markets.length} markets · modeled signals
         </p>
       </div>
 
@@ -73,53 +76,72 @@ export function CategoryMarkets({
       </div>
 
       <div className="mt-3 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {visibleMarkets.map((market) => (
-          <article
-            key={market.ticker}
-            className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"
-          >
-            <div className="flex h-48 items-center justify-center bg-[#160c25] p-3">
-              <img
-                src={market.image}
-                alt={market.name}
-                className="h-full w-full object-contain"
-              />
-            </div>
-            <div className="p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-display text-xl font-black">{market.name}</p>
-                  <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">
-                    ${market.ticker} · {market.category}
+        {visibleMarkets.map((market) => {
+          const age = new Date().getFullYear() - market.birthYear;
+
+          return (
+            <article
+              key={market.ticker}
+              className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"
+            >
+              <div className="flex h-48 items-center justify-center bg-[#160c25] p-3">
+                <img
+                  src={market.image}
+                  alt={market.name}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+              <div className="p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="font-display text-xl font-black">{market.name}</p>
+                    <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">
+                      ${market.ticker} · {market.category}
+                    </p>
+                    <p className="mt-1 text-xs text-[#c4b4d0]">
+                      {market.nationality} · {age} years old
+                    </p>
+                  </div>
+                  <span
+                    className={`rounded-lg px-2 py-1 text-xs font-black ${
+                      market.change > 0
+                        ? "bg-[#183b33] text-[#62e7b6]"
+                        : "bg-[#482332] text-[#ff9ca5]"
+                    }`}
+                  >
+                    {market.change > 0 ? "+" : ""}
+                    {market.change}%
+                  </span>
+                </div>
+
+                <div className="mt-3">
+                  <PriceChart
+                    price={market.price}
+                    change={market.change}
+                    ticker={market.ticker}
+                  />
+                  <p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#81738d]">
+                    Modeled 7-day movement
                   </p>
                 </div>
-                <span
-                  className={`rounded-lg px-2 py-1 text-xs font-black ${
-                    market.change > 0
-                      ? "bg-[#183b33] text-[#62e7b6]"
-                      : "bg-[#482332] text-[#ff9ca5]"
-                  }`}
-                >
-                  {market.change > 0 ? "+" : ""}
-                  {market.change}%
-                </span>
+
+                <div className="mt-3 flex items-end justify-between">
+                  <p className="text-2xl font-black">
+                    {market.price.toFixed(2)}{" "}
+                    <span className="text-xs text-[#aaa0b4]">STKZ</span>
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => onTrade(market)}
+                    className="rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#9361f5]"
+                  >
+                    Buy / sell
+                  </button>
+                </div>
               </div>
-              <div className="mt-5 flex items-end justify-between">
-                <p className="text-2xl font-black">
-                  {market.price.toFixed(2)}{" "}
-                  <span className="text-xs text-[#aaa0b4]">STKZ</span>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => onTrade(market)}
-                  className="rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#9361f5]"
-                >
-                  Trade
-                </button>
-              </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
     </div>
   );
