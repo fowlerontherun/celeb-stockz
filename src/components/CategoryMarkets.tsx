@@ -5,9 +5,11 @@ import {
   Landmark,
   Laugh,
   Music2,
+  Search,
   Shirt,
   Trophy,
   Tv,
+  X,
 } from "lucide-react";
 import type { Celebrity } from "@/components/ExperiencePanels";
 import { PriceChart } from "@/components/PriceChart";
@@ -45,11 +47,30 @@ const categories: Array<{
   { name: "Comedy", icon: Laugh, color: "text-[#ffcb78]" },
 ];
 
-const tierDetails: Record<Tier, { label: string; description: string; className: string }> = {
-  A: { label: "A · Icon", description: "100+ STKZ", className: "bg-[#ffd17b]/20 text-[#ffd17b]" },
-  B: { label: "B · Headliner", description: "60–99.99 STKZ", className: "bg-[#c99bff]/20 text-[#d7b9ff]" },
-  C: { label: "C · Rising", description: "35–59.99 STKZ", className: "bg-[#62e7b6]/15 text-[#80f2c6]" },
-  D: { label: "D · Spotlight", description: "Under 35 STKZ", className: "bg-[#72c8ff]/15 text-[#9adfff]" },
+const tierDetails: Record<
+  Tier,
+  { label: string; description: string; className: string }
+> = {
+  A: {
+    label: "A · Icon",
+    description: "100+ STKZ",
+    className: "bg-[#ffd17b]/20 text-[#ffd17b]",
+  },
+  B: {
+    label: "B · Headliner",
+    description: "60–99.99 STKZ",
+    className: "bg-[#c99bff]/20 text-[#d7b9ff]",
+  },
+  C: {
+    label: "C · Rising",
+    description: "35–59.99 STKZ",
+    className: "bg-[#62e7b6]/15 text-[#80f2c6]",
+  },
+  D: {
+    label: "D · Spotlight",
+    description: "Under 35 STKZ",
+    className: "bg-[#72c8ff]/15 text-[#9adfff]",
+  },
 };
 
 function getTier(price: number): Tier {
@@ -66,17 +87,24 @@ export function CategoryMarkets({
   markets: CategorizedCelebrity[];
   onTrade: (market: CategorizedCelebrity) => void;
 }) {
-  const [activeCategory, setActiveCategory] = useState<MarketCategory>("Music");
+  const [activeCategory, setActiveCategory] =
+    useState<MarketCategory>("Music");
   const [activeTier, setActiveTier] = useState<"All" | Tier>("All");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const normalizedQuery = searchQuery.trim().toLowerCase();
 
   const visibleMarkets = useMemo(
     () =>
       markets.filter(
         (market) =>
           market.category === activeCategory &&
-          (activeTier === "All" || getTier(market.price) === activeTier),
+          (activeTier === "All" || getTier(market.price) === activeTier) &&
+          (!normalizedQuery ||
+            market.name.toLowerCase().includes(normalizedQuery) ||
+            market.ticker.toLowerCase().includes(normalizedQuery)),
       ),
-    [activeCategory, activeTier, markets],
+    [activeCategory, activeTier, markets, normalizedQuery],
   );
 
   return (
@@ -94,6 +122,31 @@ export function CategoryMarkets({
           {markets.length} markets · modeled signals
         </p>
       </div>
+
+      <label className="relative mt-6 block">
+        <Search
+          size={18}
+          className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#c99bff]"
+        />
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Search celebrity or ticker…"
+          className="w-full rounded-2xl border border-white/10 bg-[#1e112f] py-3 pl-11 pr-11 text-sm font-semibold text-[#fff8f2] outline-none transition placeholder:text-[#897b95] focus:border-[#a97cff] focus:ring-2 focus:ring-[#7c3aed]/30"
+          aria-label="Search celebrity markets"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery("")}
+            aria-label="Clear market search"
+            className="absolute right-3 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-[#b9acc9] transition hover:bg-white/10 hover:text-white"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </label>
 
       <div className="mt-7 flex gap-2 overflow-x-auto pb-2">
         {categories.map(({ name, icon: Icon, color }) => (
@@ -151,8 +204,9 @@ export function CategoryMarkets({
 
       {visibleMarkets.length === 0 ? (
         <div className="mt-5 rounded-[24px] border border-dashed border-white/15 bg-white/[.03] p-8 text-center text-sm text-[#b9acc9]">
-          No {activeTier === "All" ? "" : `${activeTier}-tier `}markets are in
-          this category yet. Try another tier or category.
+          {normalizedQuery
+            ? `No ${activeCategory.toLowerCase()} markets match “${searchQuery.trim()}”.`
+            : `No ${activeTier === "All" ? "" : `${activeTier}-tier `}markets are in this category yet. Try another tier or category.`}
         </div>
       ) : (
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -180,7 +234,9 @@ export function CategoryMarkets({
                 <div className="p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-display text-xl font-black">{market.name}</p>
+                      <p className="font-display text-xl font-black">
+                        {market.name}
+                      </p>
                       <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">
                         ${market.ticker} · {market.category}
                       </p>
