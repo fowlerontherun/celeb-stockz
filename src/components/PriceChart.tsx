@@ -6,16 +6,23 @@ import {
   Tooltip,
 } from "recharts";
 
+type HistoryPoint = {
+  capturedAt: string;
+  price: number;
+};
+
 export function PriceChart({
   price,
   change,
   ticker,
+  history,
 }: {
   price: number;
   change: number;
   ticker: string;
+  history?: HistoryPoint[];
 }) {
-  const data = useMemo(() => {
+  const modeledData = useMemo(() => {
     const direction = change >= 0 ? 1 : -1;
     return Array.from({ length: 14 }, (_, index) => {
       const progress = index / 13;
@@ -30,10 +37,17 @@ export function PriceChart({
     });
   }, [change, price]);
 
+  const data =
+    history && history.length > 1
+      ? history.map((point, index) => ({
+          point: index,
+          price: point.price,
+        }))
+      : modeledData;
   const color = change >= 0 ? "#62e7b6" : "#ff9ca5";
 
   return (
-    <div className="h-16 w-full" aria-label={`${ticker} modeled 7-day price chart`}>
+    <div className="h-16 w-full" aria-label={`${ticker} price history chart`}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }}>
           <defs>
@@ -51,8 +65,8 @@ export function PriceChart({
               color: "#fff8f2",
               fontSize: 11,
             }}
-            formatter={(value: number) => [`${value.toFixed(2)} STKZ`, "Price"]}
-            labelFormatter={() => "Modeled price"}
+            formatter={(value: number) => [`${value.toFixed(2)} STKZ`, "Practice score"]}
+            labelFormatter={() => "Saved market snapshot"}
           />
           <Area
             type="monotone"

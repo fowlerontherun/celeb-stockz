@@ -1,23 +1,34 @@
 import { defineHandler } from "nitro";
-import {
-  calculateMarketPrice,
-  celebrityMarkets,
-} from "../../utils/markets";
-import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
-import { processOpenOrders } from "../../utils/orders";
+import { getSnapshotMarkets } from "../../utils/market-snapshots";
+import { sql } from "../../utils/db";
 
 export default defineHandler(async () => {
-  await processOpenOrders();
+  const [markets, healthRows] = await Promise.all([
+    getSnapshotMarkets(),
+    sql`
+      SELECT source_key, status, last_checked_at, last_success_at, detail
+      FROM market_source_health
+      ORDER BY source_key
+    `,
+  ]);
+
+  const latestRefresh = markets
+    .map((market) => market.snapshot.capturedAt)
+    .filter((capturedAt): capturedAt is string => Boolean(capturedAt))
+    .sort()
+    .at(-1) ?? null;
 
   return {
-    updatedAt: new Date().toISOString(),
+    updatedAt: latestRefresh,
     pricingMethod:
-      "Follower reach, hashtag activity, search interest, trend momentum, and news coverage.",
-    markets: celebrityMarkets
-      .filter((market) => isTradeableCelebrityMarket(market.ticker))
-      .map((market) => ({
-        ...market,
-        price: calculateMarketPrice(market.signals),
-      })),
+      "STKZ is a transparent practice-market score built from permitted public signals and stable modeled baselines. It is not an investment valuation.",
+    markets,
+    sourceHealth: healthRows.map((row) => ({
+      source: row.source_key,
+      status: row.status,
+      lastCheckedAt: row.last_checked_at,
+      lastSuccessAt: row.last_success_at,
+      detail: row.detail,
+    })),
   };
 });

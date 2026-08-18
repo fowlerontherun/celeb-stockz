@@ -1,11 +1,7 @@
-const retiredCelebrityTickers = new Set([
-  "BOWIE",
-  "AMYWINE",
-  "FREDDIE",
-  "GMICHAEL",
-  "MSMITH",
-]);
+import { celebrityMarkets } from "./markets";
+import { isEligibleMarket } from "./market-metadata";
 
 export function isTradeableCelebrityMarket(ticker: string) {
-  return !retiredCelebrityTickers.has(ticker);
+  const market = celebrityMarkets.find((item) => item.ticker === ticker);
+  return Boolean(market && isEligibleMarket(market));
 }
