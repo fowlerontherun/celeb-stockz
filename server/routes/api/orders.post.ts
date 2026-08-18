@@ -1,6 +1,7 @@
 import { defineHandler } from "nitro";
 import { createError, readBody } from "nitro/h3";
 import { sql } from "../../utils/db";
+import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker } from "../../utils/markets";
 
 type OrderInput = {
@@ -17,23 +18,31 @@ export default defineHandler(async (event) => {
   const body = await readBody<OrderInput>(event);
   const ticker = body?.ticker?.toUpperCase();
   const amountStkz = Number(body?.amountStkz);
-  const limitPrice = body?.limitPrice === undefined ? null : Number(body.limitPrice);
-  const stopPrice = body?.stopPrice === undefined ? null : Number(body.stopPrice);
+  const limitPrice =
+    body?.limitPrice === undefined ? null : Number(body.limitPrice);
+  const stopPrice =
+    body?.stopPrice === undefined ? null : Number(body.stopPrice);
 
   if (
     !userId ||
     !ticker ||
     !isMarketTicker(ticker) ||
+    !isTradeableCelebrityMarket(ticker) ||
     (body?.side !== "buy" && body?.side !== "sell") ||
-    !["limit", "stop_market", "stop_limit"].includes(body?.orderType ?? "") ||
+    !["limit", "stop_market", "stop_limit"].includes(
+      body?.orderType ?? "",
+    ) ||
     !Number.isFinite(amountStkz) ||
     amountStkz <= 0 ||
-    (body.orderType !== "stop_market" && (!Number.isFinite(limitPrice) || limitPrice! <= 0)) ||
-    (body.orderType !== "limit" && (!Number.isFinite(stopPrice) || stopPrice! <= 0))
+    (body.orderType !== "stop_market" &&
+      (!Number.isFinite(limitPrice) || limitPrice! <= 0)) ||
+    (body.orderType !== "limit" &&
+      (!Number.isFinite(stopPrice) || stopPrice! <= 0))
   ) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Enter valid order details and positive trigger prices.",
+      statusMessage:
+        "Enter valid active-market order details and positive trigger prices.",
     });
   }
 

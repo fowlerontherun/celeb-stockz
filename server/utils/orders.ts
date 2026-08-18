@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { isTradeableCelebrityMarket } from "./market-eligibility";
 import { marketPrices } from "./markets";
 
 type OpenOrder = {
@@ -87,6 +88,10 @@ export async function processOpenOrders() {
   `;
 
   for (const order of orders) {
+    if (!isTradeableCelebrityMarket(order.ticker)) {
+      continue;
+    }
+
     const price = marketPrices[order.ticker];
     if (!price) continue;
 

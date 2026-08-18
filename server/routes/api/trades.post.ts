@@ -1,6 +1,7 @@
 import { defineHandler } from "nitro";
 import { createError, readBody } from "nitro/h3";
 import { sql } from "../../utils/db";
+import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker, marketPrices } from "../../utils/markets";
 
 type TradeRequest = {
@@ -23,13 +24,15 @@ export default defineHandler(async (event) => {
   if (
     !ticker ||
     !isMarketTicker(ticker) ||
+    !isTradeableCelebrityMarket(ticker) ||
     (side !== "buy" && side !== "sell") ||
     !Number.isFinite(amountStkz) ||
     amountStkz <= 0
   ) {
     throw createError({
       statusCode: 400,
-      statusMessage: "Choose a valid market, trade side, and STKZ amount.",
+      statusMessage:
+        "Choose an active market, valid trade side, and STKZ amount.",
     });
   }
 
