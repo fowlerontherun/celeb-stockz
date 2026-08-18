@@ -3,6 +3,10 @@ import { Activity, RefreshCw } from "lucide-react";
 
 const REFRESH_INTERVAL = 2 * 60 * 1000;
 
+function getNextRefreshAt(timestamp: number) {
+  return (Math.floor(timestamp / REFRESH_INTERVAL) + 1) * REFRESH_INTERVAL;
+}
+
 function formatTime(timestamp: number) {
   return new Intl.DateTimeFormat([], {
     hour: "2-digit",
@@ -12,9 +16,6 @@ function formatTime(timestamp: number) {
 }
 
 export function MarketTicker() {
-  const [nextRefreshAt, setNextRefreshAt] = useState(
-    () => Date.now() + REFRESH_INTERVAL,
-  );
   const [now, setNow] = useState(Date.now());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -24,12 +25,10 @@ export function MarketTicker() {
     return () => window.clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    if (now < nextRefreshAt || isRefreshing) {
-      return;
-    }
+  const nextRefreshAt = getNextRefreshAt(now);
 
-    const refreshMarkets = async () => {
+  useEffect(() => {
+    const refreshAtBoundary = async () => {
       setIsRefreshing(true);
 
       try {
@@ -42,13 +41,14 @@ export function MarketTicker() {
           window.dispatchEvent(new Event("markets:updated"));
         }
       } finally {
-        setNextRefreshAt(Date.now() + REFRESH_INTERVAL);
         setIsRefreshing(false);
       }
     };
 
-    void refreshMarkets();
-  }, [isRefreshing, nextRefreshAt, now]);
+    if (now % REFRESH_INTERVAL < 1000) {
+      void refreshAtBoundary();
+    }
+  }, [now]);
 
   const secondsRemaining = Math.max(
     0,
@@ -73,7 +73,9 @@ export function MarketTicker() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-black text-[#fff8f2]">
-          {isRefreshing ? "Refreshing modeled markets…" : `Next market refresh in ${countdown}`}
+          {isRefreshing
+            ? "Refreshing modeled markets…"
+            : `Next market refresh in ${countdown}`}
         </p>
         <p className="mt-0.5 truncate text-[10px] font-semibold text-[#b8a9c4]">
           Modeled signals · due exactly {formatTime(nextRefreshAt)}
