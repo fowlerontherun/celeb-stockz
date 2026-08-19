@@ -3,10 +3,16 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  KeyRound,
   PauseCircle,
   PlayCircle,
   RefreshCw,
+  Save,
+  Search,
   ShieldCheck,
+  Sparkles,
+  Youtube,
+  Zap,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { showError, showSuccess } from "@/utils/toast";
@@ -28,6 +34,15 @@ type Refresh = {
   flagged_count: number;
 };
 
+type EditableSettings = {
+  youtubeApiKey: string;
+  youtubeChannels: Record<string, string>;
+  googleSearchApiKey: string;
+  googleSearchEngineId: string;
+  marketRefreshSecret: string;
+  adminEmails: string;
+};
+
 type Operations = {
   sources: Source[];
   recentRefreshes: Refresh[];
@@ -39,6 +54,7 @@ type Operations = {
       search: boolean;
       marketRefreshSecret: boolean;
     };
+    editableSettings: EditableSettings;
   };
   metrics: {
     verifiedSnapshots: number;
@@ -73,6 +89,16 @@ export default function MarketOperations() {
   const [data, setData] = useState<Operations | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUpdatingTrading, setIsUpdatingTrading] = useState(false);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
+  const [isTriggeringRefresh, setIsTriggeringRefresh] = useState(false);
+
+  // Configuration form state
+  const [youtubeApiKey, setYoutubeApiKey] = useState("");
+  const [youtubeChannelsJson, setYoutubeChannelsJson] = useState("");
+  const [googleSearchApiKey, setGoogleSearchApiKey] = useState("");
+  const [googleSearchEngineId, setGoogleSearchEngineId] = useState("");
+  const [marketRefreshSecret, setMarketRefreshSecret] = useState("");
+  const [adminEmails, setAdminEmails] = useState("");
 
   const loadOperations = useCallback(async () => {
     setIsLoading(true);
@@ -92,6 +118,14 @@ export default function MarketOperations() {
       }
 
       setData(payload);
+      setYoutubeApiKey(payload.system.editableSettings?.youtubeApiKey ?? "");
+      setYoutubeChannelsJson(
+        JSON.stringify(payload.system.editableSettings?.youtubeChannels ?? {}, null, 2),
+      );
+      setGoogleSearchApiKey(payload.system.editableSettings?.googleSearchApiKey ?? "");
+      setGoogleSearchEngineId(payload.system.editableSettings?.googleSearchEngineId ?? "");
+      setMarketRefreshSecret(payload.system.editableSettings?.marketRefreshSecret ?? "");
+      setAdminEmails(payload.system.editableSettings?.adminEmails ?? "");
     } catch (error) {
       showError(
         error instanceof Error
@@ -106,6 +140,83 @@ export default function MarketOperations() {
   useEffect(() => {
     void loadOperations();
   }, [loadOperations]);
+
+  const saveSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    let parsedChannels = {};
+    try {
+      if (youtubeChannelsJson.trim()) {
+        parsedChannels = JSON.parse(youtubeChannelsJson);
+      }
+    } catch {
+      showError("YouTube Channels field must be valid JSON (e.g. {\"TSWIFT\": \"UCqECaJ8Gagnn7YCbPEzWH6g\"})");
+      return;
+    }
+
+    setIsSavingSettings(true);
+    try {
+      const response = await fetch("/api/internal/market-settings", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          youtubeApiKey,
+          youtubeChannels: parsedChannels,
+          googleSearchApiKey,
+          googleSearchEngineId,
+          marketRefreshSecret,
+          adminEmails,
+        }),
+      });
+
+      const resData = (await response.json()) as { ok?: boolean; statusMessage?: string };
+      if (!response.ok) {
+        throw new Error(resData.statusMessage ?? "Failed to save configuration.");
+      }
+
+      showSuccess("Data services configuration saved successfully!");
+      void loadOperations();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Failed to save configuration.");
+    } finally {
+      setIsSavingSettings(false);
+    }
+  };
+
+  const triggerManualRefresh = async () => {
+    if (!window.confirm("Trigger an immediate live market refresh with the current signals and configured APIs?")) {
+      return;
+    }
+
+    setIsTriggeringRefresh(true);
+    try {
+      const response = await fetch("/api/internal/market-refresh-trigger", {
+        method: "POST",
+        credentials: "include",
+      });
+
+      const result = (await response.json()) as {
+        verifiedCount?: number;
+        unavailableCount?: number;
+        flaggedCount?: number;
+        statusMessage?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(result.statusMessage ?? "Market refresh failed.");
+      }
+
+      showSuccess(
+        `Market refresh complete: ${result.verifiedCount ?? 0} verified, ${result.unavailableCount ?? 0} fallback, ${result.flaggedCount ?? 0} flagged.`,
+      );
+      void loadOperations();
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not complete manual refresh.");
+    } finally {
+      setIsTriggeringRefresh(false);
+    }
+  };
 
   const updateTradingStatus = async () => {
     if (!data) return;
@@ -220,12 +331,6 @@ export default function MarketOperations() {
     ["Open orders", String(data.metrics.openOrders), "Evaluated after verified snapshots"],
   ];
 
-  const providers = [
-    ["Official YouTube data", data.system.apiConfiguration.youtube],
-    ["Google search data", data.system.apiConfiguration.search],
-    ["Scheduled refresh secret", data.system.apiConfiguration.marketRefreshSecret],
-  ];
-
   return (
     <main className="min-h-screen bg-[#120b20] px-5 py-8 text-[#fff8f2] sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
@@ -244,22 +349,32 @@ export default function MarketOperations() {
               Market control center
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
-              Monitor quality, control practice trading, and check whether
-              server-side provider connections are ready. Credentials are never
-              shown in the dashboard.
+              Configure data providers, manage API keys, pause or resume practice trading, and trigger real-time signal calculations.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void loadOperations()}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black transition hover:bg-white/10 disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
-            Refresh view
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void triggerManualRefresh()}
+              disabled={isTriggeringRefresh}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#ff7282] px-4 py-3 text-sm font-black text-[#401b2d] shadow-lg transition hover:bg-[#ff8f9c] disabled:opacity-50"
+            >
+              <Zap size={16} className={isTriggeringRefresh ? "animate-spin" : ""} />
+              {isTriggeringRefresh ? "Calculating..." : "Run Market Refresh Now"}
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadOperations()}
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-black transition hover:bg-white/10 disabled:opacity-50"
+            >
+              <RefreshCw size={16} className={isLoading ? "animate-spin" : ""} />
+              Refresh view
+            </button>
+          </div>
         </div>
 
+        {/* Global Trading Switch */}
         <section
           className={`mt-8 rounded-[28px] border p-5 sm:flex sm:items-center sm:justify-between sm:p-7 ${
             data.system.tradingPaused
@@ -318,39 +433,153 @@ export default function MarketOperations() {
           </button>
         </section>
 
-        <section className="mt-7 rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-7">
-          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#c99bff]">
-            Provider readiness
-          </p>
+        {/* Data Service Configurations Form */}
+        <section className="mt-7 rounded-[28px] border border-[#c99bff]/30 bg-[#211230] p-5 sm:p-7">
+          <div className="flex items-center gap-2 text-[#ffd17b]">
+            <KeyRound size={20} />
+            <p className="text-xs font-extrabold uppercase tracking-[.18em]">
+              Data Services & API Credentials
+            </p>
+          </div>
           <h2 className="font-display mt-2 text-2xl font-black">
-            Connected data services
+            Connect External Data Feeds
           </h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {providers.map(([name, isReady]) => (
-              <div
-                key={name}
-                className="flex items-center gap-3 rounded-2xl bg-white/[.04] p-4"
-              >
-                {isReady ? (
-                  <CheckCircle2 className="text-[#62e7b6]" size={20} />
-                ) : (
-                  <AlertTriangle className="text-[#ffd17b]" size={20} />
-                )}
+          <p className="mt-2 text-sm text-[#c4b4d0]">
+            Enter your API credentials below. They are saved directly into your database and utilized automatically in market signal calculations and refreshes.
+          </p>
+
+          <form onSubmit={saveSettings} className="mt-6 space-y-6">
+            {/* YouTube API Config */}
+            <div className="rounded-2xl border border-white/10 bg-[#160c25] p-5">
+              <div className="flex items-center gap-2 text-[#ff9ca5]">
+                <Youtube size={18} />
+                <h3 className="font-display text-lg font-black">YouTube Data API v3</h3>
+              </div>
+              <p className="mt-1 text-xs text-[#a99ab7]">
+                Used for fetching verified subscriber counts and cumulative view statistics for official artist and celebrity channels.
+              </p>
+
+              <div className="mt-4 grid gap-4">
                 <div>
-                  <p className="text-sm font-black">{name}</p>
-                  <p
-                    className={`mt-1 text-xs font-bold ${
-                      isReady ? "text-[#62e7b6]" : "text-[#ffd17b]"
-                    }`}
-                  >
-                    {isReady ? "Configured" : "Needs server configuration"}
+                  <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                    YouTube API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={youtubeApiKey}
+                    onChange={(e) => setYoutubeApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 text-sm text-white outline-none focus:border-[#a97cff]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                    YouTube Channel ID Mappings (JSON format)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={youtubeChannelsJson}
+                    onChange={(e) => setYoutubeChannelsJson(e.target.value)}
+                    placeholder={`{\n  "TSWIFT": "UCqECaJ8Gagnn7YCbPEzWH6g",\n  "ADELE": "UCsRM0YB_dabtEPGPTKo-gcw"\n}`}
+                    className="mt-1.5 w-full font-mono text-xs rounded-xl border border-white/10 bg-[#211230] p-3 text-[#e6d8ff] outline-none focus:border-[#a97cff]"
+                  />
+                  <p className="mt-1 text-[11px] text-[#8e819b]">
+                    Map celebrity tickers to their official YouTube Channel IDs (starts with UC...).
                   </p>
                 </div>
               </div>
-            ))}
-          </div>
+            </div>
+
+            {/* Google Search API Config */}
+            <div className="rounded-2xl border border-white/10 bg-[#160c25] p-5">
+              <div className="flex items-center gap-2 text-[#62e7b6]">
+                <Search size={18} />
+                <h3 className="font-display text-lg font-black">Google Custom Search API</h3>
+              </div>
+              <p className="mt-1 text-xs text-[#a99ab7]">
+                Used to evaluate real-time indexed search presence and public awareness across search engines.
+              </p>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                    Google Search API Key
+                  </label>
+                  <input
+                    type="password"
+                    value={googleSearchApiKey}
+                    onChange={(e) => setGoogleSearchApiKey(e.target.value)}
+                    placeholder="AIzaSy..."
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 text-sm text-white outline-none focus:border-[#a97cff]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                    Search Engine ID (CX)
+                  </label>
+                  <input
+                    type="text"
+                    value={googleSearchEngineId}
+                    onChange={(e) => setGoogleSearchEngineId(e.target.value)}
+                    placeholder="0123456789abcdef:xyz"
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 text-sm text-white outline-none focus:border-[#a97cff]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Security & Access */}
+            <div className="rounded-2xl border border-white/10 bg-[#160c25] p-5">
+              <div className="flex items-center gap-2 text-[#ffd17b]">
+                <ShieldCheck size={18} />
+                <h3 className="font-display text-lg font-black">Security & Admin Access</h3>
+              </div>
+
+              <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                    Market Refresh Webhook Secret
+                  </label>
+                  <input
+                    type="password"
+                    value={marketRefreshSecret}
+                    onChange={(e) => setMarketRefreshSecret(e.target.value)}
+                    placeholder="Secret for scheduled cron jobs"
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 text-sm text-white outline-none focus:border-[#a97cff]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                    Admin Emails (comma separated)
+                  </label>
+                  <input
+                    type="text"
+                    value={adminEmails}
+                    onChange={(e) => setAdminEmails(e.target.value)}
+                    placeholder="j.fowler1986@gmail.com, admin@example.com"
+                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 text-sm text-white outline-none focus:border-[#a97cff]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="submit"
+                disabled={isSavingSettings}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7c3aed] px-6 py-3.5 text-sm font-black text-white shadow-xl transition hover:bg-[#8f57f6] disabled:opacity-50"
+              >
+                <Save size={16} />
+                {isSavingSettings ? "Saving credentials..." : "Save Data Service Settings"}
+              </button>
+            </div>
+          </form>
         </section>
 
+        {/* Metrics Grid */}
         <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map(([label, value, detail]) => (
             <article
@@ -366,6 +595,7 @@ export default function MarketOperations() {
           ))}
         </section>
 
+        {/* Source Health Section */}
         <section className="mt-7 rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-7">
           <div className="flex items-center gap-2">
             <CheckCircle2 size={18} className="text-[#62e7b6]" />
@@ -411,6 +641,7 @@ export default function MarketOperations() {
           </div>
         </section>
 
+        {/* Recent Refreshes Section */}
         <section className="mt-7 rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-7">
           <div className="flex items-center gap-2">
             <Clock3 size={18} className="text-[#ffd17b]" />
