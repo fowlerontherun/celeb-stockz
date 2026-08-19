@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, LoaderCircle, Save, Search, ToggleLeft } from "lucide-react";
+import {
+  ExternalLink,
+  LoaderCircle,
+  Save,
+  Search,
+  Sparkles,
+  ToggleLeft,
+} from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 type Listing = {
@@ -11,12 +18,26 @@ type Listing = {
   youtubeChannelId: string;
 };
 
+type AutofillResult = {
+  websiteUrl: string;
+  youtubeChannelId: string;
+  found: {
+    website: boolean;
+    youtube: boolean;
+  };
+  preserved: {
+    website: boolean;
+    youtube: boolean;
+  };
+};
+
 export function ListingAdmin() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedTicker, setSelectedTicker] = useState("");
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutofilling, setIsAutofilling] = useState(false);
 
   useEffect(() => {
     void fetch("/api/internal/listings", { credentials: "include" })
@@ -58,6 +79,55 @@ export function ListingAdmin() {
         listing.ticker === selected.ticker ? { ...listing, ...changes } : listing,
       ),
     );
+  };
+
+  const autofillListing = async () => {
+    if (!selected) return;
+
+    setIsAutofilling(true);
+
+    try {
+      const response = await fetch(
+        `/api/internal/listings/${selected.ticker}/autofill`,
+        {
+          method: "POST",
+          credentials: "include",
+        },
+      );
+      const data = (await response.json()) as AutofillResult & {
+        statusMessage?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(
+          data.statusMessage ?? "Could not look up public listing metadata.",
+        );
+      }
+
+      updateSelected({
+        websiteUrl: data.websiteUrl,
+        youtubeChannelId: data.youtubeChannelId,
+      });
+
+      const added = [
+        !data.preserved.website && data.found.website && "website",
+        !data.preserved.youtube && data.found.youtube && "YouTube channel",
+      ].filter(Boolean);
+
+      showSuccess(
+        added.length
+          ? `Added ${added.join(" and ")} from public profile metadata.`
+          : "No new public metadata was available; existing details were kept.",
+      );
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Could not look up public listing metadata.",
+      );
+    } finally {
+      setIsAutofilling(false);
+    }
   };
 
   const saveListing = async () => {
@@ -165,6 +235,23 @@ export function ListingAdmin() {
               {selected.tradingPaused ? "Trading paused" : "Trading active"}
             </button>
           </div>
+
+          <button
+            type="button"
+            onClick={() => void autofillListing()}
+            disabled={isAutofilling}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#c99bff]/35 bg-[#7c3aed]/15 px-4 py-3 text-sm font-black text-[#e6d8ff] transition hover:bg-[#7c3aed]/25 disabled:opacity-50"
+          >
+            {isAutofilling ? (
+              <LoaderCircle size={16} className="animate-spin" />
+            ) : (
+              <Sparkles size={16} className="text-[#ffd17b]" />
+            )}
+            {isAutofilling ? "Looking up public metadata…" : "Auto-fill website & YouTube"}
+          </button>
+          <p className="mt-2 text-xs leading-5 text-[#9f90ac]">
+            Uses public Wikidata records and never overwrites existing listing details.
+          </p>
 
           <label className="mt-5 block text-xs font-bold uppercase tracking-[.13em] text-[#b9a9c5]">
             Official website
