@@ -4,7 +4,10 @@ import { getSessionFromCookie } from "../../../utils/session";
 import { checkIsAdmin, getSystemSettings } from "../../../utils/system-settings";
 import { celebrityMarkets } from "../../../utils/markets";
 import { getMarketMetadata } from "../../../utils/market-metadata";
-import { getAdditionalPriceSignals } from "../../../utils/additional-price-signals";
+import {
+  getAdditionalPriceSignals,
+  testGoogleSearch,
+} from "../../../utils/additional-price-signals";
 
 type TestRequest = {
   ticker?: string;
@@ -37,7 +40,6 @@ export default defineHandler(async (event) => {
   const metadata = getMarketMetadata(market);
   const settings = await getSystemSettings();
 
-  // Test Wikipedia views
   let wikiViews: number | null = null;
   let wikiViewsStatus: "verified" | "unavailable" = "unavailable";
   try {
@@ -60,7 +62,6 @@ export default defineHandler(async (event) => {
     wikiViewsStatus = "unavailable";
   }
 
-  // Test Wikipedia edit activity
   let wikiEdits: number | null = null;
   let wikiEditsStatus: "verified" | "unavailable" = "unavailable";
   try {
@@ -88,7 +89,11 @@ export default defineHandler(async (event) => {
       };
       wikiEdits = (data.query?.pages?.[0]?.revisions ?? []).filter((rev) => {
         const timestamp = rev.timestamp ? new Date(rev.timestamp) : null;
-        return timestamp && Number.isFinite(timestamp.getTime()) && timestamp >= new Date(since);
+        return (
+          timestamp &&
+          Number.isFinite(timestamp.getTime()) &&
+          timestamp >= new Date(since)
+        );
       }).length;
       wikiEditsStatus = "verified";
     }
@@ -96,8 +101,14 @@ export default defineHandler(async (event) => {
     wikiEditsStatus = "unavailable";
   }
 
-  // Test additional signals (GDELT, Custom Search, YouTube API, and Practice Trades)
-  const additional = await getAdditionalPriceSignals(market);
+  const [additional, searchDiagnostic] = await Promise.all([
+    getAdditionalPriceSignals(market),
+    testGoogleSearch(
+      market.name,
+      settings.googleSearchApiKey,
+      settings.googleSearchEngineId,
+    ),
+  ]);
 
   return {
     ticker: market.ticker,
@@ -117,8 +128,9 @@ export default defineHandler(async (event) => {
         status: additional.statuses.news,
       },
       search: {
-        resultsCount: additional.searchResults,
-        status: additional.statuses.search,
+        resultsCount: searchDiagnostic.resultsCount,
+        status: searchDiagnostic.status,
+        detail: searchDiagnostic.detail,
       },
       youtube: {
         subscribers: additional.youtubeSubscribers,

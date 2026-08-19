@@ -18,6 +18,12 @@ export type AdditionalPriceSignals = {
   };
 };
 
+export type SearchDiagnostic = {
+  status: SignalStatus;
+  detail: string;
+  resultsCount: number | null;
+};
+
 type CacheEntry = {
   value: AdditionalPriceSignals;
   expiresAt: number;
@@ -34,6 +40,11 @@ const cache = new Map<string, CacheEntry>();
 let tradePressureCache:
   | { values: Map<string, number>; expiresAt: number }
   | undefined;
+
+export function clearAdditionalSignalCache() {
+  cache.clear();
+  tradePressureCache = undefined;
+}
 
 async function getNewsMentions(name: string) {
   const url = new URL("https://api.gdeltproject.org/api/v2/doc/doc");
@@ -80,8 +91,33 @@ async function getNewsMentions(name: string) {
 }
 
 async function getSearchResults(name: string, apiKey: string, cx: string) {
-  if (!apiKey || !cx) {
-    return { value: null, status: "unavailable" as const };
+  const diagnostic = await testGoogleSearch(name, apiKey, cx);
+
+  return {
+    value: diagnostic.resultsCount,
+    status: diagnostic.status,
+  };
+}
+
+export async function testGoogleSearch(
+  name: string,
+  apiKey: string,
+  cx: string,
+): Promise<SearchDiagnostic> {
+  if (!apiKey) {
+    return {
+      status: "unavailable",
+      resultsCount: null,
+      detail: "Google Custom Search API key is not configured.",
+    };
+  }
+
+  if (!cx) {
+    return {
+      status: "unavailable",
+      resultsCount: null,
+      detail: "Google Programmable Search Engine ID is not configured.",
+    };
   }
 
   const url = new URL("https://www.googleapis.com/customsearch/v1");
@@ -91,8 +127,20 @@ async function getSearchResults(name: string, apiKey: string, cx: string) {
 
   try {
     const response = await fetch(url);
+
     if (!response.ok) {
-      return { value: null, status: "unavailable" as const };
+      const data = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      const message = data?.error?.message?.replaceAll(apiKey, "").trim();
+
+      return {
+        status: "unavailable",
+        resultsCount: null,
+        detail:
+          message ||
+          `Google Custom Search returned HTTP ${response.status}. Check API enablement, key restrictions, search engine ID, and quota.`,
+      };
     }
 
     const data = (await response.json()) as {
@@ -100,15 +148,25 @@ async function getSearchResults(name: string, apiKey: string, cx: string) {
     };
     const value = Number(data.searchInformation?.totalResults);
 
+    if (!Number.isSafeInteger(value) || value < 0) {
+      return {
+        status: "unavailable",
+        resultsCount: null,
+        detail: "Google returned an invalid search-result count.",
+      };
+    }
+
     return {
-      value: Number.isSafeInteger(value) && value >= 0 ? value : null,
-      status:
-        Number.isSafeInteger(value) && value >= 0
-          ? ("verified" as const)
-          : ("unavailable" as const),
+      status: "verified",
+      resultsCount: value,
+      detail: "Google Custom Search responded successfully.",
     };
   } catch {
-    return { value: null, status: "unavailable" as const };
+    return {
+      status: "unavailable",
+      resultsCount: null,
+      detail: "The Google Custom Search request could not reach Google.",
+    };
   }
 }
 
@@ -224,8 +282,16 @@ export async function getAdditionalPriceSignals(
 
   const [news, search, youtube, practiceTradePressure] = await Promise.all([
     getNewsMentions(market.name),
-    getSearchResults(market.name, settings.googleSearchApiKey, settings.googleSearchEngineId),
-    getYoutubeStatistics(market.ticker, settings.youtubeApiKey, settings.youtubeChannels),
+    getSearchResults(
+      market.name,
+      settings.googleSearchApiKey,
+      settings.googleSearchEngineId,
+    ),
+    getYoutubeStatistics(
+      market.ticker,
+      settings.youtubeApiKey,
+      settings.youtubeChannels,
+    ),
     getPracticeTradePressure(market.ticker),
   ]);
 

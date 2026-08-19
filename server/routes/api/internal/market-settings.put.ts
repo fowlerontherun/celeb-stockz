@@ -2,6 +2,7 @@ import { defineHandler } from "nitro";
 import { createError, getRequestHeader, readBody } from "nitro/h3";
 import { sql } from "../../../utils/db";
 import { getSessionFromCookie } from "../../../utils/session";
+import { clearAdditionalSignalCache } from "../../../utils/additional-price-signals";
 import { checkIsAdmin } from "../../../utils/system-settings";
 
 type SettingsInput = {
@@ -82,6 +83,8 @@ export default defineHandler(async (event) => {
       updated_at = now()
     RETURNING *
   `;
+
+  clearAdditionalSignalCache();
 
   return {
     ok: true,
