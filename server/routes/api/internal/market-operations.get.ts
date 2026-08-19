@@ -38,11 +38,27 @@ export default defineHandler(async (event) => {
         LIMIT 20
       `,
       sql`
+        WITH latest_verified AS (
+          SELECT DISTINCT ON (ticker) ticker, captured_at
+          FROM market_snapshots
+          WHERE refresh_status = 'verified'
+          ORDER BY ticker, captured_at DESC
+        )
         SELECT
           COUNT(*) FILTER (WHERE refresh_status = 'verified')::int AS verified_snapshots,
           COUNT(*) FILTER (WHERE refresh_status = 'unavailable')::int AS unavailable_snapshots,
           COUNT(*) FILTER (WHERE refresh_status = 'flagged')::int AS flagged_snapshots,
-          MAX(captured_at) FILTER (WHERE refresh_status = 'verified') AS latest_verified_at
+          MAX(captured_at) FILTER (WHERE refresh_status = 'verified') AS latest_verified_at,
+          (
+            SELECT AVG(EXTRACT(EPOCH FROM (now() - captured_at)) / 60)
+            FROM latest_verified
+          ) AS average_freshness_minutes,
+          (
+            COUNT(*) FILTER (
+              WHERE refresh_status = 'verified' AND abs(daily_change) <= 15
+            )::numeric
+            / NULLIF(COUNT(*) FILTER (WHERE refresh_status = 'verified'), 0)
+          ) * 100 AS stable_snapshot_rate
         FROM market_snapshots
       `,
       sql`
@@ -78,6 +94,10 @@ export default defineHandler(async (event) => {
       ),
       flaggedSnapshots: Number(snapshotCounts[0]?.flagged_snapshots ?? 0),
       latestVerifiedAt: snapshotCounts[0]?.latest_verified_at ?? null,
+      averageFreshnessMinutes: Number(
+        snapshotCounts[0]?.average_freshness_minutes ?? 0,
+      ),
+      stableSnapshotRate: Number(snapshotCounts[0]?.stable_snapshot_rate ?? 0),
       latestRefreshSuccessRate:
         latestRefreshedCount > 0
           ? Number(((latestVerifiedCount / latestRefreshedCount) * 100).toFixed(1))

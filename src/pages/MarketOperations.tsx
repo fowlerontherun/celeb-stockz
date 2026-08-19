@@ -34,6 +34,8 @@ type Operations = {
     unavailableSnapshots: number;
     flaggedSnapshots: number;
     latestVerifiedAt: string | null;
+    averageFreshnessMinutes: number;
+    stableSnapshotRate: number;
     latestRefreshSuccessRate: number | null;
     completedTrades: number;
     weeklyTrades: number;
@@ -48,6 +50,12 @@ function formatDate(value: string | null) {
         timeStyle: "short",
       }).format(new Date(value))
     : "Not available";
+}
+
+function formatFreshness(minutes: number) {
+  if (!Number.isFinite(minutes) || minutes <= 0) return "Not available";
+  if (minutes < 60) return `${Math.round(minutes)} min`;
+  return `${(minutes / 60).toFixed(1)} hr`;
 }
 
 export default function MarketOperations() {
@@ -106,7 +114,8 @@ export default function MarketOperations() {
 
   const cards = [
     ["Refresh success", data.metrics.latestRefreshSuccessRate === null ? "—" : `${data.metrics.latestRefreshSuccessRate}%`, "Latest approved cycle"],
-    ["Data freshness", formatDate(data.metrics.latestVerifiedAt), "Latest verified snapshot"],
+    ["Average freshness", formatFreshness(data.metrics.averageFreshnessMinutes), "Across latest verified market snapshots"],
+    ["Price stability", `${data.metrics.stableSnapshotRate.toFixed(1)}%`, "Verified snapshots within the movement cap"],
     ["Stale sources", String(staleSourceCount), "Older than eight hours"],
     ["Flagged movements", String(data.metrics.flaggedSnapshots), "Held for review"],
     ["Completed trades", String(data.metrics.completedTrades), `${data.metrics.weeklyTrades} in the last 7 days`],
