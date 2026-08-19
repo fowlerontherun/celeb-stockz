@@ -25,6 +25,10 @@ type WikidataEntity = {
   claims?: Record<string, WikidataClaim[]>;
 };
 
+type WikidataSearchResponse = {
+  search?: Array<{ id?: string }>;
+};
+
 function getClaimValue(entity: WikidataEntity, property: string) {
   return entity.claims?.[property]?.[0]?.mainsnak?.datavalue?.value?.trim() ?? "";
 }
@@ -35,6 +39,55 @@ function isWebsiteUrl(value: string) {
     return url.protocol === "https:" || url.protocol === "http:";
   } catch {
     return false;
+  }
+}
+
+async function findWikidataId(name: string) {
+  const wikipediaUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
+    name.replaceAll(" ", "_"),
+  )}`;
+
+  try {
+    const response = await fetch(wikipediaUrl, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "CelebStockz listing metadata lookup",
+      },
+    });
+
+    if (response.ok) {
+      const summary = (await response.json()) as { wikibase_item?: string };
+      if (summary.wikibase_item) {
+        return summary.wikibase_item;
+      }
+    }
+  } catch {
+    // Fall through to the Wikidata name search.
+  }
+
+  const searchUrl = new URL("https://www.wikidata.org/w/api.php");
+  searchUrl.searchParams.set("action", "wbsearchentities");
+  searchUrl.searchParams.set("format", "json");
+  searchUrl.searchParams.set("language", "en");
+  searchUrl.searchParams.set("limit", "1");
+  searchUrl.searchParams.set("search", name);
+
+  try {
+    const response = await fetch(searchUrl, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "CelebStockz listing metadata lookup",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const result = (await response.json()) as WikidataSearchResponse;
+    return result.search?.[0]?.id ?? null;
+  } catch {
+    return null;
   }
 }
 
@@ -60,64 +113,45 @@ export default defineHandler(async (event) => {
     });
   }
 
-  const summaryResponse = await fetch(
-    `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
-      market.name.replaceAll(" ", "_"),
-    )}`,
-    {
-      headers: {
-        accept: "application/json",
-        "user-agent": "CelebStockz listing metadata lookup",
-      },
-    },
-  );
+  const wikidataId = await findWikidataId(market.name);
 
-  if (!summaryResponse.ok) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: "Public profile metadata is temporarily unavailable.",
-    });
-  }
-
-  const summary = (await summaryResponse.json()) as {
-    wikibase_item?: string;
-  };
-
-  if (!summary.wikibase_item) {
+  if (!wikidataId) {
     throw createError({
       statusCode: 404,
-      statusMessage: "No Wikidata record is available for this listing.",
+      statusMessage:
+        "No public Wikidata record could be found for this listing.",
     });
   }
 
-  const entityResponse = await fetch(
-    `https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(
-      summary.wikibase_item,
-    )}.json`,
-    {
-      headers: {
-        accept: "application/json",
-        "user-agent": "CelebStockz listing metadata lookup",
+  let entity: WikidataEntity | undefined;
+
+  try {
+    const entityResponse = await fetch(
+      `https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(
+        wikidataId,
+      )}.json`,
+      {
+        headers: {
+          accept: "application/json",
+          "user-agent": "CelebStockz listing metadata lookup",
+        },
       },
-    },
-  );
+    );
 
-  if (!entityResponse.ok) {
-    throw createError({
-      statusCode: 502,
-      statusMessage: "Public profile metadata is temporarily unavailable.",
-    });
+    if (entityResponse.ok) {
+      const entityPayload = (await entityResponse.json()) as {
+        entities?: Record<string, WikidataEntity>;
+      };
+      entity = entityPayload.entities?.[wikidataId];
+    }
+  } catch {
+    entity = undefined;
   }
-
-  const entityPayload = (await entityResponse.json()) as {
-    entities?: Record<string, WikidataEntity>;
-  };
-  const entity = entityPayload.entities?.[summary.wikibase_item];
 
   if (!entity) {
     throw createError({
-      statusCode: 404,
-      statusMessage: "No Wikidata record is available for this listing.",
+      statusCode: 502,
+      statusMessage: "Public profile metadata is temporarily unavailable.",
     });
   }
 
