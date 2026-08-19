@@ -47,6 +47,16 @@ const sources = [
     status: "Live",
   },
   {
+    name: "Wikimedia article activity",
+    coverage:
+      "Recent public revision activity on eligible biography pages, limited to the latest seven days.",
+    delay: "Captured during the scheduled STKZ refresh.",
+    limitation:
+      "Activity has a small capped influence and is not treated as positive sentiment, popularity, or a measure of personal value.",
+    href: "https://www.mediawiki.org/wiki/API:Revisions",
+    status: "Live",
+  },
+  {
     name: "Licensed news volume",
     coverage: "Not connected yet.",
     delay: "Will be documented before release.",

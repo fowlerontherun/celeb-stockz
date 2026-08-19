@@ -22,12 +22,21 @@ type PageviewResult = {
   status: "verified" | "unavailable";
 };
 
+type EditActivityResult = {
+  recentEdits: number | null;
+  status: "verified" | "unavailable";
+};
+
 const DAILY_MOVE_CAP = 15;
 const REVIEW_MOVE_THRESHOLD = 30;
 const SOURCE_CACHE_MS = 30 * 60 * 1000;
 const pageviewCache = new Map<
   string,
   { result: PageviewResult; expiresAt: number }
+>();
+const editActivityCache = new Map<
+  string,
+  { result: EditActivityResult; expiresAt: number }
 >();
 
 function formatDate(date: Date) {
@@ -46,6 +55,20 @@ function describePageviewChange(
   const direction = change >= 0 ? "up" : "down";
 
   return `Wikipedia views ${direction} ${Math.abs(change).toFixed(1)}%.`;
+}
+
+function describeEditActivity(recentEdits: number | null) {
+  if (recentEdits === null) {
+    return "Recent article activity was unavailable and did not affect the score.";
+  }
+
+  if (recentEdits === 0) {
+    return "No recent article edits added to the score.";
+  }
+
+  return `${recentEdits} recent public article edit${
+    recentEdits === 1 ? "" : "s"
+  } added a small capped activity signal.`;
 }
 
 async function getWikipediaViews(article: string): Promise<PageviewResult> {
@@ -103,16 +126,85 @@ async function getWikipediaViews(article: string): Promise<PageviewResult> {
   }
 }
 
+async function getWikipediaEditActivity(
+  article: string,
+): Promise<EditActivityResult> {
+  const cached = editActivityCache.get(article);
+
+  if (cached && cached.expiresAt > Date.now()) {
+    return cached.result;
+  }
+
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const url = new URL("https://en.wikipedia.org/w/api.php");
+  url.searchParams.set("action", "query");
+  url.searchParams.set("format", "json");
+  url.searchParams.set("formatversion", "2");
+  url.searchParams.set("prop", "revisions");
+  url.searchParams.set("titles", article);
+  url.searchParams.set("rvprop", "timestamp");
+  url.searchParams.set("rvstart", new Date().toISOString());
+  url.searchParams.set("rvend", since);
+  url.searchParams.set("rvlimit", "25");
+
+  try {
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "CelebStockz practice-market signal monitor",
+      },
+    });
+
+    if (!response.ok) {
+      return { recentEdits: null, status: "unavailable" };
+    }
+
+    const data = (await response.json()) as {
+      query?: {
+        pages?: Array<{
+          revisions?: Array<{ timestamp?: string }>;
+        }>;
+      };
+    };
+    const revisions = data.query?.pages?.[0]?.revisions ?? [];
+    const recentEdits = revisions.filter((revision) => {
+      const timestamp = revision.timestamp ? new Date(revision.timestamp) : null;
+      return timestamp && Number.isFinite(timestamp.getTime()) && timestamp >= new Date(since);
+    }).length;
+
+    const result: EditActivityResult = {
+      recentEdits,
+      status: "verified",
+    };
+    editActivityCache.set(article, {
+      result,
+      expiresAt: Date.now() + SOURCE_CACHE_MS,
+    });
+
+    return result;
+  } catch (error) {
+    console.error("Wikimedia edit activity refresh failed", {
+      article,
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+    return { recentEdits: null, status: "unavailable" };
+  }
+}
+
 function calculateTransparentScore(
   market: CelebrityMarket,
   pageviews: number | null,
+  recentEdits: number | null,
 ) {
   const baseline = calculateMarketPrice(market.signals);
   const pageviewBoost = pageviews
     ? Math.min(18, Math.log10(Math.max(pageviews, 1)) * 2.2)
     : 0;
+  const editActivityBoost = recentEdits
+    ? Math.min(4, Math.sqrt(Math.min(recentEdits, 25)) * 0.8)
+    : 0;
 
-  return Number((baseline + pageviewBoost).toFixed(4));
+  return Number((baseline + pageviewBoost + editActivityBoost).toFixed(4));
 }
 
 async function getLatestVerifiedSnapshot(ticker: string) {
@@ -155,7 +247,10 @@ export async function refreshMarketSnapshots() {
 
   for (const market of eligibleMarkets) {
     const metadata = getMarketMetadata(market);
-    const pageviews = await getWikipediaViews(metadata.wikipediaTitle);
+    const [pageviews, editActivity] = await Promise.all([
+      getWikipediaViews(metadata.wikipediaTitle),
+      getWikipediaEditActivity(metadata.wikipediaTitle),
+    ]);
     const previous = await getLatestVerifiedSnapshot(market.ticker);
     const previousPageviews =
       previous?.pageviews === null || previous?.pageviews === undefined
@@ -180,7 +275,9 @@ export async function refreshMarketSnapshots() {
           ${JSON.stringify({
             wikipedia: {
               article: metadata.wikipediaTitle,
-              status: "unavailable",
+              pageviewsStatus: "unavailable",
+              editActivityStatus: editActivity.status,
+              recentEdits: editActivity.recentEdits,
             },
             fallback: {
               capturedAt: previous.captured_at,
@@ -193,15 +290,19 @@ export async function refreshMarketSnapshots() {
       continue;
     }
 
-    const score = calculateTransparentScore(market, pageviews.views);
+    const score = calculateTransparentScore(
+      market,
+      pageviews.views,
+      editActivity.recentEdits,
+    );
     const previousPrice = previous ? Number(previous.price_stkz) : score;
     const rawMove = previousPrice
       ? ((score - previousPrice) / previousPrice) * 100
       : 0;
-    const movementReason = describePageviewChange(
+    const movementReason = `${describePageviewChange(
       pageviews.views,
       previousPageviews,
-    );
+    )} ${describeEditActivity(editActivity.recentEdits)}`;
 
     if (previous && Math.abs(rawMove) > REVIEW_MOVE_THRESHOLD) {
       flaggedCount += 1;
@@ -223,7 +324,9 @@ export async function refreshMarketSnapshots() {
               article: metadata.wikipediaTitle,
               dailyPageviews: pageviews.views,
               previousDailyPageviews: previousPageviews,
-              status: pageviews.status,
+              pageviewsStatus: pageviews.status,
+              recentEdits: editActivity.recentEdits,
+              editActivityStatus: editActivity.status,
             },
             anomaly: {
               rawMove: Number(rawMove.toFixed(3)),
@@ -262,7 +365,9 @@ export async function refreshMarketSnapshots() {
             article: metadata.wikipediaTitle,
             dailyPageviews: pageviews.views,
             previousDailyPageviews: previousPageviews,
-            status: pageviews.status,
+            pageviewsStatus: pageviews.status,
+            recentEdits: editActivity.recentEdits,
+            editActivityStatus: editActivity.status,
           },
           movementReason,
           officialPlatformReach: {
@@ -284,7 +389,7 @@ export async function refreshMarketSnapshots() {
       source_key, status, last_checked_at, last_success_at, detail
     )
     VALUES (
-      'wikimedia-pageviews',
+      'wikimedia-pageviews-and-edits',
       ${status},
       now(),
       ${verifiedCount > 0 ? new Date().toISOString() : null},
@@ -311,7 +416,7 @@ export async function refreshMarketSnapshots() {
       ${verifiedCount},
       ${unavailableCount},
       ${flaggedCount},
-      ${"Wikimedia pageview refresh"}
+      ${"Wikimedia pageview and article-activity refresh"}
     )
   `;
 
