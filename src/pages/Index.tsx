@@ -21,6 +21,7 @@ import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { OnboardingRecap } from "@/components/OnboardingRecap";
 import { PracticeTools } from "@/components/PracticeTools";
+import { MarketDetailPanel } from "@/components/MarketDetailPanel";
 import { showError, showSuccess } from "@/utils/toast";
 
 type CelebrityMarket = CategorizedCelebrity & {
@@ -177,10 +178,11 @@ export default function Index() {
       </nav>
 
       {tradeOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#0e0717]/75 backdrop-blur-sm sm:items-center sm:p-6">
-          <section className="w-full max-w-md rounded-t-[30px] border border-white/10 bg-[#211230] p-6 shadow-2xl sm:rounded-[30px]">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0e0717]/75 p-3 backdrop-blur-sm sm:grid sm:place-items-center sm:p-6">
+          <section className="mx-auto w-full max-w-md rounded-[30px] border border-white/10 bg-[#211230] p-6 shadow-2xl">
             <div className="flex items-start justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">{selected.category} · signal-priced practice market</p><h2 className="font-display mt-1 text-2xl font-black">Trade {selected.ticker}</h2></div><button type="button" onClick={() => setTradeOpen(false)} aria-label="Close trade sheet" className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1]"><X size={18} /></button></div>
             <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1"><img src={selected.image} alt={selected.name} className="h-full w-full object-contain" /></div><div><p className="font-bold">{selected.name}</p><p className="text-xs text-[#9b8ba8]">{selected.signals.socialFollowersMillions}M followers · {selected.signals.hashtagViewsBillions}B hashtag views</p></div></div>
+            <MarketDetailPanel market={selected} />
             <div className="mt-5"><TradeControls key={selected.ticker} ticker={selected.ticker} price={selected.price} onTradeComplete={() => setTradeOpen(false)} /></div>
             <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">Prices use a reproducible fame-signal model and are for practice trading only.</p>
           </section>
