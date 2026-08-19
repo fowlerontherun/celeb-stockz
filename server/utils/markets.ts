@@ -41,7 +41,7 @@ const originalMarkets: CelebrityMarket[] = [
   { name: "Cristiano Ronaldo", ticker: "CR7", category: "Sport", image: commonsImage("Cristiano Ronaldo 2018.jpg"), change: 7.8, birthYear: 1985, nationality: "Portuguese", signals: { socialFollowersMillions: 935, hashtagViewsBillions: 95.2, trendScore: 89, monthlySearchesMillions: 15.1, newsStories: 740 } },
   { name: "Jude Bellingham", ticker: "BELLINGHAM", category: "Sport", image: commonsImage("Jude Bellingham 2023.jpg"), change: 14.2, birthYear: 2003, nationality: "British", signals: { socialFollowersMillions: 37, hashtagViewsBillions: 10.1, trendScore: 96, monthlySearchesMillions: 10.8, newsStories: 790 } },
   { name: "Lewis Hamilton", ticker: "HAMILTON", category: "Sport", image: commonsImage("Lewis Hamilton 2016 Malaysia 2.jpg"), change: -1.7, birthYear: 1985, nationality: "British", signals: { socialFollowersMillions: 75, hashtagViewsBillions: 16.9, trendScore: 81, monthlySearchesMillions: 6.7, newsStories: 510 } },
-  { name: "Bukayo Saka", ticker: "SAKA", category: "Sport", image: commonsImage("Bukayo Saka 2021.jpg"), change: 13.1, birthYear: 2001, nationality: "British", signals: { socialFollowersMillions: 18, hashtagViewsBillions: 6.7, trendScore: 94, monthlySearchesMillions: 6.2, newsStories: 680 } },
+  { name: "Bukayo Saka", ticker: "SAKA", category: "Sport", image: commonsImage("Bukayo Saka 2021.jpg"), change: 13.1, birthYear: 2001, nationality: "British", signals: { socialFollowersMillions: 18, hashtagViewsBillions: 6.2, trendScore: 94, monthlySearchesMillions: 6.2, newsStories: 680 } },
   { name: "Emma Raducanu", ticker: "RADUCANU", category: "Sport", image: commonsImage("Emma Raducanu 2021.jpg"), change: 6.6, birthYear: 2002, nationality: "British", signals: { socialFollowersMillions: 3.1, hashtagViewsBillions: 3.9, trendScore: 84, monthlySearchesMillions: 4.5, newsStories: 310 } },
   { name: "Mo Farah", ticker: "MOFARAH", category: "Sport", image: commonsImage("Mo Farah 2016.jpg"), change: 2.9, birthYear: 1983, nationality: "British", signals: { socialFollowersMillions: 1.7, hashtagViewsBillions: 1.8, trendScore: 71, monthlySearchesMillions: 2.2, newsStories: 190 } },
   { name: "Daniel Kaluuya", ticker: "KALUUYA", category: "Film", image: commonsImage("Daniel Kaluuya by Gage Skidmore.jpg"), change: 4.1, birthYear: 1989, nationality: "British", signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 1.7, trendScore: 74, monthlySearchesMillions: 2.4, newsStories: 260 } },
@@ -69,10 +69,17 @@ const originalMarkets: CelebrityMarket[] = [
   { name: "James Acaster", ticker: "JACASTER", category: "Comedy", image: "https://ui-avatars.com/api/?name=James+Acaster&background=2a1740&color=fff8f2&bold=true&size=512", change: 5.8, birthYear: 1985, nationality: "British", signals: { socialFollowersMillions: 1.1, hashtagViewsBillions: 3.4, trendScore: 80, monthlySearchesMillions: 2.5, newsStories: 170 } },
 ];
 
+function profileImage(ticker: string) {
+  return `/api/celebrity-images/${encodeURIComponent(ticker)}`;
+}
+
 export const celebrityMarkets: CelebrityMarket[] = [
   ...originalMarkets,
   ...additionalCelebrityMarkets,
-];
+].map((market) => ({
+  ...market,
+  image: profileImage(market.ticker),
+}));
 
 export function calculateMarketPrice(
   signals: CelebrityMarket["signals"],
