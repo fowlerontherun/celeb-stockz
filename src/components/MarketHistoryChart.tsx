@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Clock3, LoaderCircle } from "lucide-react";
 import { PriceChart } from "@/components/PriceChart";
 
@@ -18,40 +18,57 @@ export function MarketHistoryChart({
   price: number;
   change: number;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const [history, setHistory] = useState<HistoryPoint[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    let isMounted = true;
+    const container = containerRef.current;
+    if (!container || isVisible) return;
 
-    const loadHistory = async () => {
-      try {
-        const response = await fetch(`/api/markets/${ticker}/history`, {
-          credentials: "include",
-        });
-
-        if (!response.ok) {
-          return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
         }
+      },
+      { rootMargin: "200px" },
+    );
 
-        const data = (await response.json()) as { history: HistoryPoint[] };
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [isVisible]);
 
-        if (isMounted) {
+  useEffect(() => {
+    if (!isVisible) return;
+
+    let isMounted = true;
+    setIsLoading(true);
+
+    void fetch(`/api/markets/${ticker}/history`, {
+      credentials: "include",
+    })
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json() as Promise<{ history: HistoryPoint[] }>;
+      })
+      .then((data) => {
+        if (isMounted && data) {
           setHistory(data.history);
         }
-      } finally {
+      })
+      .finally(() => {
         if (isMounted) {
           setIsLoading(false);
         }
-      }
-    };
-
-    void loadHistory();
+      });
 
     return () => {
       isMounted = false;
     };
-  }, [ticker]);
+  }, [isVisible, ticker]);
 
   const latestSnapshot = history.at(-1)?.capturedAt;
   const isStale = useMemo(
@@ -64,13 +81,20 @@ export function MarketHistoryChart({
   );
 
   return (
-    <div className="relative">
-      <PriceChart
-        ticker={`history-${ticker}`}
-        price={price}
-        change={change}
-        history={history}
-      />
+    <div ref={containerRef} className="relative">
+      {isVisible ? (
+        <PriceChart
+          ticker={`history-${ticker}`}
+          price={price}
+          change={change}
+          history={history}
+        />
+      ) : (
+        <div className="grid h-16 w-full place-items-center rounded-lg border border-dashed border-white/10 text-[10px] font-bold text-[#9f90ac]">
+          Chart loads when visible
+        </div>
+      )}
+
       {isLoading && (
         <LoaderCircle
           size={13}
@@ -78,7 +102,8 @@ export function MarketHistoryChart({
           aria-label="Loading saved price history"
         />
       )}
-      {!isLoading && isStale && (
+
+      {!isLoading && isVisible && isStale && (
         <span className="absolute left-1 top-1 inline-flex items-center gap-1 rounded-md bg-[#ffd17b]/15 px-1.5 py-1 text-[9px] font-black text-[#ffd17b]">
           <Clock3 size={10} />
           STALE
