@@ -1,6 +1,7 @@
 import { useEffect, useState, type ComponentType } from "react";
 import {
   Bell,
+  BookOpenText,
   ChartNoAxesCombined,
   Home,
   LayoutGrid,
@@ -11,21 +12,15 @@ import {
   Wallet,
   X,
 } from "lucide-react";
-import {
-  ClubsPanel,
-  WatchlistPanel,
-  type Celebrity,
-} from "@/components/ExperiencePanels";
-import {
-  CategoryMarkets,
-  type CategorizedCelebrity,
-} from "@/components/CategoryMarkets";
+import { ClubsPanel, WatchlistPanel, type Celebrity } from "@/components/ExperiencePanels";
+import { CategoryMarkets, type CategorizedCelebrity } from "@/components/CategoryMarkets";
 import { LivePortfolio } from "@/components/LivePortfolio";
 import { LiveRankings } from "@/components/LiveRankings";
 import { TopMovers } from "@/components/TopMovers";
 import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { OnboardingRecap } from "@/components/OnboardingRecap";
+import { PracticeTools } from "@/components/PracticeTools";
 import { showError } from "@/utils/toast";
 
 type CelebrityMarket = CategorizedCelebrity & {
@@ -39,66 +34,15 @@ type CelebrityMarket = CategorizedCelebrity & {
 };
 
 const fallbackMarkets: CelebrityMarket[] = [
-  {
-    name: "Taylor Swift",
-    ticker: "TSWIFT",
-    category: "Music",
-    price: 108.15,
-    change: 12.6,
-    image:
-      "https://commons.wikimedia.org/wiki/Special:FilePath/Taylor%20Swift%20at%20the%202023%20MTV%20Video%20Music%20Awards%20(3).png?width=900",
-    birthYear: 1989,
-    nationality: "American",
-    signals: { socialFollowersMillions: 282, hashtagViewsBillions: 38.4, trendScore: 94, monthlySearchesMillions: 18.6, newsStories: 860 },
-  },
-  {
-    name: "Adele",
-    ticker: "ADELE",
-    category: "Music",
-    price: 45.76,
-    change: 8.4,
-    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Adele%202016.jpg?width=900",
-    birthYear: 1988,
-    nationality: "British",
-    signals: { socialFollowersMillions: 58, hashtagViewsBillions: 12.8, trendScore: 85, monthlySearchesMillions: 9.2, newsStories: 430 },
-  },
-  {
-    name: "Jude Bellingham",
-    ticker: "BELLINGHAM",
-    category: "Sport",
-    price: 65.84,
-    change: 14.2,
-    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Jude%20Bellingham%202023.jpg?width=900",
-    birthYear: 2003,
-    nationality: "British",
-    signals: { socialFollowersMillions: 37, hashtagViewsBillions: 10.1, trendScore: 96, monthlySearchesMillions: 10.8, newsStories: 790 },
-  },
-  {
-    name: "Daniel Kaluuya",
-    ticker: "KALUUYA",
-    category: "Film",
-    price: 45.89,
-    change: 4.1,
-    image: "https://commons.wikimedia.org/wiki/Special:FilePath/Daniel%20Kaluuya%20by%20Gage%20Skidmore.jpg?width=900",
-    birthYear: 1989,
-    nationality: "British",
-    signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 1.7, trendScore: 74, monthlySearchesMillions: 2.4, newsStories: 260 },
-  },
+  { name: "Taylor Swift", ticker: "TSWIFT", category: "Music", price: 108.15, change: 12.6, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Taylor%20Swift%20at%20the%202023%20MTV%20Video%20Music%20Awards%20(3).png?width=900", birthYear: 1989, nationality: "American", signals: { socialFollowersMillions: 282, hashtagViewsBillions: 38.4, trendScore: 94, monthlySearchesMillions: 18.6, newsStories: 860 } },
+  { name: "Adele", ticker: "ADELE", category: "Music", price: 45.76, change: 8.4, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Adele%202016.jpg?width=900", birthYear: 1988, nationality: "British", signals: { socialFollowersMillions: 58, hashtagViewsBillions: 12.8, trendScore: 85, monthlySearchesMillions: 9.2, newsStories: 430 } },
+  { name: "Jude Bellingham", ticker: "BELLINGHAM", category: "Sport", price: 65.84, change: 14.2, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Jude%20Bellingham%202023.jpg?width=900", birthYear: 2003, nationality: "British", signals: { socialFollowersMillions: 37, hashtagViewsBillions: 10.1, trendScore: 96, monthlySearchesMillions: 10.8, newsStories: 790 } },
+  { name: "Daniel Kaluuya", ticker: "KALUUYA", category: "Film", price: 45.89, change: 4.1, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Daniel%20Kaluuya%20by%20Gage%20Skidmore.jpg?width=900", birthYear: 1989, nationality: "British", signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 1.7, trendScore: 74, monthlySearchesMillions: 2.4, newsStories: 260 } },
 ];
 
-type Page =
-  | "Home"
-  | "Markets"
-  | "Movers"
-  | "Watchlist"
-  | "Portfolio"
-  | "Rankings"
-  | "Clubs";
+type Page = "Home" | "Markets" | "Movers" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs" | "Practice";
 
-const navItems: Array<{
-  page: Page;
-  icon: ComponentType<{ size?: number; className?: string }>;
-}> = [
+const navItems: Array<{ page: Page; icon: ComponentType<{ size?: number; className?: string }> }> = [
   { page: "Home", icon: Home },
   { page: "Markets", icon: LayoutGrid },
   { page: "Movers", icon: TrendingUp },
@@ -106,6 +50,7 @@ const navItems: Array<{
   { page: "Portfolio", icon: Wallet },
   { page: "Rankings", icon: Trophy },
   { page: "Clubs", icon: Users },
+  { page: "Practice", icon: BookOpenText },
 ];
 
 export default function Index() {
@@ -119,17 +64,11 @@ export default function Index() {
     const loadMarkets = async () => {
       const response = await fetch("/api/markets", { credentials: "include" });
       if (!response.ok) throw new Error("Could not refresh celebrity market signals.");
-
       const data = (await response.json()) as { markets: CelebrityMarket[] };
       setMarkets(data.markets);
       setSelected((current) => data.markets.find((market) => market.ticker === current.ticker) ?? data.markets[0]);
-      setWatchlist((current) =>
-        current
-          .map((item) => data.markets.find((market) => market.ticker === item.ticker))
-          .filter((item): item is CelebrityMarket => Boolean(item)),
-      );
+      setWatchlist((current) => current.map((item) => data.markets.find((market) => market.ticker === item.ticker)).filter((item): item is CelebrityMarket => Boolean(item)));
     };
-
     void loadMarkets().catch((error: Error) => showError(error.message));
     window.addEventListener("markets:updated", loadMarkets);
     return () => window.removeEventListener("markets:updated", loadMarkets);
@@ -143,16 +82,11 @@ export default function Index() {
   const content =
     page === "Markets" ? <CategoryMarkets markets={markets} onTrade={openTrade} /> :
     page === "Movers" ? <TopMovers markets={markets} onTrade={openTrade} /> :
-    page === "Watchlist" ? (
-      <WatchlistPanel
-        celebs={watchlist}
-        onTrade={openTrade}
-        onRemove={(ticker) => setWatchlist((current) => current.filter((market) => market.ticker !== ticker))}
-      />
-    ) :
+    page === "Watchlist" ? <WatchlistPanel celebs={watchlist} onTrade={openTrade} onRemove={(ticker) => setWatchlist((current) => current.filter((market) => market.ticker !== ticker))} /> :
     page === "Portfolio" ? <LivePortfolio markets={markets} onTrade={openTrade} /> :
     page === "Rankings" ? <LiveRankings /> :
-    page === "Clubs" ? <ClubsPanel /> : (
+    page === "Clubs" ? <ClubsPanel /> :
+    page === "Practice" ? <PracticeTools markets={markets} /> : (
       <div className="animate-in fade-in duration-300">
         <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Signal-priced practice markets</p>
         <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
@@ -167,11 +101,7 @@ export default function Index() {
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-white/10 bg-[#170d29] px-5 py-7 lg:flex">
           <div className="flex items-center gap-2 px-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={20} /></div><span className="font-display text-xl font-black">Celeb<span className="text-[#ff7282]">Stockz</span></span></div>
-          <div className="mt-11 space-y-2">
-            {navItems.map(({ page: itemPage, icon: Icon }) => (
-              <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${page === itemPage ? "bg-[#7c3aed] text-white shadow-lg" : "text-[#b9acc9] hover:bg-white/5 hover:text-white"}`}><Icon size={18} />{itemPage}</button>
-            ))}
-          </div>
+          <div className="mt-11 space-y-2">{navItems.map(({ page: itemPage, icon: Icon }) => <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${page === itemPage ? "bg-[#7c3aed] text-white shadow-lg" : "text-[#b9acc9] hover:bg-white/5 hover:text-white"}`}><Icon size={18} />{itemPage}</button>)}</div>
           <p className="mt-auto px-2 text-[10px] leading-4 text-[#7c6d8e]">Synthetic celebrity assets for entertainment only. Not investment advice.</p>
         </aside>
 
@@ -185,9 +115,7 @@ export default function Index() {
       </div>
 
       <nav className="fixed bottom-0 left-0 right-0 z-20 flex justify-around border-t border-white/10 bg-[#1a0e2a]/95 px-2 py-3 backdrop-blur lg:hidden">
-        {navItems.slice(0, 5).map(({ page: itemPage, icon: Icon }) => (
-          <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex flex-col items-center gap-1 text-[10px] font-bold ${page === itemPage ? "text-[#c99bff]" : "text-[#897b95]"}`}><Icon size={19} />{itemPage}</button>
-        ))}
+        {navItems.slice(0, 5).map(({ page: itemPage, icon: Icon }) => <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex flex-col items-center gap-1 text-[10px] font-bold ${page === itemPage ? "text-[#c99bff]" : "text-[#897b95]"}`}><Icon size={19} />{itemPage}</button>)}
       </nav>
 
       {tradeOpen && (
