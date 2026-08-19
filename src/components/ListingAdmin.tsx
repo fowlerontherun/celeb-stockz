@@ -31,6 +31,11 @@ type AutofillResult = {
   };
 };
 
+type ApiError = {
+  statusMessage?: string;
+  message?: string;
+};
+
 export function ListingAdmin() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedTicker, setSelectedTicker] = useState("");
@@ -94,13 +99,13 @@ export function ListingAdmin() {
           credentials: "include",
         },
       );
-      const data = (await response.json()) as AutofillResult & {
-        statusMessage?: string;
-      };
+      const data = (await response.json()) as AutofillResult & ApiError;
 
       if (!response.ok) {
         throw new Error(
-          data.statusMessage ?? "Could not look up public listing metadata.",
+          data.statusMessage ??
+            data.message ??
+            "Could not look up public listing metadata.",
         );
       }
 

@@ -16,7 +16,7 @@ import { clearAdditionalSignalCache } from "../../../../utils/additional-price-s
 type WikidataClaim = {
   mainsnak?: {
     datavalue?: {
-      value?: string;
+      value?: unknown;
     };
   };
 };
@@ -34,9 +34,8 @@ type WikidataEntitiesResponse = {
 };
 
 function getClaimValue(entity: WikidataEntity, property: string) {
-  return (
-    entity.claims?.[property]?.[0]?.mainsnak?.datavalue?.value?.trim() ?? ""
-  );
+  const value = entity.claims?.[property]?.[0]?.mainsnak?.datavalue?.value;
+  return typeof value === "string" ? value.trim() : "";
 }
 
 function isWebsiteUrl(value: string) {
@@ -48,54 +47,47 @@ function isWebsiteUrl(value: string) {
   }
 }
 
-async function findWikidataId(name: string) {
-  const wikipediaUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
-    name.replaceAll(" ", "_"),
-  )}`;
-
+async function fetchPublicJson<T>(url: URL | string): Promise<T | null> {
   try {
-    const response = await fetch(wikipediaUrl, {
+    const response = await fetch(url, {
       headers: {
         accept: "application/json",
         "user-agent": "CelebStockz listing metadata lookup",
       },
-    });
-
-    if (response.ok) {
-      const summary = (await response.json()) as { wikibase_item?: string };
-
-      if (summary.wikibase_item) {
-        return summary.wikibase_item;
-      }
-    }
-  } catch {
-    // Use Wikidata search when the Wikipedia summary is unavailable.
-  }
-
-  const searchUrl = new URL("https://www.wikidata.org/w/api.php");
-  searchUrl.searchParams.set("action", "wbsearchentities");
-  searchUrl.searchParams.set("format", "json");
-  searchUrl.searchParams.set("language", "en");
-  searchUrl.searchParams.set("limit", "1");
-  searchUrl.searchParams.set("search", name);
-
-  try {
-    const response = await fetch(searchUrl, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "CelebStockz listing metadata lookup",
-      },
+      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
       return null;
     }
 
-    const result = (await response.json()) as WikidataSearchResponse;
-    return result.search?.[0]?.id ?? null;
+    return (await response.json()) as T;
   } catch {
     return null;
   }
+}
+
+async function findWikidataId(name: string) {
+  const wikipediaUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
+    name.replaceAll(" ", "_"),
+  )}`;
+  const summary = await fetchPublicJson<{ wikibase_item?: string }>(
+    wikipediaUrl,
+  );
+
+  if (summary?.wikibase_item) {
+    return summary.wikibase_item;
+  }
+
+  const searchUrl = new URL("https://www.wikidata.org/w/api.php");
+  searchUrl.searchParams.set("action", "wbsearchentities");
+  searchUrl.searchParams.set("format", "json");
+  searchUrl.searchParams.set("language", "en");
+  searchUrl.searchParams.set("limit", "5");
+  searchUrl.searchParams.set("search", name);
+
+  const result = await fetchPublicJson<WikidataSearchResponse>(searchUrl);
+  return result?.search?.find((item) => item.id?.startsWith("Q"))?.id ?? null;
 }
 
 async function getWikidataEntity(id: string) {
@@ -105,23 +97,8 @@ async function getWikidataEntity(id: string) {
   entityUrl.searchParams.set("ids", id);
   entityUrl.searchParams.set("props", "claims");
 
-  try {
-    const response = await fetch(entityUrl, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "CelebStockz listing metadata lookup",
-      },
-    });
-
-    if (!response.ok) {
-      return null;
-    }
-
-    const payload = (await response.json()) as WikidataEntitiesResponse;
-    return payload.entities?.[id] ?? null;
-  } catch {
-    return null;
-  }
+  const payload = await fetchPublicJson<WikidataEntitiesResponse>(entityUrl);
+  return payload?.entities?.[id] ?? null;
 }
 
 export default defineHandler(async (event) => {
@@ -150,8 +127,9 @@ export default defineHandler(async (event) => {
 
   if (!wikidataId) {
     throw createError({
-      statusCode: 404,
-      statusMessage: "No public Wikidata record could be found for this listing.",
+      statusCode: 502,
+      statusMessage:
+        "Public profile lookup is currently unavailable. Please try again shortly.",
     });
   }
 
@@ -160,7 +138,8 @@ export default defineHandler(async (event) => {
   if (!entity) {
     throw createError({
       statusCode: 502,
-      statusMessage: "Public profile metadata is temporarily unavailable.",
+      statusMessage:
+        "Public profile details are temporarily unavailable. Please try again shortly.",
     });
   }
 
@@ -191,7 +170,7 @@ export default defineHandler(async (event) => {
     throw createError({
       statusCode: 404,
       statusMessage:
-        "No official website or YouTube channel is listed in this public profile. You can add verified details manually.",
+        "No official website or YouTube channel was listed in this public profile.",
     });
   }
 
