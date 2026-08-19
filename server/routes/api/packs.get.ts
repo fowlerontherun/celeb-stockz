@@ -8,6 +8,7 @@ type PackRow = {
   price_gbp: string;
   available_at: string | null;
   is_published: boolean;
+  is_announced: boolean;
   member_count: string;
   unlocked: boolean;
 };
@@ -26,6 +27,7 @@ export default defineHandler(async (event) => {
       packs.price_gbp,
       packs.available_at,
       packs.is_published,
+      packs.is_announced,
       COUNT(members.ticker)::text AS member_count,
       EXISTS(
         SELECT 1 FROM user_pack_unlocks AS unlocks
@@ -38,17 +40,24 @@ export default defineHandler(async (event) => {
   `;
 
   return {
-    packs: packs.map((pack) => ({
-      id: Number(pack.id),
-      name: pack.name,
-      priceGbp: Number(pack.price_gbp),
-      availableAt: pack.available_at,
-      isPublished: pack.is_published,
-      memberCount: Number(pack.member_count),
-      unlocked: pack.unlocked,
-      isAvailable:
+    packs: packs.map((pack) => {
+      const isAvailable =
         pack.is_published &&
-        (!pack.available_at || new Date(pack.available_at).getTime() <= Date.now()),
-    })),
+        (!pack.available_at || new Date(pack.available_at).getTime() <= Date.now());
+      const isAnnounced = pack.is_announced || pack.is_published || pack.unlocked;
+
+      return {
+        id: Number(pack.id),
+        name: isAnnounced ? pack.name : `Classified Pack #${pack.id}`,
+        rawName: isAnnounced ? pack.name : null,
+        priceGbp: Number(pack.price_gbp),
+        availableAt: pack.available_at,
+        isPublished: pack.is_published,
+        isAnnounced: pack.is_announced,
+        memberCount: Number(pack.member_count),
+        unlocked: pack.unlocked,
+        isAvailable,
+      };
+    }),
   };
 });

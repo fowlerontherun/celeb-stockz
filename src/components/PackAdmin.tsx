@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CalendarDays, LoaderCircle, PackageOpen, Save } from "lucide-react";
+import { CalendarDays, Eye, EyeOff, LoaderCircle, PackageOpen, Save } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 type Pack = {
@@ -8,6 +8,7 @@ type Pack = {
   price_gbp: string | number;
   available_at: string | null;
   is_published: boolean;
+  is_announced: boolean;
   member_count: number;
 };
 
@@ -36,7 +37,12 @@ export function PackAdmin() {
           throw new Error(data.statusMessage ?? "Could not load celebrity packs.");
         }
 
-        setPacks(data.packs);
+        setPacks(
+          data.packs.map((p) => ({
+            ...p,
+            is_announced: Boolean(p.is_announced),
+          }))
+        );
       })
       .catch((error: Error) => showError(error.message))
       .finally(() => setIsLoading(false));
@@ -69,12 +75,14 @@ export function PackAdmin() {
           priceGbp,
           availableAt: pack.available_at,
           isPublished: pack.is_published,
+          isAnnounced: pack.is_announced,
         }),
       });
       const data = (await response.json()) as {
         price_gbp?: string;
         available_at?: string | null;
         is_published?: boolean;
+        is_announced?: boolean;
         statusMessage?: string;
       };
 
@@ -86,6 +94,7 @@ export function PackAdmin() {
         price_gbp: data.price_gbp ?? priceGbp,
         available_at: data.available_at ?? pack.available_at,
         is_published: data.is_published ?? pack.is_published,
+        is_announced: data.is_announced ?? pack.is_announced,
       });
       showSuccess(`${pack.name} has been updated.`);
     } catch (error) {
@@ -114,9 +123,7 @@ export function PackAdmin() {
         Celebrity pack availability
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-[#c4b4d0]">
-        Every pack starts at £1.99 and remains unavailable until you publish it
-        and its release time has arrived. Player unlocks are ready for a future
-        payment connection.
+        Toggle whether a pack name is announced to users or masked as a classified mystery pack until you are ready to reveal its theme and members.
       </p>
 
       <div className="mt-6 grid gap-4 xl:grid-cols-2">
@@ -141,15 +148,26 @@ export function PackAdmin() {
                     {pack.name}
                   </h3>
                 </div>
-                <span
-                  className={`rounded-lg px-2 py-1 text-[10px] font-black ${
-                    isLive
-                      ? "bg-[#183b33] text-[#62e7b6]"
-                      : "bg-white/[.06] text-[#a99ab7]"
-                  }`}
-                >
-                  {isLive ? "LIVE" : "HIDDEN"}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                      pack.is_announced
+                        ? "bg-[#c99bff]/20 text-[#c99bff]"
+                        : "bg-white/5 text-[#8a7b97]"
+                    }`}
+                  >
+                    {pack.is_announced ? "ANNOUNCED" : "CLASSIFIED"}
+                  </span>
+                  <span
+                    className={`rounded-lg px-2 py-1 text-[10px] font-black ${
+                      isLive
+                        ? "bg-[#183b33] text-[#62e7b6]"
+                        : "bg-white/[.06] text-[#a99ab7]"
+                    }`}
+                  >
+                    {isLive ? "LIVE" : "UNPUBLISHED"}
+                  </span>
+                </div>
               </div>
 
               <div className="mt-5 grid gap-3 sm:grid-cols-[7rem_1fr]">
@@ -198,26 +216,46 @@ export function PackAdmin() {
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <button
-                  type="button"
-                  onClick={() =>
-                    updatePack(pack.id, {
-                      is_published: !pack.is_published,
-                    })
-                  }
-                  className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
-                    pack.is_published
-                      ? "bg-[#183b33] text-[#62e7b6]"
-                      : "border border-white/10 bg-white/[.04] text-[#c4b4d0]"
-                  }`}
-                >
-                  {pack.is_published ? "Published" : "Not published"}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updatePack(pack.id, {
+                        is_announced: !pack.is_announced,
+                      })
+                    }
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-xs font-black transition ${
+                      pack.is_announced
+                        ? "bg-[#7c3aed] text-white"
+                        : "border border-white/10 bg-white/[.04] text-[#c4b4d0]"
+                    }`}
+                  >
+                    {pack.is_announced ? <Eye size={14} /> : <EyeOff size={14} />}
+                    {pack.is_announced ? "Announced" : "Hidden Name"}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updatePack(pack.id, {
+                        is_published: !pack.is_published,
+                      })
+                    }
+                    className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                      pack.is_published
+                        ? "bg-[#183b33] text-[#62e7b6]"
+                        : "border border-white/10 bg-white/[.04] text-[#c4b4d0]"
+                    }`}
+                  >
+                    {pack.is_published ? "Published" : "Draft"}
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   disabled={saving}
                   onClick={() => void savePack(pack)}
-                  className="inline-flex items-center gap-2 rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#9361f5] disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#ffd17b] px-4 py-2.5 text-xs font-black text-[#3d2a00] transition hover:bg-[#ffe099] disabled:opacity-50"
                 >
                   {saving ? (
                     <LoaderCircle size={15} className="animate-spin" />

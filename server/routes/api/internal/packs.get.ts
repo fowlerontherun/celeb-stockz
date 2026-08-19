@@ -20,6 +20,7 @@ export default defineHandler(async (event) => {
       packs.price_gbp,
       packs.available_at,
       packs.is_published,
+      packs.is_announced,
       COUNT(members.ticker)::int AS member_count
     FROM celebrity_packs AS packs
     LEFT JOIN celebrity_pack_members AS members ON members.pack_id = packs.id

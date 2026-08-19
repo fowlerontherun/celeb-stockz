@@ -13,6 +13,7 @@ type PackUpdate = {
   priceGbp?: number;
   availableAt?: string | null;
   isPublished?: boolean;
+  isAnnounced?: boolean;
 };
 
 export default defineHandler(async (event) => {
@@ -28,15 +29,16 @@ export default defineHandler(async (event) => {
 
   const price = Number(body?.priceGbp);
   const availableAt = body?.availableAt ? new Date(body.availableAt) : null;
+  const isPublished = typeof body?.isPublished === "boolean" ? body.isPublished : false;
+  const isAnnounced = typeof body?.isAnnounced === "boolean" ? body.isAnnounced : false;
 
   if (
     !Number.isInteger(packId) ||
     !Number.isFinite(price) ||
     price < 0 ||
-    typeof body?.isPublished !== "boolean" ||
     (availableAt && !Number.isFinite(availableAt.getTime()))
   ) {
-    throw createError({ statusCode: 400, statusMessage: "Enter a valid price, availability date, and publication status." });
+    throw createError({ statusCode: 400, statusMessage: "Enter a valid price and availability date." });
   }
 
   const updated = await sql`
@@ -44,10 +46,11 @@ export default defineHandler(async (event) => {
     SET
       price_gbp = ${price},
       available_at = ${availableAt?.toISOString() ?? null},
-      is_published = ${body.isPublished},
+      is_published = ${isPublished},
+      is_announced = ${isAnnounced},
       updated_at = now()
     WHERE id = ${packId}
-    RETURNING id, name, price_gbp, available_at, is_published
+    RETURNING id, name, price_gbp, available_at, is_published, is_announced
   `;
 
   if (!updated[0]) {
