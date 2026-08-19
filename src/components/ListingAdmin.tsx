@@ -37,6 +37,18 @@ type ApiError = {
   message?: string;
 };
 
+async function readApiPayload(response: Response): Promise<ApiError> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  if (!contentType.includes("application/json")) {
+    return {
+      statusMessage: `The server returned HTTP ${response.status}. Please try again.`,
+    };
+  }
+
+  return (await response.json()) as ApiError;
+}
+
 export function ListingAdmin() {
   const [listings, setListings] = useState<Listing[]>([]);
   const [selectedTicker, setSelectedTicker] = useState("");
@@ -48,7 +60,7 @@ export function ListingAdmin() {
   useEffect(() => {
     void fetch("/api/internal/listings", { credentials: "include" })
       .then(async (response) => {
-        const data = (await response.json()) as {
+        const data = (await readApiPayload(response)) as {
           listings?: Listing[];
           statusMessage?: string;
         };
@@ -82,7 +94,9 @@ export function ListingAdmin() {
 
     setListings((current) =>
       current.map((listing) =>
-        listing.ticker === selected.ticker ? { ...listing, ...changes } : listing,
+        listing.ticker === selected.ticker
+          ? { ...listing, ...changes }
+          : listing,
       ),
     );
   };
@@ -100,7 +114,7 @@ export function ListingAdmin() {
           credentials: "include",
         },
       );
-      const data = (await response.json()) as AutofillResult & ApiError;
+      const data = (await readApiPayload(response)) as AutofillResult & ApiError;
 
       if (!response.ok) {
         throw new Error(
@@ -121,10 +135,12 @@ export function ListingAdmin() {
       ].filter(Boolean);
 
       if (added.length) {
-        showSuccess(`Added ${added.join(" and ")} from public profile metadata.`);
+        showSuccess(
+          `Added ${added.join(" and ")} from public profile metadata.`,
+        );
       } else if (!data.lookupAvailable) {
         showError(
-          "The public profile source is temporarily unavailable. Please try again shortly.",
+          "The public profile source is temporarily unavailable. Try again later or add verified details manually.",
         );
       } else {
         showError(
@@ -158,7 +174,7 @@ export function ListingAdmin() {
           youtubeChannelId: selected.youtubeChannelId,
         }),
       });
-      const data = (await response.json()) as { statusMessage?: string };
+      const data = await readApiPayload(response);
 
       if (!response.ok) {
         throw new Error(data.statusMessage ?? "Could not save this listing.");
@@ -166,7 +182,9 @@ export function ListingAdmin() {
 
       showSuccess(`${selected.name}'s listing has been updated.`);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Could not save this listing.");
+      showError(
+        error instanceof Error ? error.message : "Could not save this listing.",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -187,15 +205,21 @@ export function ListingAdmin() {
       <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
         <ToggleLeft size={16} /> Listing administration
       </p>
-      <h2 className="font-display mt-2 text-2xl font-black">Manage listed people</h2>
+      <h2 className="font-display mt-2 text-2xl font-black">
+        Manage listed people
+      </h2>
       <p className="mt-2 text-sm leading-6 text-[#c4b4d0]">
-        Pause one market without affecting the rest, maintain official links, and connect YouTube channel statistics.
+        Pause one market without affecting the rest, maintain official links,
+        and connect YouTube channel statistics.
       </p>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
         <div>
           <label className="relative block">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#c99bff]" />
+            <Search
+              size={16}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#c99bff]"
+            />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
@@ -216,7 +240,9 @@ export function ListingAdmin() {
                 }`}
               >
                 <span>
-                  <span className="block text-sm font-black">{listing.name}</span>
+                  <span className="block text-sm font-black">
+                    {listing.name}
+                  </span>
                   <span className="block text-[10px] font-bold opacity-70">
                     ${listing.ticker} · {listing.category}
                   </span>
@@ -234,7 +260,9 @@ export function ListingAdmin() {
         <div className="rounded-2xl border border-white/10 bg-[#160c25] p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p className="font-display text-2xl font-black">{selected.name}</p>
+              <p className="font-display text-2xl font-black">
+                {selected.name}
+              </p>
               <p className="mt-1 text-xs font-bold text-[#c99bff]">
                 ${selected.ticker} · {selected.category}
               </p>
@@ -270,7 +298,8 @@ export function ListingAdmin() {
               : "Auto-fill website & YouTube"}
           </button>
           <p className="mt-2 text-xs leading-5 text-[#9f90ac]">
-            Uses public Wikidata records and never overwrites existing listing details.
+            Uses public Wikidata records and never overwrites existing listing
+            details.
           </p>
 
           <label className="mt-5 block text-xs font-bold uppercase tracking-[.13em] text-[#b9a9c5]">
@@ -308,7 +337,8 @@ export function ListingAdmin() {
             />
           </label>
           <p className="mt-2 text-xs leading-5 text-[#9f90ac]">
-            Use the channel ID beginning with UC. Connected YouTube statistics remain capped in the practice score.
+            Use the channel ID beginning with UC. Connected YouTube statistics
+            remain capped in the practice score.
           </p>
 
           <button
