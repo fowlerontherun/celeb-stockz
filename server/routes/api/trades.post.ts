@@ -5,6 +5,7 @@ import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker, marketPrices } from "../../utils/markets";
 import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
 import { isTradingPaused } from "../../utils/trading-status";
+import { isListingTradingPaused } from "../../utils/listing-settings";
 
 type TradeRequest = {
   ticker?: string;
@@ -43,6 +44,13 @@ export default defineHandler(async (event) => {
     throw createError({
       statusCode: 400,
       statusMessage: "Choose an active market, valid trade side, and STKZ amount.",
+    });
+  }
+
+  if (await isListingTradingPaused(ticker)) {
+    throw createError({
+      statusCode: 423,
+      statusMessage: "Trading for this listing is currently paused for review.",
     });
   }
 

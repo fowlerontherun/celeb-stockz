@@ -4,6 +4,7 @@ import { sql } from "../../utils/db";
 import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker } from "../../utils/markets";
 import { isTradingPaused } from "../../utils/trading-status";
+import { isListingTradingPaused } from "../../utils/listing-settings";
 
 type OrderInput = {
   ticker?: string;
@@ -55,6 +56,13 @@ export default defineHandler(async (event) => {
       statusCode: 400,
       statusMessage:
         "Enter valid active-market order details and positive trigger prices.",
+    });
+  }
+
+  if (await isListingTradingPaused(ticker)) {
+    throw createError({
+      statusCode: 423,
+      statusMessage: "Trading for this listing is currently paused for review.",
     });
   }
 
