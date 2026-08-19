@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   LogOut,
+  PoundSterling,
   Settings,
   ShieldCheck,
   UserRound,
@@ -99,6 +100,13 @@ export function WalletBalance() {
               >
                 <ShieldCheck size={16} className="mr-2" />
                 Market control center
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => navigate("/live-stkz")}
+                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ffb2bc] focus:bg-[#ff7282]/15 focus:text-[#ffd3d8]"
+              >
+                <PoundSterling size={16} className="mr-2" />
+                Live STKZ preview
               </DropdownMenuItem>
             </>
           )}
