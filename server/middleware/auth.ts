@@ -2,18 +2,27 @@ import { defineHandler } from "nitro";
 import { createError, getRequestHeader, getRequestURL } from "nitro/h3";
 import { getSessionFromCookie } from "../utils/session";
 
-const PUBLIC_PREFIXES = [
-  "/api/auth/",
-  "/auth/",
-  "/api/markets",
-  "/api/movers",
-  "/api/internal/market-refresh",
-];
+const PUBLIC_PREFIXES = ["/api/auth/", "/auth/", "/api/internal/market-refresh"];
+
+function isPublicMarketRead(pathname: string, method: string) {
+  if (method !== "GET") {
+    return false;
+  }
+
+  return (
+    pathname === "/api/markets" ||
+    pathname.startsWith("/api/markets/") ||
+    pathname === "/api/movers"
+  );
+}
 
 export default defineHandler(async (event) => {
   const pathname = getRequestURL(event).pathname;
 
-  if (PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+  if (
+    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    isPublicMarketRead(pathname, event.method)
+  ) {
     return;
   }
 
