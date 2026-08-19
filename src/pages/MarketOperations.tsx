@@ -3,11 +3,13 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  PauseCircle,
+  PlayCircle,
   RefreshCw,
   ShieldCheck,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 type Source = {
   source_key: string;
@@ -29,6 +31,15 @@ type Refresh = {
 type Operations = {
   sources: Source[];
   recentRefreshes: Refresh[];
+  system: {
+    tradingPaused: boolean;
+    updatedAt: string | null;
+    apiConfiguration: {
+      youtube: boolean;
+      search: boolean;
+      marketRefreshSecret: boolean;
+    };
+  };
   metrics: {
     verifiedSnapshots: number;
     unavailableSnapshots: number;
@@ -61,6 +72,7 @@ function formatFreshness(minutes: number) {
 export default function MarketOperations() {
   const [data, setData] = useState<Operations | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdatingTrading, setIsUpdatingTrading] = useState(false);
 
   const loadOperations = useCallback(async () => {
     setIsLoading(true);
@@ -82,7 +94,9 @@ export default function MarketOperations() {
       setData(payload);
     } catch (error) {
       showError(
-        error instanceof Error ? error.message : "Could not load market operations.",
+        error instanceof Error
+          ? error.message
+          : "Could not load market operations.",
       );
     } finally {
       setIsLoading(false);
@@ -93,11 +107,77 @@ export default function MarketOperations() {
     void loadOperations();
   }, [loadOperations]);
 
+  const updateTradingStatus = async () => {
+    if (!data) return;
+
+    const nextPaused = !data.system.tradingPaused;
+    const action = nextPaused ? "pause" : "resume";
+
+    if (
+      !window.confirm(
+        `Are you sure you want to ${action} new practice trades for all users?`,
+      )
+    ) {
+      return;
+    }
+
+    setIsUpdatingTrading(true);
+
+    try {
+      const response = await fetch("/api/internal/trading-status", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ paused: nextPaused }),
+      });
+      const result = (await response.json()) as {
+        tradingPaused?: boolean;
+        updatedAt?: string;
+        statusMessage?: string;
+      };
+
+      if (!response.ok || typeof result.tradingPaused !== "boolean") {
+        throw new Error(
+          result.statusMessage ?? "Could not update trading availability.",
+        );
+      }
+
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              system: {
+                ...current.system,
+                tradingPaused: result.tradingPaused!,
+                updatedAt: result.updatedAt ?? current.system.updatedAt,
+              },
+            }
+          : current,
+      );
+      showSuccess(
+        result.tradingPaused
+          ? "New practice trades are now paused."
+          : "New practice trades are now live.",
+      );
+    } catch (error) {
+      showError(
+        error instanceof Error
+          ? error.message
+          : "Could not update trading availability.",
+      );
+    } finally {
+      setIsUpdatingTrading(false);
+    }
+  };
+
   const staleSourceCount = useMemo(
     () =>
       (data?.sources ?? []).filter((source) => {
         if (!source.last_success_at) return true;
-        return Date.now() - new Date(source.last_success_at).getTime() > 8 * 60 * 60 * 1000;
+        return (
+          Date.now() - new Date(source.last_success_at).getTime() >
+          8 * 60 * 60 * 1000
+        );
       }).length,
     [data],
   );
@@ -113,13 +193,37 @@ export default function MarketOperations() {
   if (!data) return null;
 
   const cards = [
-    ["Refresh success", data.metrics.latestRefreshSuccessRate === null ? "—" : `${data.metrics.latestRefreshSuccessRate}%`, "Latest approved cycle"],
-    ["Average freshness", formatFreshness(data.metrics.averageFreshnessMinutes), "Across latest verified market snapshots"],
-    ["Price stability", `${data.metrics.stableSnapshotRate.toFixed(1)}%`, "Verified snapshots within the movement cap"],
+    [
+      "Refresh success",
+      data.metrics.latestRefreshSuccessRate === null
+        ? "—"
+        : `${data.metrics.latestRefreshSuccessRate}%`,
+      "Latest approved cycle",
+    ],
+    [
+      "Average freshness",
+      formatFreshness(data.metrics.averageFreshnessMinutes),
+      "Across latest verified market snapshots",
+    ],
+    [
+      "Price stability",
+      `${data.metrics.stableSnapshotRate.toFixed(1)}%`,
+      "Verified snapshots within the movement cap",
+    ],
     ["Stale sources", String(staleSourceCount), "Older than eight hours"],
     ["Flagged movements", String(data.metrics.flaggedSnapshots), "Held for review"],
-    ["Completed trades", String(data.metrics.completedTrades), `${data.metrics.weeklyTrades} in the last 7 days`],
-    ["Open orders", String(data.metrics.openOrders), "Evaluated only after verified snapshots"],
+    [
+      "Completed trades",
+      String(data.metrics.completedTrades),
+      `${data.metrics.weeklyTrades} in the last 7 days`,
+    ],
+    ["Open orders", String(data.metrics.openOrders), "Evaluated after verified snapshots"],
+  ];
+
+  const providers = [
+    ["Official YouTube data", data.system.apiConfiguration.youtube],
+    ["Google search data", data.system.apiConfiguration.search],
+    ["Scheduled refresh secret", data.system.apiConfiguration.marketRefreshSecret],
   ];
 
   return (
@@ -137,11 +241,12 @@ export default function MarketOperations() {
               <ShieldCheck size={15} /> Restricted operations
             </p>
             <h1 className="font-display mt-2 text-3xl font-black sm:text-4xl">
-              Market quality monitor
+              Market control center
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
-              Reliability and data-quality signals for the STKZ practice market.
-              Source credentials and provider responses are never exposed here.
+              Monitor quality, control practice trading, and check whether
+              server-side provider connections are ready. Credentials are never
+              shown in the dashboard.
             </p>
           </div>
           <button
@@ -155,7 +260,98 @@ export default function MarketOperations() {
           </button>
         </div>
 
-        <section className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <section
+          className={`mt-8 rounded-[28px] border p-5 sm:flex sm:items-center sm:justify-between sm:p-7 ${
+            data.system.tradingPaused
+              ? "border-[#ff7282]/40 bg-[#391b35]"
+              : "border-[#62e7b6]/30 bg-[#15362f]"
+          }`}
+        >
+          <div className="flex gap-4">
+            <div
+              className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${
+                data.system.tradingPaused
+                  ? "bg-[#ff7282] text-[#401b2d]"
+                  : "bg-[#62e7b6] text-[#112b24]"
+              }`}
+            >
+              {data.system.tradingPaused ? (
+                <PauseCircle size={24} />
+              ) : (
+                <PlayCircle size={24} />
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[.16em]">
+                Global practice trading
+              </p>
+              <h2 className="font-display mt-1 text-2xl font-black">
+                {data.system.tradingPaused ? "New trades are paused" : "Trading is live"}
+              </h2>
+              <p className="mt-1 text-sm text-[#e4d3e2]">
+                {data.system.tradingPaused
+                  ? "Market buys, sells, and new orders are blocked until you resume them."
+                  : "Users can place market, limit, and stop orders normally."}
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            disabled={isUpdatingTrading}
+            onClick={() => void updateTradingStatus()}
+            className={`mt-5 inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-black transition disabled:opacity-50 sm:mt-0 sm:w-auto ${
+              data.system.tradingPaused
+                ? "bg-[#62e7b6] text-[#112b24] hover:bg-[#83efc8]"
+                : "bg-[#ff7282] text-[#401b2d] hover:bg-[#ff8e9a]"
+            }`}
+          >
+            {data.system.tradingPaused ? (
+              <PlayCircle size={17} />
+            ) : (
+              <PauseCircle size={17} />
+            )}
+            {isUpdatingTrading
+              ? "Updating…"
+              : data.system.tradingPaused
+                ? "Resume trading"
+                : "Pause trading"}
+          </button>
+        </section>
+
+        <section className="mt-7 rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-7">
+          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#c99bff]">
+            Provider readiness
+          </p>
+          <h2 className="font-display mt-2 text-2xl font-black">
+            Connected data services
+          </h2>
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {providers.map(([name, isReady]) => (
+              <div
+                key={name}
+                className="flex items-center gap-3 rounded-2xl bg-white/[.04] p-4"
+              >
+                {isReady ? (
+                  <CheckCircle2 className="text-[#62e7b6]" size={20} />
+                ) : (
+                  <AlertTriangle className="text-[#ffd17b]" size={20} />
+                )}
+                <div>
+                  <p className="text-sm font-black">{name}</p>
+                  <p
+                    className={`mt-1 text-xs font-bold ${
+                      isReady ? "text-[#62e7b6]" : "text-[#ffd17b]"
+                    }`}
+                  >
+                    {isReady ? "Configured" : "Needs server configuration"}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {cards.map(([label, value, detail]) => (
             <article
               key={label}
@@ -191,7 +387,11 @@ export default function MarketOperations() {
                         : "bg-[#482332] text-[#ff9ca5]"
                     }`}
                   >
-                    {healthy ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                    {healthy ? (
+                      <CheckCircle2 size={18} />
+                    ) : (
+                      <AlertTriangle size={18} />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="font-black">{source.source_key}</p>
@@ -201,7 +401,9 @@ export default function MarketOperations() {
                   </div>
                   <div className="text-xs text-[#b9a9c5] sm:text-right">
                     <p className="font-bold text-[#fff8f2]">{source.status}</p>
-                    <p className="mt-1">Success: {formatDate(source.last_success_at)}</p>
+                    <p className="mt-1">
+                      Success: {formatDate(source.last_success_at)}
+                    </p>
                   </div>
                 </article>
               );
@@ -227,8 +429,16 @@ export default function MarketOperations() {
                 key={refresh.started_at}
                 className="grid grid-cols-[1.3fr_.7fr_.7fr] gap-3 border-b border-white/5 px-4 py-4 text-xs last:border-0 sm:grid-cols-[1.5fr_.8fr_.7fr_.7fr_.7fr]"
               >
-                <span className="text-[#c4b4d0]">{formatDate(refresh.started_at)}</span>
-                <span className={refresh.status === "healthy" ? "font-black text-[#62e7b6]" : "font-black text-[#ff9ca5]"}>
+                <span className="text-[#c4b4d0]">
+                  {formatDate(refresh.started_at)}
+                </span>
+                <span
+                  className={
+                    refresh.status === "healthy"
+                      ? "font-black text-[#62e7b6]"
+                      : "font-black text-[#ff9ca5]"
+                  }
+                >
                   {refresh.status}
                 </span>
                 <span className="text-right font-black">

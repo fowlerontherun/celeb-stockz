@@ -4,6 +4,7 @@ import { sql } from "../../utils/db";
 import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker } from "../../utils/markets";
 import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
+import { isTradingPaused } from "../../utils/trading-status";
 
 type TradeRequest = {
   ticker?: string;
@@ -15,6 +16,14 @@ export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
   if (!userId) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
+  }
+
+  if (await isTradingPaused()) {
+    throw createError({
+      statusCode: 423,
+      statusMessage:
+        "Practice trading is temporarily paused while the market is reviewed.",
+    });
   }
 
   const body = await readBody<TradeRequest>(event);
@@ -41,7 +50,8 @@ export default defineHandler(async (event) => {
   if (!price) {
     throw createError({
       statusCode: 409,
-      statusMessage: "This market has no verified snapshot yet. Please try again after the next refresh.",
+      statusMessage:
+        "This market has no verified snapshot yet. Please try again after the next refresh.",
     });
   }
 

@@ -3,6 +3,7 @@ import { createError, readBody } from "nitro/h3";
 import { sql } from "../../utils/db";
 import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker } from "../../utils/markets";
+import { isTradingPaused } from "../../utils/trading-status";
 
 type OrderInput = {
   ticker?: string;
@@ -23,8 +24,19 @@ export default defineHandler(async (event) => {
   const stopPrice =
     body?.stopPrice === undefined ? null : Number(body.stopPrice);
 
+  if (!userId) {
+    throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
+  }
+
+  if (await isTradingPaused()) {
+    throw createError({
+      statusCode: 423,
+      statusMessage:
+        "Practice trading is temporarily paused while the market is reviewed.",
+    });
+  }
+
   if (
-    !userId ||
     !ticker ||
     !isMarketTicker(ticker) ||
     !isTradeableCelebrityMarket(ticker) ||
