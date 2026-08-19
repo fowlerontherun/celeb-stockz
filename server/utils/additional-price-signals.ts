@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import type { CelebrityMarket } from "./markets";
+import { getSystemSettings } from "./system-settings";
 
 type SignalStatus = "verified" | "unavailable";
 
@@ -28,26 +29,11 @@ type TradePressureRow = {
   sell_volume: string;
 };
 
-const CACHE_MS = 30 * 60 * 1000;
+const CACHE_MS = 15 * 60 * 1000;
 const cache = new Map<string, CacheEntry>();
 let tradePressureCache:
   | { values: Map<string, number>; expiresAt: number }
   | undefined;
-
-const googleApiKey = process.env.NITRO_GOOGLE_SEARCH_API_KEY;
-const googleSearchEngineId = process.env.NITRO_GOOGLE_SEARCH_ENGINE_ID;
-const youtubeApiKey = process.env.NITRO_YOUTUBE_API_KEY;
-
-function getChannelMap() {
-  try {
-    return JSON.parse(
-      process.env.NITRO_YOUTUBE_CHANNELS ?? "{}",
-    ) as Record<string, string>;
-  } catch {
-    console.error("NITRO_YOUTUBE_CHANNELS must contain valid JSON.");
-    return {};
-  }
-}
 
 async function getNewsMentions(name: string) {
   const url = new URL("https://api.gdeltproject.org/api/v2/doc/doc");
@@ -93,14 +79,14 @@ async function getNewsMentions(name: string) {
   }
 }
 
-async function getSearchResults(name: string) {
-  if (!googleApiKey || !googleSearchEngineId) {
+async function getSearchResults(name: string, apiKey: string, cx: string) {
+  if (!apiKey || !cx) {
     return { value: null, status: "unavailable" as const };
   }
 
   const url = new URL("https://www.googleapis.com/customsearch/v1");
-  url.searchParams.set("key", googleApiKey);
-  url.searchParams.set("cx", googleSearchEngineId);
+  url.searchParams.set("key", apiKey);
+  url.searchParams.set("cx", cx);
   url.searchParams.set("q", name);
 
   try {
@@ -126,10 +112,14 @@ async function getSearchResults(name: string) {
   }
 }
 
-async function getYoutubeStatistics(ticker: string) {
-  const channelId = getChannelMap()[ticker];
+async function getYoutubeStatistics(
+  ticker: string,
+  apiKey: string,
+  channelMap: Record<string, string>,
+) {
+  const channelId = channelMap[ticker];
 
-  if (!youtubeApiKey || !channelId) {
+  if (!apiKey || !channelId) {
     return {
       subscribers: null,
       views: null,
@@ -138,7 +128,7 @@ async function getYoutubeStatistics(ticker: string) {
   }
 
   const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-  url.searchParams.set("key", youtubeApiKey);
+  url.searchParams.set("key", apiKey);
   url.searchParams.set("id", channelId);
   url.searchParams.set("part", "statistics");
 
@@ -181,10 +171,7 @@ async function getYoutubeStatistics(ticker: string) {
 }
 
 async function getPracticeTradePressure(ticker: string) {
-  if (
-    tradePressureCache &&
-    tradePressureCache.expiresAt > Date.now()
-  ) {
+  if (tradePressureCache && tradePressureCache.expiresAt > Date.now()) {
     return tradePressureCache.values.get(ticker) ?? 0;
   }
 
@@ -210,9 +197,7 @@ async function getPracticeTradePressure(ticker: string) {
 
       const imbalance = (buyVolume - sellVolume) / grossVolume;
       const volumeStrength = Math.min(1, Math.log10(grossVolume + 1) / 4);
-      const pressure = Number(
-        (imbalance * volumeStrength * 2.5).toFixed(4),
-      );
+      const pressure = Number((imbalance * volumeStrength * 2.5).toFixed(4));
 
       return [row.ticker, pressure] as const;
     }),
@@ -235,10 +220,12 @@ export async function getAdditionalPriceSignals(
     return cached.value;
   }
 
+  const settings = await getSystemSettings();
+
   const [news, search, youtube, practiceTradePressure] = await Promise.all([
     getNewsMentions(market.name),
-    getSearchResults(market.name),
-    getYoutubeStatistics(market.ticker),
+    getSearchResults(market.name, settings.googleSearchApiKey, settings.googleSearchEngineId),
+    getYoutubeStatistics(market.ticker, settings.youtubeApiKey, settings.youtubeChannels),
     getPracticeTradePressure(market.ticker),
   ]);
 

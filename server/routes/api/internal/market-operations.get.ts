@@ -2,23 +2,15 @@ import { defineHandler } from "nitro";
 import { createError, getRequestHeader } from "nitro/h3";
 import { sql } from "../../../utils/db";
 import { getSessionFromCookie } from "../../../utils/session";
-
-const adminEmails = new Set(
-  [
-    ...(process.env.NITRO_MARKET_ADMIN_EMAILS ?? "")
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-    "j.fowler1986@gmail.com",
-  ],
-);
+import { checkIsAdmin, getSystemSettings } from "../../../utils/system-settings";
 
 export default defineHandler(async (event) => {
   const session = await getSessionFromCookie(
     getRequestHeader(event, "cookie") ?? null,
   );
 
-  if (!session?.user || !adminEmails.has(session.user.email.toLowerCase())) {
+  const isAdmin = await checkIsAdmin(session?.user.email);
+  if (!session?.user || !isAdmin) {
     throw createError({
       statusCode: 403,
       statusMessage: "Administrator access is required.",
@@ -30,7 +22,7 @@ export default defineHandler(async (event) => {
     recentRefreshes,
     snapshotCounts,
     executionCounts,
-    systemSettings,
+    settings,
   ] = await Promise.all([
     sql`
       SELECT source_key, status, last_checked_at, last_success_at, detail
@@ -79,11 +71,7 @@ export default defineHandler(async (event) => {
           WHERE created_at >= now() - interval '7 days'
         ) AS weekly_trades
     `,
-    sql`
-      SELECT trading_paused, updated_at
-      FROM market_system_settings
-      WHERE id = true
-    `,
+    getSystemSettings(),
   ]);
 
   const latestRefresh = recentRefreshes[0] as
@@ -96,22 +84,25 @@ export default defineHandler(async (event) => {
     | undefined;
   const latestRefreshedCount = Number(latestRefresh?.refreshed_count ?? 0);
   const latestVerifiedCount = Number(latestRefresh?.verified_count ?? 0);
-  const settings = systemSettings[0];
 
   return {
     sources,
     recentRefreshes,
     system: {
-      tradingPaused: Boolean(settings?.trading_paused),
-      updatedAt: settings?.updated_at ?? null,
+      tradingPaused: settings.tradingPaused,
+      updatedAt: settings.updatedAt,
       apiConfiguration: {
-        youtube:
-          Boolean(process.env.NITRO_YOUTUBE_API_KEY) &&
-          Boolean(process.env.NITRO_YOUTUBE_CHANNELS),
-        search:
-          Boolean(process.env.NITRO_GOOGLE_SEARCH_API_KEY) &&
-          Boolean(process.env.NITRO_GOOGLE_SEARCH_ENGINE_ID),
-        marketRefreshSecret: Boolean(process.env.NITRO_MARKET_REFRESH_SECRET),
+        youtube: Boolean(settings.youtubeApiKey) && Object.keys(settings.youtubeChannels).length > 0,
+        search: Boolean(settings.googleSearchApiKey) && Boolean(settings.googleSearchEngineId),
+        marketRefreshSecret: Boolean(settings.marketRefreshSecret),
+      },
+      editableSettings: {
+        youtubeApiKey: settings.youtubeApiKey,
+        youtubeChannels: settings.youtubeChannels,
+        googleSearchApiKey: settings.googleSearchApiKey,
+        googleSearchEngineId: settings.googleSearchEngineId,
+        marketRefreshSecret: settings.marketRefreshSecret,
+        adminEmails: settings.adminEmails.join(", "),
       },
     },
     metrics: {
