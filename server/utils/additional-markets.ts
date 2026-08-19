@@ -79,7 +79,7 @@ const profiles: Profile[] = [
   ["Vanessa Kirby", "VKIRBY", "Film", 1988, 5.6],
   ["Lashana Lynch", "LLYNCH", "Film", 1987, 5.3],
   ["Letitia Wright", "LWRIGHT", "Film", 1993, 6.2],
-  ["Dev Patel", "DEVPATEL", "Film", 1990, 7.6],
+  ["Dev Patel", "DPATEL", "Film", 1990, 7.6],
   ["Henry Cavill", "HCAVILL", "Film", 1983, 8.7],
   ["Orlando Bloom", "OBLOOM", "Film", 1977, 3.8],
   ["Jason Statham", "JSTATHAM", "Film", 1967, 4.4],
@@ -118,7 +118,7 @@ const profiles: Profile[] = [
   ["Mo Gilligan", "MOGILL", "TV", 1988, 5.2],
   ["Joe Lycett", "JLYCETT", "TV", 1988, 5.5],
   ["Stacey Solomon", "SSOLOMON", "TV", 1989, 6.8],
-  ["Rylan Clark", "RYLAN", "TV", 1988, 4.1],
+  ["Rylan Clark", "RYLAN", "TV", 1989, 4.1],
   ["Oti Mabuse", "OTI", "TV", 1990, 4.9],
   ["Jordan North", "JNORTH", "TV", 1990, 3.6],
   ["Greg Davies", "GDAVIES", "TV", 1968, 4.4],
@@ -171,7 +171,7 @@ const profiles: Profile[] = [
   ["Victoria Coren Mitchell", "VCM", "TV", 1972, 3.3],
   ["Susie Dent", "SDENT", "TV", 1964, 2.9],
   ["Maya Rudolph", "MRUDOLPH", "TV", 1972, 3.2],
-  ["Aisling Bea", "ABE A", "TV", 1984, 4.2],
+  ["Aisling Bea", "AISLING", "TV", 1984, 4.2],
   ["Katherine Ryan", "KRYAN", "TV", 1983, 4.5],
   ["Sarah Millican", "SMILLICAN", "TV", 1975, 3.8],
   ["Jack Whitehall", "JWHITEHALL", "TV", 1988, 5.6],
@@ -195,7 +195,7 @@ const profiles: Profile[] = [
   ["Sophie Okonedo", "SOKONEDO", "Film", 1968, 3.2],
   ["David Harewood", "DHAREWOOD", "Film", 1965, 3.4],
   ["Lennie James", "LJAMES", "Film", 1965, 3.6],
-  ["Joseph Fiennes", "JFiennes", "Film", 1970, 3.1],
+  ["Joseph Fiennes", "JFIENNES", "Film", 1970, 3.1],
   ["Rhys Ifans", "RIFANS", "Film", 1967, 3.5],
   ["Kaya Scodelario", "KSCODELARIO", "Film", 1992, 5.7],
   ["Morfydd Clark", "MCLARK", "Film", 1989, 5.2],
@@ -271,8 +271,8 @@ const profiles: Profile[] = [
   ["Simon Reeve", "SREEVE", "TV", 1972, 2.5],
 ];
 
-function avatar(name: string) {
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=2a1740&color=fff8f2&bold=true&size=512`;
+function profileImage(ticker: string) {
+  return `/api/celebrity-images/${encodeURIComponent(ticker)}`;
 }
 
 export const additionalCelebrityMarkets: AdditionalMarket[] = profiles.map(
@@ -282,7 +282,7 @@ export const additionalCelebrityMarkets: AdditionalMarket[] = profiles.map(
     category,
     birthYear,
     nationality: "British",
-    image: avatar(name),
+    image: profileImage(ticker),
     change,
     signals: {
       socialFollowersMillions: Number((1.6 + (index % 18) * 0.73).toFixed(1)),
