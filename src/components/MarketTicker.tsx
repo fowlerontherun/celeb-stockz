@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Clock3 } from "lucide-react";
 
-const REFRESH_INTERVAL = 2 * 60 * 60 * 1000;
+const REFRESH_INTERVAL = 5 * 60 * 1000;
 
 function getNextRefreshAt(timestamp: number) {
   return (Math.floor(timestamp / REFRESH_INTERVAL) + 1) * REFRESH_INTERVAL;
@@ -26,8 +26,8 @@ export function MarketTicker() {
   const secondsRemaining = Math.max(0, Math.ceil((nextRefreshAt - now) / 1000));
   const countdown = useMemo(
     () =>
-      `${String(Math.floor(secondsRemaining / 3600)).padStart(2, "0")}:${String(
-        Math.floor((secondsRemaining % 3600) / 60),
+      `${String(Math.floor(secondsRemaining / 60)).padStart(2, "0")}:${String(
+        secondsRemaining % 60,
       ).padStart(2, "0")}`,
     [secondsRemaining],
   );
