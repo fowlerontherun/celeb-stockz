@@ -33,6 +33,12 @@ type WikidataEntitiesResponse = {
   entities?: Record<string, WikidataEntity>;
 };
 
+type PublicMetadata = {
+  websiteUrl: string;
+  youtubeChannelId: string;
+  lookupAvailable: boolean;
+};
+
 function getClaimValue(entity: WikidataEntity, property: string) {
   const value = entity.claims?.[property]?.[0]?.mainsnak?.datavalue?.value;
   return typeof value === "string" ? value.trim() : "";
@@ -54,7 +60,6 @@ async function fetchPublicJson<T>(url: URL | string): Promise<T | null> {
         accept: "application/json",
         "user-agent": "CelebStockz listing metadata lookup",
       },
-      signal: AbortSignal.timeout(10_000),
     });
 
     if (!response.ok) {
@@ -68,15 +73,26 @@ async function fetchPublicJson<T>(url: URL | string): Promise<T | null> {
 }
 
 async function findWikidataId(name: string) {
-  const wikipediaUrl = `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(
-    name.replaceAll(" ", "_"),
-  )}`;
-  const summary = await fetchPublicJson<{ wikibase_item?: string }>(
-    wikipediaUrl,
-  );
+  const wikipediaUrl = new URL("https://en.wikipedia.org/w/api.php");
+  wikipediaUrl.searchParams.set("action", "query");
+  wikipediaUrl.searchParams.set("format", "json");
+  wikipediaUrl.searchParams.set("formatversion", "2");
+  wikipediaUrl.searchParams.set("prop", "pageprops");
+  wikipediaUrl.searchParams.set("titles", name);
 
-  if (summary?.wikibase_item) {
-    return summary.wikibase_item;
+  const wikipedia = await fetchPublicJson<{
+    query?: {
+      pages?: Array<{
+        pageprops?: {
+          wikibase_item?: string;
+        };
+      }>;
+    };
+  }>(wikipediaUrl);
+
+  const linkedId = wikipedia?.query?.pages?.[0]?.pageprops?.wikibase_item;
+  if (linkedId?.startsWith("Q")) {
+    return linkedId;
   }
 
   const searchUrl = new URL("https://www.wikidata.org/w/api.php");
@@ -90,15 +106,42 @@ async function findWikidataId(name: string) {
   return result?.search?.find((item) => item.id?.startsWith("Q"))?.id ?? null;
 }
 
-async function getWikidataEntity(id: string) {
+async function lookupPublicMetadata(name: string): Promise<PublicMetadata> {
+  const wikidataId = await findWikidataId(name);
+
+  if (!wikidataId) {
+    return {
+      websiteUrl: "",
+      youtubeChannelId: "",
+      lookupAvailable: false,
+    };
+  }
+
   const entityUrl = new URL("https://www.wikidata.org/w/api.php");
   entityUrl.searchParams.set("action", "wbgetentities");
   entityUrl.searchParams.set("format", "json");
-  entityUrl.searchParams.set("ids", id);
+  entityUrl.searchParams.set("ids", wikidataId);
   entityUrl.searchParams.set("props", "claims");
 
   const payload = await fetchPublicJson<WikidataEntitiesResponse>(entityUrl);
-  return payload?.entities?.[id] ?? null;
+  const entity = payload?.entities?.[wikidataId];
+
+  if (!entity) {
+    return {
+      websiteUrl: "",
+      youtubeChannelId: "",
+      lookupAvailable: false,
+    };
+  }
+
+  const website = getClaimValue(entity, "P856");
+  const youtubeChannel = getClaimValue(entity, "P2397");
+
+  return {
+    websiteUrl: isWebsiteUrl(website) ? website : "",
+    youtubeChannelId: youtubeChannel.startsWith("UC") ? youtubeChannel : "",
+    lookupAvailable: true,
+  };
 }
 
 export default defineHandler(async (event) => {
@@ -123,34 +166,8 @@ export default defineHandler(async (event) => {
     });
   }
 
-  const wikidataId = await findWikidataId(market.name);
-
-  if (!wikidataId) {
-    throw createError({
-      statusCode: 502,
-      statusMessage:
-        "Public profile lookup is currently unavailable. Please try again shortly.",
-    });
-  }
-
-  const entity = await getWikidataEntity(wikidataId);
-
-  if (!entity) {
-    throw createError({
-      statusCode: 502,
-      statusMessage:
-        "Public profile details are temporarily unavailable. Please try again shortly.",
-    });
-  }
-
-  const detectedWebsite = getClaimValue(entity, "P856");
-  const detectedYoutubeChannelId = getClaimValue(entity, "P2397");
-  const websiteUrl = isWebsiteUrl(detectedWebsite) ? detectedWebsite : "";
-  const youtubeChannelId = detectedYoutubeChannelId.startsWith("UC")
-    ? detectedYoutubeChannelId
-    : "";
-
-  const [listingRows, systemSettings] = await Promise.all([
+  const [metadata, listingRows, systemSettings] = await Promise.all([
+    lookupPublicMetadata(market.name),
     sql<{ website_url: string | null; trading_paused: boolean }[]>`
       SELECT website_url, trading_paused
       FROM market_listing_settings
@@ -163,57 +180,52 @@ export default defineHandler(async (event) => {
   const existingWebsiteUrl = existingListing?.website_url?.trim() ?? "";
   const channels = { ...systemSettings.youtubeChannels };
   const existingChannelId = channels[ticker]?.trim() ?? "";
-  const savedWebsiteUrl = existingWebsiteUrl || websiteUrl;
-  const savedYoutubeChannelId = existingChannelId || youtubeChannelId;
-
-  if (!savedWebsiteUrl && !savedYoutubeChannelId) {
-    throw createError({
-      statusCode: 404,
-      statusMessage:
-        "No official website or YouTube channel was listed in this public profile.",
-    });
-  }
+  const savedWebsiteUrl = existingWebsiteUrl || metadata.websiteUrl;
+  const savedYoutubeChannelId = existingChannelId || metadata.youtubeChannelId;
 
   if (savedYoutubeChannelId) {
     channels[ticker] = savedYoutubeChannelId;
   }
 
-  await Promise.all([
-    sql`
-      INSERT INTO market_listing_settings (
-        ticker, trading_paused, website_url, updated_at
-      )
-      VALUES (
-        ${ticker},
-        ${existingListing?.trading_paused ?? false},
-        ${savedWebsiteUrl || null},
-        now()
-      )
-      ON CONFLICT (ticker) DO UPDATE
-      SET
-        website_url = EXCLUDED.website_url,
-        updated_at = now()
-    `,
-    sql`
-      INSERT INTO market_system_settings (id, youtube_channels, updated_at)
-      VALUES (true, ${JSON.stringify(channels)}::jsonb, now())
-      ON CONFLICT (id) DO UPDATE
-      SET youtube_channels = EXCLUDED.youtube_channels, updated_at = now()
-    `,
-  ]);
+  if (savedWebsiteUrl || savedYoutubeChannelId) {
+    await Promise.all([
+      sql`
+        INSERT INTO market_listing_settings (
+          ticker, trading_paused, website_url, updated_at
+        )
+        VALUES (
+          ${ticker},
+          ${existingListing?.trading_paused ?? false},
+          ${savedWebsiteUrl || null},
+          now()
+        )
+        ON CONFLICT (ticker) DO UPDATE
+        SET
+          website_url = EXCLUDED.website_url,
+          updated_at = now()
+      `,
+      sql`
+        INSERT INTO market_system_settings (id, youtube_channels, updated_at)
+        VALUES (true, ${JSON.stringify(channels)}::jsonb, now())
+        ON CONFLICT (id) DO UPDATE
+        SET youtube_channels = EXCLUDED.youtube_channels, updated_at = now()
+      `,
+    ]);
 
-  clearAdditionalSignalCache();
+    clearAdditionalSignalCache();
+  }
 
   return {
     websiteUrl: savedWebsiteUrl,
     youtubeChannelId: savedYoutubeChannelId,
     found: {
-      website: Boolean(websiteUrl),
-      youtube: Boolean(youtubeChannelId),
+      website: Boolean(metadata.websiteUrl),
+      youtube: Boolean(metadata.youtubeChannelId),
     },
     preserved: {
       website: Boolean(existingWebsiteUrl),
       youtube: Boolean(existingChannelId),
     },
+    lookupAvailable: metadata.lookupAvailable,
   };
 });

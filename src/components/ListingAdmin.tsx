@@ -21,6 +21,7 @@ type Listing = {
 type AutofillResult = {
   websiteUrl: string;
   youtubeChannelId: string;
+  lookupAvailable: boolean;
   found: {
     website: boolean;
     youtube: boolean;
@@ -119,11 +120,17 @@ export function ListingAdmin() {
         !data.preserved.youtube && data.found.youtube && "YouTube channel",
       ].filter(Boolean);
 
-      showSuccess(
-        added.length
-          ? `Added ${added.join(" and ")} from public profile metadata.`
-          : "No new public metadata was available; existing details were kept.",
-      );
+      if (added.length) {
+        showSuccess(`Added ${added.join(" and ")} from public profile metadata.`);
+      } else if (!data.lookupAvailable) {
+        showError(
+          "The public profile source is temporarily unavailable. Please try again shortly.",
+        );
+      } else {
+        showError(
+          "No official website or YouTube channel was published for this listing. You can add verified details manually.",
+        );
+      }
     } catch (error) {
       showError(
         error instanceof Error
@@ -210,7 +217,9 @@ export function ListingAdmin() {
               >
                 <span>
                   <span className="block text-sm font-black">{listing.name}</span>
-                  <span className="block text-[10px] font-bold opacity-70">${listing.ticker} · {listing.category}</span>
+                  <span className="block text-[10px] font-bold opacity-70">
+                    ${listing.ticker} · {listing.category}
+                  </span>
                 </span>
                 {listing.tradingPaused && (
                   <span className="rounded-lg bg-[#ff7282]/20 px-2 py-1 text-[10px] font-black text-[#ff9ca5]">
@@ -226,11 +235,15 @@ export function ListingAdmin() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="font-display text-2xl font-black">{selected.name}</p>
-              <p className="mt-1 text-xs font-bold text-[#c99bff]">${selected.ticker} · {selected.category}</p>
+              <p className="mt-1 text-xs font-bold text-[#c99bff]">
+                ${selected.ticker} · {selected.category}
+              </p>
             </div>
             <button
               type="button"
-              onClick={() => updateSelected({ tradingPaused: !selected.tradingPaused })}
+              onClick={() =>
+                updateSelected({ tradingPaused: !selected.tradingPaused })
+              }
               className={`rounded-xl px-4 py-2.5 text-xs font-black ${
                 selected.tradingPaused
                   ? "bg-[#ff7282] text-[#401b2d]"
@@ -252,7 +265,9 @@ export function ListingAdmin() {
             ) : (
               <Sparkles size={16} className="text-[#ffd17b]" />
             )}
-            {isAutofilling ? "Looking up public metadata…" : "Auto-fill website & YouTube"}
+            {isAutofilling
+              ? "Looking up public metadata…"
+              : "Auto-fill website & YouTube"}
           </button>
           <p className="mt-2 text-xs leading-5 text-[#9f90ac]">
             Uses public Wikidata records and never overwrites existing listing details.
@@ -263,7 +278,9 @@ export function ListingAdmin() {
             <input
               type="url"
               value={selected.websiteUrl}
-              onChange={(event) => updateSelected({ websiteUrl: event.target.value })}
+              onChange={(event) =>
+                updateSelected({ websiteUrl: event.target.value })
+              }
               placeholder="https://example.com"
               className="mt-2 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 text-sm font-semibold text-white outline-none focus:border-[#a97cff]"
             />
@@ -283,7 +300,9 @@ export function ListingAdmin() {
             YouTube channel ID
             <input
               value={selected.youtubeChannelId}
-              onChange={(event) => updateSelected({ youtubeChannelId: event.target.value })}
+              onChange={(event) =>
+                updateSelected({ youtubeChannelId: event.target.value })
+              }
               placeholder="UC..."
               className="mt-2 w-full rounded-xl border border-white/10 bg-[#211230] px-4 py-3 font-mono text-sm font-semibold text-white outline-none focus:border-[#a97cff]"
             />
@@ -298,7 +317,11 @@ export function ListingAdmin() {
             disabled={isSaving}
             className="mt-6 inline-flex items-center gap-2 rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white transition hover:bg-[#9361f5] disabled:opacity-50"
           >
-            {isSaving ? <LoaderCircle size={16} className="animate-spin" /> : <Save size={16} />}
+            {isSaving ? (
+              <LoaderCircle size={16} className="animate-spin" />
+            ) : (
+              <Save size={16} />
+            )}
             {isSaving ? "Saving…" : "Save listing"}
           </button>
         </div>
