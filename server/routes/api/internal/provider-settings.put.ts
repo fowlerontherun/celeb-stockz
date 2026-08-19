@@ -18,21 +18,31 @@ export default defineHandler(async (event) => {
   const body = await readBody<ProviderInput>(event);
 
   if (!session?.user || !(await checkIsAdmin(session.user.email))) {
-    throw createError({ statusCode: 403, statusMessage: "Administrator access is required." });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Administrator access is required.",
+    });
   }
 
-  const values = [
+  const fields = [
     body?.webzApiKey,
     body?.tmdbApiKey,
     body?.lastfmApiKey,
     body?.sportsdbApiKey,
   ];
 
-  if (values.some((value) => value !== undefined && value.length > 500)) {
-    throw createError({ statusCode: 400, statusMessage: "Provider keys must be 500 characters or fewer." });
+  if (
+    fields.some(
+      (value) => value !== undefined && value.trim().length > 500,
+    )
+  ) {
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Provider keys must be 500 characters or fewer.",
+    });
   }
 
-  await sql`
+  const updated = await sql`
     INSERT INTO market_provider_settings (
       id, webz_api_key, tmdb_api_key, lastfm_api_key, sportsdb_api_key, updated_at
     )
@@ -46,12 +56,24 @@ export default defineHandler(async (event) => {
     )
     ON CONFLICT (id) DO UPDATE
     SET
-      webz_api_key = EXCLUDED.webz_api_key,
-      tmdb_api_key = EXCLUDED.tmdb_api_key,
-      lastfm_api_key = EXCLUDED.lastfm_api_key,
-      sportsdb_api_key = EXCLUDED.sportsdb_api_key,
+      webz_api_key = CASE
+        WHEN ${body?.webzApiKey?.trim() ?? ""} = '' THEN market_provider_settings.webz_api_key
+        ELSE EXCLUDED.webz_api_key
+      END,
+      tmdb_api_key = CASE
+        WHEN ${body?.tmdbApiKey?.trim() ?? ""} = '' THEN market_provider_settings.tmdb_api_key
+        ELSE EXCLUDED.tmdb_api_key
+      END,
+      lastfm_api_key = CASE
+        WHEN ${body?.lastfmApiKey?.trim() ?? ""} = '' THEN market_provider_settings.lastfm_api_key
+        ELSE EXCLUDED.lastfm_api_key
+      END,
+      sportsdb_api_key = CASE
+        WHEN ${body?.sportsdbApiKey?.trim() ?? ""} = '' THEN market_provider_settings.sportsdb_api_key
+        ELSE EXCLUDED.sportsdb_api_key
+      END,
       updated_at = now()
   `;
 
-  return { ok: true };
+  return { ok: Boolean(updated) };
 });
