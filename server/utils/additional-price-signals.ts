@@ -1,3 +1,4 @@
+import { sql } from "./db";
 import type { CelebrityMarket } from "./markets";
 
 type SignalStatus = "verified" | "unavailable";
@@ -6,10 +7,13 @@ export type AdditionalPriceSignals = {
   newsMentions: number | null;
   searchResults: number | null;
   youtubeSubscribers: number | null;
+  youtubeViews: number | null;
+  practiceTradePressure: number;
   statuses: {
     news: SignalStatus;
     search: SignalStatus;
     youtube: SignalStatus;
+    trades: "verified";
   };
 };
 
@@ -18,8 +22,18 @@ type CacheEntry = {
   expiresAt: number;
 };
 
+type TradePressureRow = {
+  ticker: string;
+  buy_volume: string;
+  sell_volume: string;
+};
+
 const CACHE_MS = 30 * 60 * 1000;
 const cache = new Map<string, CacheEntry>();
+let tradePressureCache:
+  | { values: Map<string, number>; expiresAt: number }
+  | undefined;
+
 const googleApiKey = process.env.NITRO_GOOGLE_SEARCH_API_KEY;
 const googleSearchEngineId = process.env.NITRO_GOOGLE_SEARCH_ENGINE_ID;
 const youtubeApiKey = process.env.NITRO_YOUTUBE_API_KEY;
@@ -41,14 +55,24 @@ async function getNewsMentions(name: string) {
   url.searchParams.set("mode", "timelinevolraw");
   url.searchParams.set("format", "json");
   url.searchParams.set("maxrecords", "250");
-  url.searchParams.set("startdatetime", new Date(Date.now() - 7 * 86400000).toISOString().replaceAll(/[-:.TZ]/g, "").slice(0, 14));
+  url.searchParams.set(
+    "startdatetime",
+    new Date(Date.now() - 7 * 86400000)
+      .toISOString()
+      .replaceAll(/[-:.TZ]/g, "")
+      .slice(0, 14),
+  );
 
   try {
     const response = await fetch(url, {
-      headers: { "user-agent": "CelebStockz practice-market signal monitor" },
+      headers: {
+        "user-agent": "CelebStockz practice-market signal monitor",
+      },
     });
 
-    if (!response.ok) return { value: null, status: "unavailable" as const };
+    if (!response.ok) {
+      return { value: null, status: "unavailable" as const };
+    }
 
     const data = (await response.json()) as {
       timeline?: Array<{ value?: number }>;
@@ -59,8 +83,10 @@ async function getNewsMentions(name: string) {
     );
 
     return {
-      value: Number.isFinite(value) ? value ?? 0 : null,
-      status: Number.isFinite(value) ? ("verified" as const) : ("unavailable" as const),
+      value: Number.isFinite(value) ? (value ?? 0) : null,
+      status: Number.isFinite(value)
+        ? ("verified" as const)
+        : ("unavailable" as const),
     };
   } catch {
     return { value: null, status: "unavailable" as const };
@@ -79,7 +105,9 @@ async function getSearchResults(name: string) {
 
   try {
     const response = await fetch(url);
-    if (!response.ok) return { value: null, status: "unavailable" as const };
+    if (!response.ok) {
+      return { value: null, status: "unavailable" as const };
+    }
 
     const data = (await response.json()) as {
       searchInformation?: { totalResults?: string };
@@ -98,11 +126,15 @@ async function getSearchResults(name: string) {
   }
 }
 
-async function getYoutubeSubscribers(ticker: string) {
+async function getYoutubeStatistics(ticker: string) {
   const channelId = getChannelMap()[ticker];
 
   if (!youtubeApiKey || !channelId) {
-    return { value: null, status: "unavailable" as const };
+    return {
+      subscribers: null,
+      views: null,
+      status: "unavailable" as const,
+    };
   }
 
   const url = new URL("https://www.googleapis.com/youtube/v3/channels");
@@ -112,23 +144,86 @@ async function getYoutubeSubscribers(ticker: string) {
 
   try {
     const response = await fetch(url);
-    if (!response.ok) return { value: null, status: "unavailable" as const };
+    if (!response.ok) {
+      return {
+        subscribers: null,
+        views: null,
+        status: "unavailable" as const,
+      };
+    }
 
     const data = (await response.json()) as {
-      items?: Array<{ statistics?: { subscriberCount?: string } }>;
+      items?: Array<{
+        statistics?: { subscriberCount?: string; viewCount?: string };
+      }>;
     };
-    const value = Number(data.items?.[0]?.statistics?.subscriberCount);
+    const statistics = data.items?.[0]?.statistics;
+    const subscribers = Number(statistics?.subscriberCount);
+    const views = Number(statistics?.viewCount);
+    const isValid =
+      Number.isSafeInteger(subscribers) &&
+      subscribers >= 0 &&
+      Number.isSafeInteger(views) &&
+      views >= 0;
 
     return {
-      value: Number.isSafeInteger(value) && value >= 0 ? value : null,
-      status:
-        Number.isSafeInteger(value) && value >= 0
-          ? ("verified" as const)
-          : ("unavailable" as const),
+      subscribers: isValid ? subscribers : null,
+      views: isValid ? views : null,
+      status: isValid ? ("verified" as const) : ("unavailable" as const),
     };
   } catch {
-    return { value: null, status: "unavailable" as const };
+    return {
+      subscribers: null,
+      views: null,
+      status: "unavailable" as const,
+    };
   }
+}
+
+async function getPracticeTradePressure(ticker: string) {
+  if (
+    tradePressureCache &&
+    tradePressureCache.expiresAt > Date.now()
+  ) {
+    return tradePressureCache.values.get(ticker) ?? 0;
+  }
+
+  const rows = await sql<TradePressureRow[]>`
+    SELECT
+      ticker,
+      COALESCE(SUM(total_stkz) FILTER (WHERE side = 'buy'), 0) AS buy_volume,
+      COALESCE(SUM(total_stkz) FILTER (WHERE side = 'sell'), 0) AS sell_volume
+    FROM trade_history
+    WHERE created_at >= now() - interval '24 hours'
+    GROUP BY ticker
+  `;
+
+  const values = new Map(
+    rows.map((row) => {
+      const buyVolume = Number(row.buy_volume);
+      const sellVolume = Number(row.sell_volume);
+      const grossVolume = buyVolume + sellVolume;
+
+      if (!grossVolume) {
+        return [row.ticker, 0] as const;
+      }
+
+      const imbalance = (buyVolume - sellVolume) / grossVolume;
+      const volumeStrength = Math.min(1, Math.log10(grossVolume + 1) / 4);
+      const pressure = Number(
+        (imbalance * volumeStrength * 2.5).toFixed(4),
+      );
+
+      return [row.ticker, pressure] as const;
+    }),
+  );
+
+  tradePressureCache = {
+    values,
+    expiresAt: Date.now() + CACHE_MS,
+  };
+
+  return values.get(ticker) ?? 0;
 }
 
 export async function getAdditionalPriceSignals(
@@ -140,20 +235,24 @@ export async function getAdditionalPriceSignals(
     return cached.value;
   }
 
-  const [news, search, youtube] = await Promise.all([
+  const [news, search, youtube, practiceTradePressure] = await Promise.all([
     getNewsMentions(market.name),
     getSearchResults(market.name),
-    getYoutubeSubscribers(market.ticker),
+    getYoutubeStatistics(market.ticker),
+    getPracticeTradePressure(market.ticker),
   ]);
 
   const value = {
     newsMentions: news.value,
     searchResults: search.value,
-    youtubeSubscribers: youtube.value,
+    youtubeSubscribers: youtube.subscribers,
+    youtubeViews: youtube.views,
+    practiceTradePressure,
     statuses: {
       news: news.status,
       search: search.status,
       youtube: youtube.status,
+      trades: "verified" as const,
     },
   };
 
@@ -170,10 +269,22 @@ export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
     signals.searchResults === null
       ? 0
       : Math.min(2, Math.log10(signals.searchResults + 1) * 0.2);
-  const youtubeBoost =
+  const youtubeSubscriberBoost =
     signals.youtubeSubscribers === null
       ? 0
       : Math.min(2, Math.log10(signals.youtubeSubscribers + 1) * 0.18);
+  const youtubeViewBoost =
+    signals.youtubeViews === null
+      ? 0
+      : Math.min(1, Math.log10(signals.youtubeViews + 1) * 0.06);
 
-  return Number((newsBoost + searchBoost + youtubeBoost).toFixed(4));
+  return Number(
+    (
+      newsBoost +
+      searchBoost +
+      youtubeSubscriberBoost +
+      youtubeViewBoost +
+      signals.practiceTradePressure
+    ).toFixed(4),
+  );
 }
