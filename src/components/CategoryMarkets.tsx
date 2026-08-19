@@ -228,7 +228,17 @@ export function CategoryMarkets({
             return (
               <article
                 key={market.ticker}
-                className="overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]"
+                role="button"
+                tabIndex={0}
+                onClick={() => onTrade(market)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onTrade(market);
+                  }
+                }}
+                className="cursor-pointer overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f] transition duration-200 hover:-translate-y-1 hover:border-[#a97cff]/60 hover:bg-[#24143a] hover:shadow-xl hover:shadow-[#0b0512]/30 focus:outline-none focus:ring-2 focus:ring-[#a97cff]"
+                aria-label={`View details for ${market.name}`}
               >
                 <div className="relative flex h-48 items-center justify-center bg-[#160c25] p-3">
                   <img
@@ -302,13 +312,9 @@ export function CategoryMarkets({
                         {tierDetails[tier].description}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onTrade(market)}
-                      className="rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#9361f5]"
-                    >
-                      Buy / sell
-                    </button>
+                    <span className="rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white">
+                      View details
+                    </span>
                   </div>
                 </div>
               </article>
