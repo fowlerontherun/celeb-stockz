@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ListingAdmin } from "@/components/ListingAdmin";
+import { PackAdmin } from "@/components/PackAdmin";
 import { showError, showSuccess } from "@/utils/toast";
 
 type Source = {
@@ -507,6 +508,7 @@ export default function MarketOperations() {
         </section>
 
         <ListingAdmin />
+        <PackAdmin />
 
         <section className="mt-7 rounded-[28px] border border-[#62e7b6]/30 bg-[#162725] p-5 sm:p-7">
           <div className="flex items-center gap-2 text-[#62e7b6]">
