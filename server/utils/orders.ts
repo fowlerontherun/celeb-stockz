@@ -13,18 +13,23 @@ type OpenOrder = {
   triggered_at: string | null;
 };
 
+const TRANSACTION_FEE_RATE = 0.01;
+
 async function fillOrder(order: OpenOrder, price: number) {
   const amount = Number(order.amount_stkz);
   const quantity = Number((amount / price).toFixed(6));
   const total = Number((quantity * price).toFixed(2));
+  const feeStkz = Number((total * TRANSACTION_FEE_RATE).toFixed(2));
+  const walletAmount =
+    order.side === "buy" ? total + feeStkz : total - feeStkz;
 
   const result =
     order.side === "buy"
       ? await sql`
           WITH wallet AS (
             UPDATE user_wallets
-            SET balance_stkz = balance_stkz - ${total}, updated_at = now()
-            WHERE user_id = ${order.user_id} AND balance_stkz >= ${total}
+            SET balance_stkz = balance_stkz - ${walletAmount}, updated_at = now()
+            WHERE user_id = ${order.user_id} AND balance_stkz >= ${walletAmount}
             RETURNING balance_stkz
           ),
           position AS (
@@ -60,7 +65,7 @@ async function fillOrder(order: OpenOrder, price: number) {
           ),
           wallet AS (
             UPDATE user_wallets
-            SET balance_stkz = balance_stkz + ${total}, updated_at = now()
+            SET balance_stkz = balance_stkz + ${walletAmount}, updated_at = now()
             WHERE user_id = ${order.user_id} AND EXISTS (SELECT 1 FROM position)
             RETURNING balance_stkz
           ),

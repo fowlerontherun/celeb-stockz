@@ -15,6 +15,8 @@ type TradeControlsProps = {
   onTradeComplete?: () => void;
 };
 
+const TRANSACTION_FEE_RATE = 0.01;
+
 export function TradeControls({
   ticker,
   price,
@@ -32,7 +34,14 @@ export function TradeControls({
     () => wallet?.positions.find((position) => position.ticker === ticker)?.quantity ?? 0,
     [ticker, wallet],
   );
-  const maxAmount = side === "buy" ? wallet?.balanceStkz ?? 0 : positionQuantity * price;
+  const grossMaxAmount =
+    side === "buy" ? wallet?.balanceStkz ?? 0 : positionQuantity * price;
+  const maxAmount =
+    side === "buy" ? grossMaxAmount / (1 + TRANSACTION_FEE_RATE) : grossMaxAmount;
+  const enteredAmount = Number(amount) || 0;
+  const estimatedFee = Number(
+    (Math.max(0, enteredAmount) * TRANSACTION_FEE_RATE).toFixed(2),
+  );
   const needsLimit = orderType === "limit" || orderType === "stop_limit";
   const needsStop = orderType === "stop_market" || orderType === "stop_limit";
 
@@ -86,13 +95,18 @@ export function TradeControls({
               },
         ),
       });
-      const data = (await response.json()) as { statusMessage?: string; quantity?: number; totalStkz?: number };
+      const data = (await response.json()) as {
+        statusMessage?: string;
+        quantity?: number;
+        totalStkz?: number;
+        feeStkz?: number;
+      };
       if (!response.ok) throw new Error(data.statusMessage ?? "Your order could not be completed.");
 
       showSuccess(
         isMarketOrder
-          ? `${side === "buy" ? "Bought" : "Sold"} ${data.quantity?.toFixed(2)} ${ticker} for ${data.totalStkz?.toFixed(2)} STKZ.`
-          : `${orderType.replaceAll("_", " ")} order placed for ${ticker}.`,
+          ? `${side === "buy" ? "Bought" : "Sold"} ${data.quantity?.toFixed(2)} ${ticker} for ${data.totalStkz?.toFixed(2)} STKZ. 1% fee: ${data.feeStkz?.toFixed(2)} STKZ.`
+          : `${orderType.replaceAll("_", " ")} order placed for ${ticker}. A 1% fee applies when it fills.`,
       );
       await loadWallet();
       window.dispatchEvent(new Event("wallet:updated"));
@@ -145,7 +159,7 @@ export function TradeControls({
       <div className="rounded-2xl border border-white/10 bg-white/[.04] p-4">
         <div className="flex justify-between text-xs font-bold text-[#b6a8c1]">
           <span>{side === "buy" ? "Available to buy" : `Available ${ticker}`}</span>
-          <span className="text-[#fff8f2]">{side === "buy" ? `${maxAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} STKZ` : `${positionQuantity.toFixed(4)} shares`}</span>
+          <span className="text-[#fff8f2]">{side === "buy" ? `${grossMaxAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} STKZ` : `${positionQuantity.toFixed(4)} shares`}</span>
         </div>
         <label className="mt-4 block text-xs font-bold uppercase tracking-[.13em] text-[#a89aad]">
           Amount (STKZ)
@@ -163,6 +177,15 @@ export function TradeControls({
         <div className="mt-3 flex justify-between text-xs text-[#b6a8c1]">
           <span>Current modeled price</span><span className="font-bold text-white">{price.toFixed(2)} STKZ</span>
         </div>
+        <div className="mt-3 flex justify-between rounded-xl bg-[#ffd17b]/10 px-3 py-2 text-xs">
+          <span className="font-bold text-[#ffd17b]">Transaction fee · 1%</span>
+          <span className="font-black text-[#fff8f2]">~{estimatedFee.toFixed(2)} STKZ</span>
+        </div>
+        <p className="mt-2 text-[10px] leading-4 text-[#a89aad]">
+          {side === "buy"
+            ? "The fee is added to your purchase total."
+            : "The fee is deducted from your sale proceeds."}
+        </p>
       </div>
 
       <button type="button" onClick={() => void submitTrade()} disabled={isSubmitting || !wallet}

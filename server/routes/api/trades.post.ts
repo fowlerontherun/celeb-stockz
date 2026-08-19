@@ -13,6 +13,8 @@ type TradeRequest = {
   amountStkz?: number;
 };
 
+const TRANSACTION_FEE_RATE = 0.01;
+
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
 
@@ -66,8 +68,10 @@ export default defineHandler(async (event) => {
 
   const quantity = Number((amountStkz / price).toFixed(6));
   const total = Number((quantity * price).toFixed(2));
+  const feeStkz = Number((total * TRANSACTION_FEE_RATE).toFixed(2));
+  const walletAmount = side === "buy" ? total + feeStkz : total - feeStkz;
 
-  if (quantity <= 0 || total <= 0) {
+  if (quantity <= 0 || total <= 0 || walletAmount <= 0) {
     throw createError({
       statusCode: 400,
       statusMessage: "Trade amount is too small for this market.",
@@ -79,8 +83,8 @@ export default defineHandler(async (event) => {
       ? await sql`
           WITH updated_wallet AS (
             UPDATE user_wallets
-            SET balance_stkz = balance_stkz - ${total}, updated_at = now()
-            WHERE user_id = ${userId} AND balance_stkz >= ${total}
+            SET balance_stkz = balance_stkz - ${walletAmount}, updated_at = now()
+            WHERE user_id = ${userId} AND balance_stkz >= ${walletAmount}
             RETURNING balance_stkz
           ),
           updated_position AS (
@@ -125,7 +129,7 @@ export default defineHandler(async (event) => {
           ),
           updated_wallet AS (
             UPDATE user_wallets
-            SET balance_stkz = balance_stkz + ${total}, updated_at = now()
+            SET balance_stkz = balance_stkz + ${walletAmount}, updated_at = now()
             WHERE user_id = ${userId}
               AND EXISTS (SELECT 1 FROM updated_position)
             RETURNING balance_stkz
@@ -153,7 +157,7 @@ export default defineHandler(async (event) => {
       statusCode: 400,
       statusMessage:
         side === "buy"
-          ? "You do not have enough STKZ for this purchase."
+          ? "You do not have enough STKZ for this purchase and its 1% fee."
           : `You do not have enough ${ticker} shares to sell.`,
     });
   }
@@ -164,6 +168,7 @@ export default defineHandler(async (event) => {
     priceStkz: price,
     quantity,
     totalStkz: total,
+    feeStkz,
     balanceStkz: Number(result[0].balance_stkz),
     positionQuantity: Number(result[0].quantity),
   };
