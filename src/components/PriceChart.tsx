@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   Area,
   AreaChart,
@@ -12,7 +11,6 @@ type HistoryPoint = {
 };
 
 export function PriceChart({
-  price,
   change,
   ticker,
   history,
@@ -22,32 +20,22 @@ export function PriceChart({
   ticker: string;
   history?: HistoryPoint[];
 }) {
-  const modeledData = useMemo(() => {
-    const direction = change >= 0 ? 1 : -1;
-    return Array.from({ length: 14 }, (_, index) => {
-      const progress = index / 13;
-      const variation = Math.sin(index * 1.73) * price * 0.018;
-      const start = price / (1 + (change / 100) * direction);
-      return {
-        point: index,
-        price: Number(
-          (start + (price - start) * progress + variation).toFixed(2),
-        ),
-      };
-    });
-  }, [change, price]);
-
-  const data =
-    history && history.length > 1
-      ? history.map((point, index) => ({
-          point: index,
-          price: point.price,
-        }))
-      : modeledData;
+  const data = (history ?? []).map((point, index) => ({
+    point: index,
+    price: point.price,
+  }));
   const color = change >= 0 ? "#62e7b6" : "#ff9ca5";
 
+  if (data.length < 2) {
+    return (
+      <div className="grid h-16 w-full place-items-center rounded-lg border border-dashed border-white/10 text-[10px] font-bold text-[#9f90ac]">
+        Snapshot history building
+      </div>
+    );
+  }
+
   return (
-    <div className="h-16 w-full" aria-label={`${ticker} price history chart`}>
+    <div className="h-16 w-full" aria-label={`${ticker} saved price history chart`}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 4, right: 2, bottom: 0, left: 2 }}>
           <defs>
@@ -65,8 +53,8 @@ export function PriceChart({
               color: "#fff8f2",
               fontSize: 11,
             }}
-            formatter={(value: number) => [`${value.toFixed(2)} STKZ`, "Practice score"]}
-            labelFormatter={() => "Saved market snapshot"}
+            formatter={(value: number) => [`${value.toFixed(2)} STKZ`, "Saved snapshot"]}
+            labelFormatter={() => "Recorded market price"}
           />
           <Area
             type="monotone"

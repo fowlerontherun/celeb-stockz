@@ -4,6 +4,7 @@ import { ChartNoAxesCombined, Sparkles } from "lucide-react";
 import { useAuthSession } from "@/lib/auth-client";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MarketDiscovery } from "@/components/MarketDiscovery";
+import { MarketTransparencyShortcut } from "@/components/MarketTransparencyShortcut";
 
 export function AccountGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useAuthSession();
@@ -21,6 +22,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
       <>
         <MarketTicker />
         <MarketDiscovery />
+        <MarketTransparencyShortcut />
         {children}
       </>
     );
@@ -43,16 +45,10 @@ export function AccountGate({ children }: { children: ReactNode }) {
           markets. STKZ purchases are not live yet.
         </p>
         <div className="mt-7 grid gap-3">
-          <Link
-            to="/auth/sign-up"
-            className="rounded-xl bg-[#ff7282] px-5 py-3 text-center text-sm font-black text-[#401b2d]"
-          >
+          <Link to="/auth/sign-up" className="rounded-xl bg-[#ff7282] px-5 py-3 text-center text-sm font-black text-[#401b2d]">
             Create account · get 10,000 STKZ
           </Link>
-          <Link
-            to="/auth/sign-in"
-            className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-center text-sm font-black text-[#eee4f3]"
-          >
+          <Link to="/auth/sign-in" className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-center text-sm font-black text-[#eee4f3]">
             Sign in
           </Link>
         </div>

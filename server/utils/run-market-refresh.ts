@@ -18,7 +18,10 @@ export async function runMarketRefresh() {
   lastRefreshStartedAt = Date.now();
   await syncMarketRegistry();
   const refresh = await refreshMarketSnapshots();
-  await processOpenOrders();
+
+  if (refresh.verifiedCount > 0) {
+    await processOpenOrders();
+  }
 
   return refresh;
 }
