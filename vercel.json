@@ -3,7 +3,7 @@
   "crons": [
     {
       "path": "/api/internal/market-refresh",
-      "schedule": "*/5 * * * *"
+      "schedule": "* * * * *"
     }
   ],
   "rewrites": [

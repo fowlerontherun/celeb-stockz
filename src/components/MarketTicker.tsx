@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Clock3 } from "lucide-react";
 
-const REFRESH_INTERVAL = 5 * 60 * 1000;
+const REFRESH_INTERVAL = 60 * 1000;
 
 function getNextRefreshAt(timestamp: number) {
   return (Math.floor(timestamp / REFRESH_INTERVAL) + 1) * REFRESH_INTERVAL;
@@ -18,7 +18,7 @@ export function MarketTicker() {
   const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30_000);
+    const timer = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(timer);
   }, []);
 
@@ -39,10 +39,10 @@ export function MarketTicker() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-black text-[#fff8f2]">
-          Verified snapshots · scheduled refresh in {countdown}
+          Practice-market updates · next cycle in {countdown}
         </p>
         <p className="mt-0.5 truncate text-[10px] font-semibold text-[#b8a9c4]">
-          Server-managed public signals · next cycle around {formatTime(nextRefreshAt)}
+          Public signals refresh when available · modeled movement updates every minute
         </p>
       </div>
       <span className="hidden items-center gap-1 rounded-lg bg-[#ffd17b]/15 px-2 py-1 text-[10px] font-black text-[#ffd17b] sm:inline-flex">

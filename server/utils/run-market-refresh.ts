@@ -3,8 +3,9 @@ import { sql } from "./db";
 import { refreshMarketSnapshots } from "./market-snapshots";
 import { processOpenOrders } from "./orders";
 import { syncMarketRegistry } from "./market-registry";
+import { applyIntracycleMovements } from "./intracycle-movement";
 
-const minimumRefreshIntervalMs = 5 * 60 * 1000;
+const minimumRefreshIntervalMs = 60_000;
 let lastRefreshStartedAt = 0;
 
 export async function runMarketRefresh() {
@@ -22,12 +23,16 @@ export async function runMarketRefresh() {
   try {
     await syncMarketRegistry();
     const refresh = await refreshMarketSnapshots();
+    const intracycleUpdated = await applyIntracycleMovements(startedAt);
 
     if (refresh.verifiedCount > 0) {
       await processOpenOrders();
     }
 
-    return refresh;
+    return {
+      ...refresh,
+      intracycleUpdated,
+    };
   } catch (error) {
     const errorKind =
       error instanceof Error && error.name ? error.name : "UnknownError";
