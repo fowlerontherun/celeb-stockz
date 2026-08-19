@@ -1,19 +1,33 @@
 import { useCallback, useEffect, useState } from "react";
-import { LogOut, Settings, UserRound, Wallet } from "lucide-react";
+import {
+  LogOut,
+  Settings,
+  ShieldCheck,
+  UserRound,
+  Wallet,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { authClient } from "@/lib/auth-client";
+import { authClient, useAuthSession } from "@/lib/auth-client";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { showError, showSuccess } from "@/utils/toast";
 
+const adminEmails = new Set(["j.fowler1986@gmail.com"]);
+
 export function WalletBalance() {
   const navigate = useNavigate();
+  const { data: session } = useAuthSession();
   const [balance, setBalance] = useState<number | null>(null);
   const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const isAdmin = session?.user.email
+    ? adminEmails.has(session.user.email.toLowerCase())
+    : false;
 
   const loadBalance = useCallback(async () => {
     const response = await fetch("/api/wallet", { credentials: "include" });
@@ -66,7 +80,7 @@ export function WalletBalance() {
         </DropdownMenuTrigger>
         <DropdownMenuContent
           align="end"
-          className="w-48 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2]"
+          className="w-56 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2]"
         >
           <DropdownMenuItem
             onSelect={() => navigate("/profile")}
@@ -75,6 +89,21 @@ export function WalletBalance() {
             <Settings size={16} className="mr-2 text-[#c99bff]" />
             Profile & settings
           </DropdownMenuItem>
+
+          {isAdmin && (
+            <>
+              <DropdownMenuSeparator className="my-1 bg-white/10" />
+              <DropdownMenuItem
+                onSelect={() => navigate("/operations")}
+                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ffd17b] focus:bg-[#ffd17b]/15 focus:text-[#ffe1a4]"
+              >
+                <ShieldCheck size={16} className="mr-2" />
+                Market control center
+              </DropdownMenuItem>
+            </>
+          )}
+
+          <DropdownMenuSeparator className="my-1 bg-white/10" />
           <DropdownMenuItem
             disabled={isSigningOut}
             onSelect={() => void signOut()}
