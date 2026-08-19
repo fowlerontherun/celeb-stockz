@@ -6,6 +6,7 @@ import { isMarketTicker, marketPrices } from "../../utils/markets";
 import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
 import { isTradingPaused } from "../../utils/trading-status";
 import { isListingTradingPaused } from "../../utils/listing-settings";
+import { canTradeMarket, getLockedPacksForMarket } from "../../utils/pack-access";
 
 type TradeRequest = {
   ticker?: string;
@@ -46,6 +47,14 @@ export default defineHandler(async (event) => {
     throw createError({
       statusCode: 400,
       statusMessage: "Choose an active market, valid trade side, and STKZ amount.",
+    });
+  }
+
+  if (!(await canTradeMarket(userId, ticker))) {
+    const packs = await getLockedPacksForMarket(userId, ticker);
+    throw createError({
+      statusCode: 403,
+      statusMessage: `Unlock ${packs.map((pack) => pack.name).join(" or ")} to trade this market.`,
     });
   }
 
@@ -102,54 +111,33 @@ export default defineHandler(async (event) => {
             RETURNING quantity
           ),
           recorded_trade AS (
-            INSERT INTO trade_history (
-              user_id,
-              ticker,
-              side,
-              quantity,
-              price_stkz,
-              total_stkz
-            )
+            INSERT INTO trade_history (user_id, ticker, side, quantity, price_stkz, total_stkz)
             SELECT ${userId}, ${ticker}, 'buy', ${quantity}, ${price}, ${total}
             FROM updated_position
-            RETURNING id
           )
           SELECT updated_wallet.balance_stkz, updated_position.quantity
-          FROM updated_wallet
-          CROSS JOIN updated_position
+          FROM updated_wallet CROSS JOIN updated_position
         `
       : await sql`
           WITH updated_position AS (
             UPDATE user_positions
             SET quantity = quantity - ${quantity}, updated_at = now()
-            WHERE user_id = ${userId}
-              AND ticker = ${ticker}
-              AND quantity >= ${quantity}
+            WHERE user_id = ${userId} AND ticker = ${ticker} AND quantity >= ${quantity}
             RETURNING quantity
           ),
           updated_wallet AS (
             UPDATE user_wallets
             SET balance_stkz = balance_stkz + ${walletAmount}, updated_at = now()
-            WHERE user_id = ${userId}
-              AND EXISTS (SELECT 1 FROM updated_position)
+            WHERE user_id = ${userId} AND EXISTS (SELECT 1 FROM updated_position)
             RETURNING balance_stkz
           ),
           recorded_trade AS (
-            INSERT INTO trade_history (
-              user_id,
-              ticker,
-              side,
-              quantity,
-              price_stkz,
-              total_stkz
-            )
+            INSERT INTO trade_history (user_id, ticker, side, quantity, price_stkz, total_stkz)
             SELECT ${userId}, ${ticker}, 'sell', ${quantity}, ${price}, ${total}
             FROM updated_wallet
-            RETURNING id
           )
           SELECT updated_wallet.balance_stkz, updated_position.quantity
-          FROM updated_wallet
-          CROSS JOIN updated_position
+          FROM updated_wallet CROSS JOIN updated_position
         `;
 
   if (!result[0]) {

@@ -5,6 +5,7 @@ import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker } from "../../utils/markets";
 import { isTradingPaused } from "../../utils/trading-status";
 import { isListingTradingPaused } from "../../utils/listing-settings";
+import { canTradeMarket, getLockedPacksForMarket } from "../../utils/pack-access";
 
 type OrderInput = {
   ticker?: string;
@@ -56,6 +57,14 @@ export default defineHandler(async (event) => {
       statusCode: 400,
       statusMessage:
         "Enter valid active-market order details and positive trigger prices.",
+    });
+  }
+
+  if (!(await canTradeMarket(userId, ticker))) {
+    const packs = await getLockedPacksForMarket(userId, ticker);
+    throw createError({
+      statusCode: 403,
+      statusMessage: `Unlock ${packs.map((pack) => pack.name).join(" or ")} to place an order for this market.`,
     });
   }
 

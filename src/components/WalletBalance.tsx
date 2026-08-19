@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   LogOut,
-  PoundSterling,
   Settings,
   ShieldCheck,
   UserRound,
@@ -46,13 +45,9 @@ export function WalletBalance() {
 
   const signOut = async () => {
     setIsSigningOut(true);
-
     try {
       const result = await authClient.signOut();
-      if (result.error) {
-        throw new Error(result.error.message ?? "Could not sign out.");
-      }
-
+      if (result.error) throw new Error(result.error.message ?? "Could not sign out.");
       showSuccess("You have been signed out.");
       navigate("/auth/sign-in", { replace: true });
     } catch (error) {
@@ -71,22 +66,12 @@ export function WalletBalance() {
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label="Open account menu"
-            className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-[#c99bff] transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#a97cff]"
-          >
+          <button type="button" aria-label="Open account menu" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-[#c99bff] transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#a97cff]">
             <UserRound size={18} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="end"
-          className="w-56 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2]"
-        >
-          <DropdownMenuItem
-            onSelect={() => navigate("/profile")}
-            className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold focus:bg-white/10 focus:text-white"
-          >
+        <DropdownMenuContent align="end" className="w-56 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2]">
+          <DropdownMenuItem onSelect={() => navigate("/profile")} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold focus:bg-white/10 focus:text-white">
             <Settings size={16} className="mr-2 text-[#c99bff]" />
             Profile & settings
           </DropdownMenuItem>
@@ -94,29 +79,15 @@ export function WalletBalance() {
           {isAdmin && (
             <>
               <DropdownMenuSeparator className="my-1 bg-white/10" />
-              <DropdownMenuItem
-                onSelect={() => navigate("/operations")}
-                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ffd17b] focus:bg-[#ffd17b]/15 focus:text-[#ffe1a4]"
-              >
+              <DropdownMenuItem onSelect={() => navigate("/operations")} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ffd17b] focus:bg-[#ffd17b]/15 focus:text-[#ffe1a4]">
                 <ShieldCheck size={16} className="mr-2" />
                 Market control center
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() => navigate("/live-stkz")}
-                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ffb2bc] focus:bg-[#ff7282]/15 focus:text-[#ffd3d8]"
-              >
-                <PoundSterling size={16} className="mr-2" />
-                Live STKZ preview
               </DropdownMenuItem>
             </>
           )}
 
           <DropdownMenuSeparator className="my-1 bg-white/10" />
-          <DropdownMenuItem
-            disabled={isSigningOut}
-            onSelect={() => void signOut()}
-            className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ff9ca5] focus:bg-[#ff7282]/15 focus:text-[#ffb3bc]"
-          >
+          <DropdownMenuItem disabled={isSigningOut} onSelect={() => void signOut()} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ff9ca5] focus:bg-[#ff7282]/15 focus:text-[#ffb3bc]">
             <LogOut size={16} className="mr-2" />
             {isSigningOut ? "Signing out…" : "Sign out"}
           </DropdownMenuItem>

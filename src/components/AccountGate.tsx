@@ -5,6 +5,7 @@ import { useAuthSession } from "@/lib/auth-client";
 import { MarketTicker } from "@/components/MarketTicker";
 import { MarketDiscovery } from "@/components/MarketDiscovery";
 import { MarketTransparencyShortcut } from "@/components/MarketTransparencyShortcut";
+import { PackShortcut } from "@/components/PackShortcut";
 
 export function AccountGate({ children }: { children: ReactNode }) {
   const { data: session, isPending } = useAuthSession();
@@ -23,6 +24,7 @@ export function AccountGate({ children }: { children: ReactNode }) {
         <MarketTicker />
         <MarketDiscovery />
         <MarketTransparencyShortcut />
+        <PackShortcut />
         {children}
       </>
     );
