@@ -7,7 +7,12 @@ type PackRow = {
 
 export async function getLockedPacksForMarket(userId: string, ticker: string) {
   const rows = await sql<PackRow[]>`
-    SELECT members.pack_id, packs.name
+    SELECT
+      members.pack_id,
+      CASE
+        WHEN (packs.is_announced OR packs.is_published OR unlocks.pack_id IS NOT NULL) THEN packs.name
+        ELSE 'Classified Pack #' || packs.id
+      END AS name
     FROM celebrity_pack_members AS members
     JOIN celebrity_packs AS packs ON packs.id = members.pack_id
     LEFT JOIN user_pack_unlocks AS unlocks

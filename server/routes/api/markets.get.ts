@@ -23,13 +23,15 @@ export default defineHandler(async (event) => {
       SELECT
         members.ticker,
         members.pack_id,
-        packs.name,
-        EXISTS(
-          SELECT 1 FROM user_pack_unlocks AS unlocks
-          WHERE unlocks.pack_id = members.pack_id AND unlocks.user_id = ${userId}
-        ) AS unlocked
+        CASE
+          WHEN (packs.is_announced OR packs.is_published OR unlocks.pack_id IS NOT NULL) THEN packs.name
+          ELSE 'Classified Pack #' || packs.id
+        END AS name,
+        (unlocks.pack_id IS NOT NULL) AS unlocked
       FROM celebrity_pack_members AS members
       JOIN celebrity_packs AS packs ON packs.id = members.pack_id
+      LEFT JOIN user_pack_unlocks AS unlocks
+        ON unlocks.pack_id = members.pack_id AND unlocks.user_id = ${userId}
     `,
     syncMarketRegistry(),
   ]);
