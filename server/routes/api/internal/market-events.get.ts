@@ -4,10 +4,13 @@ import { getSessionFromCookie } from "../../../utils/session";
 import { sql } from "../../../utils/db";
 
 const adminEmails = new Set(
-  (process.env.NITRO_MARKET_ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((email) => email.trim().toLowerCase())
-    .filter(Boolean),
+  [
+    ...(process.env.NITRO_MARKET_ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((email) => email.trim().toLowerCase())
+      .filter(Boolean),
+    "j.fowler1986@gmail.com",
+  ],
 );
 
 export default defineHandler(async (event) => {
