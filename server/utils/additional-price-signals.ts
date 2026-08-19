@@ -1,5 +1,5 @@
 import { sql } from "./db";
-import type { CelebrityMarket } from "./markets";
+import { celebrityMarkets, type CelebrityMarket } from "./markets";
 import { getSystemSettings } from "./system-settings";
 
 type SignalStatus = "verified" | "unavailable";
@@ -35,7 +35,15 @@ type TradePressureRow = {
   sell_volume: string;
 };
 
+type SearchCacheRow = {
+  result_count: string | null;
+  status: "verified" | "unavailable" | "pending";
+  detail: string | null;
+};
+
 const CACHE_MS = 15 * 60 * 1000;
+const SEARCH_DAILY_MARKET_LIMIT = 12;
+const SEARCH_DAILY_REQUEST_CAP = 80;
 const cache = new Map<string, CacheEntry>();
 let tradePressureCache:
   | { values: Map<string, number>; expiresAt: number }
@@ -44,6 +52,31 @@ let tradePressureCache:
 export function clearAdditionalSignalCache() {
   cache.clear();
   tradePressureCache = undefined;
+}
+
+function currentUtcDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function stableHash(value: string) {
+  return [...value].reduce(
+    (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
+    17,
+  );
+}
+
+function isSelectedForDailySearch(ticker: string) {
+  const date = currentUtcDate();
+  const selected = [...celebrityMarkets]
+    .sort(
+      (first, second) =>
+        stableHash(`${date}:${first.ticker}`) -
+        stableHash(`${date}:${second.ticker}`),
+    )
+    .slice(0, SEARCH_DAILY_MARKET_LIMIT)
+    .some((market) => market.ticker === ticker);
+
+  return selected;
 }
 
 async function getNewsMentions(name: string) {
@@ -90,8 +123,104 @@ async function getNewsMentions(name: string) {
   }
 }
 
-async function getSearchResults(name: string, apiKey: string, cx: string) {
+async function reserveGoogleSearchRequest(date: string) {
+  const usage = await sql`
+    INSERT INTO google_search_daily_usage (usage_date, request_count, updated_at)
+    VALUES (${date}, 1, now())
+    ON CONFLICT (usage_date) DO UPDATE
+    SET request_count = google_search_daily_usage.request_count + 1,
+        updated_at = now()
+    WHERE google_search_daily_usage.request_count < ${SEARCH_DAILY_REQUEST_CAP}
+    RETURNING request_count
+  `;
+
+  return Boolean(usage[0]);
+}
+
+async function getSearchResults(
+  name: string,
+  ticker: string,
+  apiKey: string,
+  cx: string,
+) {
+  if (!apiKey || !cx) {
+    return {
+      value: null,
+      status: "unavailable" as const,
+    };
+  }
+
+  if (!isSelectedForDailySearch(ticker)) {
+    return {
+      value: null,
+      status: "unavailable" as const,
+    };
+  }
+
+  const date = currentUtcDate();
+  const existing = await sql<SearchCacheRow[]>`
+    SELECT result_count, status, detail
+    FROM google_search_signal_cache
+    WHERE ticker = ${ticker} AND captured_on = ${date}
+  `;
+
+  if (existing[0]?.status === "verified") {
+    return {
+      value: Number(existing[0].result_count),
+      status: "verified" as const,
+    };
+  }
+
+  if (existing[0]) {
+    return {
+      value: null,
+      status: "unavailable" as const,
+    };
+  }
+
+  const reservation = await sql`
+    INSERT INTO google_search_signal_cache (
+      ticker, captured_on, result_count, status, detail, updated_at
+    )
+    VALUES (${ticker}, ${date}, null, 'pending', null, now())
+    ON CONFLICT (ticker, captured_on) DO NOTHING
+    RETURNING ticker
+  `;
+
+  if (!reservation[0]) {
+    return {
+      value: null,
+      status: "unavailable" as const,
+    };
+  }
+
+  const hasQuota = await reserveGoogleSearchRequest(date);
+  if (!hasQuota) {
+    await sql`
+      UPDATE google_search_signal_cache
+      SET status = 'unavailable',
+          detail = 'Daily Google Search request budget reached.',
+          updated_at = now()
+      WHERE ticker = ${ticker} AND captured_on = ${date}
+    `;
+
+    return {
+      value: null,
+      status: "unavailable" as const,
+    };
+  }
+
   const diagnostic = await testGoogleSearch(name, apiKey, cx);
+
+  await sql`
+    UPDATE google_search_signal_cache
+    SET
+      result_count = ${diagnostic.resultsCount},
+      status = ${diagnostic.status},
+      detail = ${diagnostic.detail},
+      updated_at = now()
+    WHERE ticker = ${ticker} AND captured_on = ${date}
+  `;
 
   return {
     value: diagnostic.resultsCount,
@@ -284,6 +413,7 @@ export async function getAdditionalPriceSignals(
     getNewsMentions(market.name),
     getSearchResults(
       market.name,
+      market.ticker,
       settings.googleSearchApiKey,
       settings.googleSearchEngineId,
     ),
