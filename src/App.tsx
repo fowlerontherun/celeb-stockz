@@ -11,6 +11,7 @@ import MarketOperations from "./pages/MarketOperations";
 import MarketTransparency from "./pages/MarketTransparency";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
+import YoutubeDiagnostics from "./pages/YoutubeDiagnostics";
 import AuthPage from "./pages/auth/AuthPage";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Route path="/" element={<AccountGate><Index /></AccountGate>} />
             <Route path="/profile" element={<AccountGate><Profile /></AccountGate>} />
             <Route path="/operations" element={<AccountGate><MarketOperations /></AccountGate>} />
+            <Route path="/youtube-diagnostics" element={<AccountGate><YoutubeDiagnostics /></AccountGate>} />
             <Route path="/live-stkz" element={<AccountGate><LiveStkzPreview /></AccountGate>} />
             <Route path="/market-data" element={<AccountGate><MarketTransparency /></AccountGate>} />
             <Route path="/auth/:path" element={<AuthPage />} />
