@@ -9,6 +9,7 @@ type ListingSetting = {
   ticker: string;
   trading_paused: boolean;
   website_url: string | null;
+  official_youtube_url: string | null;
   updated_at: string;
 };
 
@@ -26,7 +27,12 @@ export default defineHandler(async (event) => {
 
   const [settings, systemSettings] = await Promise.all([
     sql<ListingSetting[]>`
-      SELECT ticker, trading_paused, website_url, updated_at
+      SELECT
+        ticker,
+        trading_paused,
+        website_url,
+        official_youtube_url,
+        updated_at
       FROM market_listing_settings
     `,
     getSystemSettings(),
@@ -45,6 +51,7 @@ export default defineHandler(async (event) => {
         category: market.category,
         tradingPaused: setting?.trading_paused ?? false,
         websiteUrl: setting?.website_url ?? "",
+        officialYoutubeUrl: setting?.official_youtube_url ?? "",
         youtubeChannelId: systemSettings.youtubeChannels[market.ticker] ?? "",
         updatedAt: setting?.updated_at ?? null,
       };

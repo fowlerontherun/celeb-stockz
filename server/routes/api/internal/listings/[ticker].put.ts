@@ -14,10 +14,11 @@ import { clearAdditionalSignalCache } from "../../../../utils/additional-price-s
 type ListingUpdate = {
   tradingPaused?: boolean;
   websiteUrl?: string;
+  officialYoutubeUrl?: string;
   youtubeChannelId?: string;
 };
 
-function validWebsiteUrl(value: string) {
+function validUrl(value: string) {
   if (!value) return true;
 
   try {
@@ -47,17 +48,19 @@ export default defineHandler(async (event) => {
   }
 
   const websiteUrl = body?.websiteUrl?.trim() ?? "";
+  const officialYoutubeUrl = body?.officialYoutubeUrl?.trim() ?? "";
   const youtubeChannelId = body?.youtubeChannelId?.trim() ?? "";
 
   if (
     typeof body?.tradingPaused !== "boolean" ||
-    !validWebsiteUrl(websiteUrl) ||
+    !validUrl(websiteUrl) ||
+    !validUrl(officialYoutubeUrl) ||
     (youtubeChannelId && !youtubeChannelId.startsWith("UC"))
   ) {
     throw createError({
       statusCode: 400,
       statusMessage:
-        "Use a valid website URL and a YouTube channel ID beginning with UC.",
+        "Use valid website and YouTube URLs, plus a channel ID beginning with UC when adding signal data.",
     });
   }
 
@@ -73,18 +76,20 @@ export default defineHandler(async (event) => {
   await Promise.all([
     sql`
       INSERT INTO market_listing_settings (
-        ticker, trading_paused, website_url, updated_at
+        ticker, trading_paused, website_url, official_youtube_url, updated_at
       )
       VALUES (
         ${ticker},
         ${body.tradingPaused},
         ${websiteUrl || null},
+        ${officialYoutubeUrl || null},
         now()
       )
       ON CONFLICT (ticker) DO UPDATE
       SET
         trading_paused = EXCLUDED.trading_paused,
         website_url = EXCLUDED.website_url,
+        official_youtube_url = EXCLUDED.official_youtube_url,
         updated_at = now()
     `,
     sql`
@@ -101,6 +106,7 @@ export default defineHandler(async (event) => {
     ticker,
     tradingPaused: body.tradingPaused,
     websiteUrl,
+    officialYoutubeUrl,
     youtubeChannelId,
   };
 });

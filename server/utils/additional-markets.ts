@@ -194,7 +194,7 @@ const profiles: Profile[] = [
   ["Gugu Mbatha-Raw", "GMBATHA", "Film", 1983, 5.4],
   ["Sophie Okonedo", "SOKONEDO", "Film", 1968, 3.2],
   ["David Harewood", "DHAREWOOD", "Film", 1965, 3.4],
-  ["Lennie James", "LJAMES", "Film", 1965, 3.6],
+  ["Lennie James", "LENJAMES", "Film", 1965, 3.6],
   ["Joseph Fiennes", "JFIENNES", "Film", 1970, 3.1],
   ["Rhys Ifans", "RIFANS", "Film", 1967, 3.5],
   ["Kaya Scodelario", "KSCODELARIO", "Film", 1992, 5.7],
