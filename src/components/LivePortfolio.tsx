@@ -139,6 +139,23 @@ export function LivePortfolio({ markets, onTrade }: LivePortfolioProps) {
     [markets, wallet?.positions],
   );
 
+  const holdingsValue = useMemo(
+    () =>
+      holdings.reduce(
+        (total, holding) => total + holding.quantity * holding.market.price,
+        0,
+      ),
+    [holdings],
+  );
+
+  const netWorth = (wallet?.balanceStkz ?? 0) + holdingsValue;
+  const totalProfitLoss = holdings.reduce(
+    (total, holding) =>
+      total +
+      holding.quantity * (holding.market.price - holding.averageCost),
+    0,
+  );
+
   return (
     <div className="animate-in fade-in duration-300">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -163,19 +180,48 @@ export function LivePortfolio({ markets, onTrade }: LivePortfolioProps) {
 
       <section className="mt-7 rounded-[28px] border border-white/10 bg-[#2a1740] p-6 sm:p-8">
         <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#b8a6c9]">
-          Available balance
+          Modeled net worth
         </p>
         <p className="font-display mt-2 text-4xl font-black sm:text-5xl">
           {wallet
-            ? wallet.balanceStkz.toLocaleString(undefined, {
+            ? netWorth.toLocaleString(undefined, {
                 maximumFractionDigits: 2,
               })
             : "—"}{" "}
           <span className="text-xl text-[#c3b5cf]">STKZ</span>
         </p>
-        <p className="mt-3 text-sm text-[#c4b4d0]">
-          Your current practice-trading balance.
-        </p>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold">
+          <span className="rounded-xl bg-white/10 px-3 py-2 text-[#e6d8ff]">
+            Available{" "}
+            {wallet
+              ? wallet.balanceStkz.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })
+              : "—"}{" "}
+            STKZ
+          </span>
+          <span className="rounded-xl bg-[#183b33] px-3 py-2 text-[#78e8bd]">
+            Holdings {holdingsValue.toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            })}{" "}
+            STKZ
+          </span>
+          {holdings.length > 0 && (
+            <span
+              className={`rounded-xl px-3 py-2 ${
+                totalProfitLoss >= 0
+                  ? "bg-[#183b33] text-[#78e8bd]"
+                  : "bg-[#482332] text-[#ffb1b9]"
+              }`}
+            >
+              Holdings P&L {totalProfitLoss >= 0 ? "+" : ""}
+              {totalProfitLoss.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}{" "}
+              STKZ
+            </span>
+          )}
+        </div>
       </section>
 
       <section className="mt-7">
