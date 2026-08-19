@@ -21,7 +21,7 @@ import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { OnboardingRecap } from "@/components/OnboardingRecap";
 import { PracticeTools } from "@/components/PracticeTools";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 type CelebrityMarket = CategorizedCelebrity & {
   signals: {
@@ -31,6 +31,11 @@ type CelebrityMarket = CategorizedCelebrity & {
     monthlySearchesMillions: number;
     newsStories: number;
   };
+};
+
+type Follow = {
+  ticker: string;
+  alertsEnabled: boolean;
 };
 
 const fallbackMarkets: CelebrityMarket[] = [
@@ -58,21 +63,74 @@ export default function Index() {
   const [markets, setMarkets] = useState<CelebrityMarket[]>(fallbackMarkets);
   const [selected, setSelected] = useState<CelebrityMarket>(fallbackMarkets[0]);
   const [tradeOpen, setTradeOpen] = useState(false);
-  const [watchlist, setWatchlist] = useState<Celebrity[]>(fallbackMarkets.slice(0, 2));
+  const [follows, setFollows] = useState<Follow[]>([]);
+
+  const watchlist = follows
+    .map((follow) => markets.find((market) => market.ticker === follow.ticker))
+    .filter((market): market is CelebrityMarket => Boolean(market));
 
   useEffect(() => {
     const loadMarkets = async () => {
-      const response = await fetch("/api/markets", { credentials: "include" });
-      if (!response.ok) throw new Error("Could not refresh celebrity market signals.");
-      const data = (await response.json()) as { markets: CelebrityMarket[] };
-      setMarkets(data.markets);
-      setSelected((current) => data.markets.find((market) => market.ticker === current.ticker) ?? data.markets[0]);
-      setWatchlist((current) => current.map((item) => data.markets.find((market) => market.ticker === item.ticker)).filter((item): item is CelebrityMarket => Boolean(item)));
+      const [marketsResponse, followsResponse] = await Promise.all([
+        fetch("/api/markets", { credentials: "include" }),
+        fetch("/api/follows", { credentials: "include" }),
+      ]);
+
+      if (!marketsResponse.ok || !followsResponse.ok) {
+        throw new Error("Could not refresh your saved market data.");
+      }
+
+      const marketData = (await marketsResponse.json()) as {
+        markets: CelebrityMarket[];
+      };
+      const followData = (await followsResponse.json()) as {
+        follows: Follow[];
+      };
+
+      setMarkets(marketData.markets);
+      setFollows(followData.follows);
+      setSelected(
+        (current) =>
+          marketData.markets.find((market) => market.ticker === current.ticker) ??
+          marketData.markets[0],
+      );
     };
+
     void loadMarkets().catch((error: Error) => showError(error.message));
     window.addEventListener("markets:updated", loadMarkets);
     return () => window.removeEventListener("markets:updated", loadMarkets);
   }, []);
+
+  const removeFromWatchlist = async (ticker: string) => {
+    const follow = follows.find((item) => item.ticker === ticker);
+
+    try {
+      const response = await fetch("/api/follows", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ticker,
+          following: false,
+          alertsEnabled: follow?.alertsEnabled ?? true,
+        }),
+      });
+      const data = (await response.json()) as { statusMessage?: string };
+
+      if (!response.ok) {
+        throw new Error(data.statusMessage ?? "Could not remove this market.");
+      }
+
+      setFollows((current) =>
+        current.filter((followItem) => followItem.ticker !== ticker),
+      );
+      showSuccess(`${ticker} removed from your watchlist.`);
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Could not remove this market.",
+      );
+    }
+  };
 
   const openTrade = (market: Celebrity) => {
     setSelected(markets.find((item) => item.ticker === market.ticker) ?? markets[0]);
@@ -82,7 +140,7 @@ export default function Index() {
   const content =
     page === "Markets" ? <CategoryMarkets markets={markets} onTrade={openTrade} /> :
     page === "Movers" ? <TopMovers markets={markets} onTrade={openTrade} /> :
-    page === "Watchlist" ? <WatchlistPanel celebs={watchlist} onTrade={openTrade} onRemove={(ticker) => setWatchlist((current) => current.filter((market) => market.ticker !== ticker))} /> :
+    page === "Watchlist" ? <WatchlistPanel celebs={watchlist} onTrade={openTrade} onRemove={(ticker) => void removeFromWatchlist(ticker)} /> :
     page === "Portfolio" ? <LivePortfolio markets={markets} onTrade={openTrade} /> :
     page === "Rankings" ? <LiveRankings /> :
     page === "Clubs" ? <ClubsPanel /> :
