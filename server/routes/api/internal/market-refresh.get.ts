@@ -5,13 +5,9 @@ import { runMarketRefresh } from "../../../utils/run-market-refresh";
 const refreshSecret = process.env.NITRO_MARKET_REFRESH_SECRET;
 
 export default defineHandler(async (event) => {
-  const suppliedSecret = getRequestHeader(event, "x-market-refresh-secret");
-  const authorization = getRequestHeader(event, "authorization");
-
   if (
     !refreshSecret ||
-    (suppliedSecret !== refreshSecret &&
-      authorization !== `Bearer ${refreshSecret}`)
+    getRequestHeader(event, "authorization") !== `Bearer ${refreshSecret}`
   ) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
