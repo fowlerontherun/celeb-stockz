@@ -10,6 +10,11 @@ import {
   getAdditionalSignalBoost,
   type AdditionalPriceSignals,
 } from "./additional-price-signals";
+import {
+  getExternalSignalBoost,
+  getExternalSourceSignals,
+  type ExternalSourceSignals,
+} from "./external-source-signals";
 
 type SnapshotRow = {
   ticker: string;
@@ -35,8 +40,14 @@ type EditActivityResult = {
 const DAILY_MOVE_CAP = 15;
 const REVIEW_MOVE_THRESHOLD = 30;
 const SOURCE_CACHE_MS = 30 * 60 * 1000;
-const pageviewCache = new Map<string, { result: PageviewResult; expiresAt: number }>();
-const editActivityCache = new Map<string, { result: EditActivityResult; expiresAt: number }>();
+const pageviewCache = new Map<
+  string,
+  { result: PageviewResult; expiresAt: number }
+>();
+const editActivityCache = new Map<
+  string,
+  { result: EditActivityResult; expiresAt: number }
+>();
 
 function formatDate(date: Date) {
   return date.toISOString().slice(0, 10).replaceAll("-", "");
@@ -52,8 +63,14 @@ function describePageviewChange(current: number | null, previous: number | null)
 }
 
 function describeEditActivity(recentEdits: number | null) {
-  if (recentEdits === null) return "Article activity was unavailable and did not affect the score.";
-  if (recentEdits === 0) return "No recent article edits added to the score.";
+  if (recentEdits === null) {
+    return "Article activity was unavailable and did not affect the score.";
+  }
+
+  if (recentEdits === 0) {
+    return "No recent article edits added to the score.";
+  }
+
   return `${recentEdits} recent public article edit${recentEdits === 1 ? "" : "s"} added a small capped activity signal.`;
 }
 
@@ -69,6 +86,19 @@ function describeAdditionalSignals(signals: AdditionalPriceSignals) {
     : "Optional news, search, and official channel signals were unavailable and did not affect the score.";
 }
 
+function describeExternalSignals(signals: ExternalSourceSignals) {
+  const active = [
+    signals.statuses.webz === "verified" && "Webz news",
+    signals.statuses.tmdb === "verified" && "TMDB screen interest",
+    signals.statuses.lastfm === "verified" && "Last.fm music reach",
+    signals.statuses.sportsdb === "verified" && "SportsDB coverage",
+  ].filter(Boolean);
+
+  return active.length
+    ? `${active.join(", ")} supplied additional capped context.`
+    : "Optional entertainment-source signals were unavailable and did not affect the score.";
+}
+
 async function getWikipediaViews(article: string): Promise<PageviewResult> {
   const cached = pageviewCache.get(article);
   if (cached && cached.expiresAt > Date.now()) return cached.result;
@@ -82,23 +112,32 @@ async function getWikipediaViews(article: string): Promise<PageviewResult> {
     const response = await fetch(url, {
       headers: { "user-agent": "CelebStockz practice-market signal monitor" },
     });
+
     if (!response.ok) return { views: null, status: "unavailable" };
 
-    const data = (await response.json()) as { items?: Array<{ views?: number }> };
+    const data = (await response.json()) as {
+      items?: Array<{ views?: number }>;
+    };
     const views = data.items?.[0]?.views ?? null;
     const result =
-      views !== null && (!Number.isSafeInteger(views) || views < 0 || views > 1_000_000_000)
+      views !== null &&
+      (!Number.isSafeInteger(views) || views < 0 || views > 1_000_000_000)
         ? { views: null, status: "unavailable" as const }
         : { views, status: "verified" as const };
 
-    pageviewCache.set(article, { result, expiresAt: Date.now() + SOURCE_CACHE_MS });
+    pageviewCache.set(article, {
+      result,
+      expiresAt: Date.now() + SOURCE_CACHE_MS,
+    });
     return result;
   } catch {
     return { views: null, status: "unavailable" };
   }
 }
 
-async function getWikipediaEditActivity(article: string): Promise<EditActivityResult> {
+async function getWikipediaEditActivity(
+  article: string,
+): Promise<EditActivityResult> {
   const cached = editActivityCache.get(article);
   if (cached && cached.expiresAt > Date.now()) return cached.result;
 
@@ -116,19 +155,35 @@ async function getWikipediaEditActivity(article: string): Promise<EditActivityRe
 
   try {
     const response = await fetch(url, {
-      headers: { accept: "application/json", "user-agent": "CelebStockz practice-market signal monitor" },
+      headers: {
+        accept: "application/json",
+        "user-agent": "CelebStockz practice-market signal monitor",
+      },
     });
+
     if (!response.ok) return { recentEdits: null, status: "unavailable" };
 
     const data = (await response.json()) as {
       query?: { pages?: Array<{ revisions?: Array<{ timestamp?: string }> }> };
     };
-    const recentEdits = (data.query?.pages?.[0]?.revisions ?? []).filter((revision) => {
-      const timestamp = revision.timestamp ? new Date(revision.timestamp) : null;
-      return timestamp && Number.isFinite(timestamp.getTime()) && timestamp >= new Date(since);
-    }).length;
+    const recentEdits = (data.query?.pages?.[0]?.revisions ?? []).filter(
+      (revision) => {
+        const timestamp = revision.timestamp
+          ? new Date(revision.timestamp)
+          : null;
+        return (
+          timestamp &&
+          Number.isFinite(timestamp.getTime()) &&
+          timestamp >= new Date(since)
+        );
+      },
+    ).length;
     const result = { recentEdits, status: "verified" as const };
-    editActivityCache.set(article, { result, expiresAt: Date.now() + SOURCE_CACHE_MS });
+
+    editActivityCache.set(article, {
+      result,
+      expiresAt: Date.now() + SOURCE_CACHE_MS,
+    });
     return result;
   } catch {
     return { recentEdits: null, status: "unavailable" };
@@ -140,16 +195,24 @@ function calculateTransparentScore(
   pageviews: number | null,
   recentEdits: number | null,
   additionalSignals: AdditionalPriceSignals,
+  externalSignals: ExternalSourceSignals,
 ) {
-  const pageviewBoost = pageviews ? Math.min(18, Math.log10(Math.max(pageviews, 1)) * 2.2) : 0;
-  const editActivityBoost = recentEdits ? Math.min(4, Math.sqrt(Math.min(recentEdits, 25)) * 0.8) : 0;
+  const pageviewBoost = pageviews
+    ? Math.min(18, Math.log10(Math.max(pageviews, 1)) * 2.2)
+    : 0;
+  const editActivityBoost = recentEdits
+    ? Math.min(4, Math.sqrt(Math.min(recentEdits, 25)) * 0.8)
+    : 0;
 
-  return Number((
-    calculateMarketPrice(market.signals) +
-    pageviewBoost +
-    editActivityBoost +
-    getAdditionalSignalBoost(additionalSignals)
-  ).toFixed(4));
+  return Number(
+    (
+      calculateMarketPrice(market.signals) +
+      pageviewBoost +
+      editActivityBoost +
+      getAdditionalSignalBoost(additionalSignals) +
+      getExternalSignalBoost(externalSignals)
+    ).toFixed(4),
+  );
 }
 
 async function getLatestVerifiedSnapshot(ticker: string) {
@@ -182,15 +245,19 @@ export async function refreshMarketSnapshots() {
 
   for (const market of eligibleMarkets) {
     const metadata = getMarketMetadata(market);
-    const [pageviews, editActivity, additionalSignals, previous] = await Promise.all([
-      getWikipediaViews(metadata.wikipediaTitle),
-      getWikipediaEditActivity(metadata.wikipediaTitle),
-      getAdditionalPriceSignals(market),
-      getLatestVerifiedSnapshot(market.ticker),
-    ]);
-    const previousPageviews = previous?.pageviews === null || previous?.pageviews === undefined
-      ? null
-      : Number(previous.pageviews);
+    const [pageviews, editActivity, additionalSignals, externalSignals, previous] =
+      await Promise.all([
+        getWikipediaViews(metadata.wikipediaTitle),
+        getWikipediaEditActivity(metadata.wikipediaTitle),
+        getAdditionalPriceSignals(market),
+        getExternalSourceSignals(market),
+        getLatestVerifiedSnapshot(market.ticker),
+      ]);
+
+    const previousPageviews =
+      previous?.pageviews === null || previous?.pageviews === undefined
+        ? null
+        : Number(previous.pageviews);
 
     if (pageviews.status === "unavailable" && previous) {
       unavailableCount += 1;
@@ -199,17 +266,36 @@ export async function refreshMarketSnapshots() {
         VALUES (
           ${market.ticker}, ${Number(previous.price_stkz)}, ${Number(previous.score)}, 0, null,
           ${market.signals.socialFollowersMillions * 1_000_000},
-          ${JSON.stringify({ wikipedia: { article: metadata.wikipediaTitle, pageviewsStatus: "unavailable" }, additionalSignals, fallback: { capturedAt: previous.captured_at, reason: "Retained last verified snapshot" } })}::jsonb,
+          ${JSON.stringify({
+            wikipedia: {
+              article: metadata.wikipediaTitle,
+              pageviewsStatus: "unavailable",
+            },
+            additionalSignals,
+            externalSignals,
+            fallback: {
+              capturedAt: previous.captured_at,
+              reason: "Retained last verified snapshot",
+            },
+          })}::jsonb,
           'unavailable'
         )
       `;
       continue;
     }
 
-    const score = calculateTransparentScore(market, pageviews.views, editActivity.recentEdits, additionalSignals);
+    const score = calculateTransparentScore(
+      market,
+      pageviews.views,
+      editActivity.recentEdits,
+      additionalSignals,
+      externalSignals,
+    );
     const previousPrice = previous ? Number(previous.price_stkz) : score;
-    const rawMove = previousPrice ? ((score - previousPrice) / previousPrice) * 100 : 0;
-    const movementReason = `${describePageviewChange(pageviews.views, previousPageviews)} ${describeEditActivity(editActivity.recentEdits)} ${describeAdditionalSignals(additionalSignals)}`;
+    const rawMove = previousPrice
+      ? ((score - previousPrice) / previousPrice) * 100
+      : 0;
+    const movementReason = `${describePageviewChange(pageviews.views, previousPageviews)} ${describeEditActivity(editActivity.recentEdits)} ${describeAdditionalSignals(additionalSignals)} ${describeExternalSignals(externalSignals)}`;
 
     if (previous && Math.abs(rawMove) > REVIEW_MOVE_THRESHOLD) {
       flaggedCount += 1;
@@ -218,15 +304,33 @@ export async function refreshMarketSnapshots() {
         VALUES (
           ${market.ticker}, ${previousPrice}, ${score}, 0, ${pageviews.views},
           ${market.signals.socialFollowersMillions * 1_000_000},
-          ${JSON.stringify({ wikipedia: { article: metadata.wikipediaTitle, dailyPageviews: pageviews.views, previousDailyPageviews: previousPageviews, recentEdits: editActivity.recentEdits }, additionalSignals, anomaly: { rawMove: Number(rawMove.toFixed(3)), reason: "Movement exceeds manual-review threshold" } })}::jsonb,
+          ${JSON.stringify({
+            wikipedia: {
+              article: metadata.wikipediaTitle,
+              dailyPageviews: pageviews.views,
+              previousDailyPageviews: previousPageviews,
+              recentEdits: editActivity.recentEdits,
+            },
+            additionalSignals,
+            externalSignals,
+            anomaly: {
+              rawMove: Number(rawMove.toFixed(3)),
+              reason: "Movement exceeds manual-review threshold",
+            },
+          })}::jsonb,
           'flagged'
         )
       `;
       continue;
     }
 
-    const dailyChange = Math.max(-DAILY_MOVE_CAP, Math.min(DAILY_MOVE_CAP, rawMove));
-    const price = Number((previousPrice * (1 + dailyChange / 100)).toFixed(2));
+    const dailyChange = Math.max(
+      -DAILY_MOVE_CAP,
+      Math.min(DAILY_MOVE_CAP, rawMove),
+    );
+    const price = Number(
+      (previousPrice * (1 + dailyChange / 100)).toFixed(2),
+    );
     verifiedCount += 1;
 
     await sql`
@@ -235,10 +339,21 @@ export async function refreshMarketSnapshots() {
         ${market.ticker}, ${price}, ${score}, ${dailyChange}, ${pageviews.views},
         ${market.signals.socialFollowersMillions * 1_000_000},
         ${JSON.stringify({
-          wikipedia: { article: metadata.wikipediaTitle, dailyPageviews: pageviews.views, previousDailyPageviews: previousPageviews, pageviewsStatus: pageviews.status, recentEdits: editActivity.recentEdits, editActivityStatus: editActivity.status },
+          wikipedia: {
+            article: metadata.wikipediaTitle,
+            dailyPageviews: pageviews.views,
+            previousDailyPageviews: previousPageviews,
+            pageviewsStatus: pageviews.status,
+            recentEdits: editActivity.recentEdits,
+            editActivityStatus: editActivity.status,
+          },
           additionalSignals,
+          externalSignals,
           movementReason,
-          officialPlatformReach: { value: market.signals.socialFollowersMillions * 1_000_000, status: "modeled-baseline" },
+          officialPlatformReach: {
+            value: market.signals.socialFollowersMillions * 1_000_000,
+            status: "modeled-baseline",
+          },
         })}::jsonb,
         'verified'
       )
@@ -254,10 +369,16 @@ export async function refreshMarketSnapshots() {
   `;
   await sql`
     INSERT INTO market_refresh_log (started_at, completed_at, status, refreshed_count, verified_count, unavailable_count, flagged_count, detail)
-    VALUES (${startedAt}, now(), ${status}, ${eligibleMarkets.length}, ${verifiedCount}, ${unavailableCount}, ${flaggedCount}, ${"Wikimedia, public news, search, and official-channel refresh"})
+    VALUES (${startedAt}, now(), ${status}, ${eligibleMarkets.length}, ${verifiedCount}, ${unavailableCount}, ${flaggedCount}, ${"Wikimedia, public news, entertainment sources, search, and official-channel refresh"})
   `;
 
-  return { refreshed: eligibleMarkets.length, verifiedCount, unavailableCount, flaggedCount, refreshedAt: new Date().toISOString() };
+  return {
+    refreshed: eligibleMarkets.length,
+    verifiedCount,
+    unavailableCount,
+    flaggedCount,
+    refreshedAt: new Date().toISOString(),
+  };
 }
 
 export async function getSnapshotMarkets() {
@@ -273,18 +394,34 @@ export async function getSnapshotMarkets() {
   return eligibleMarkets.map((market) => {
     const snapshot = snapshots.get(market.ticker);
     const measurements = snapshot?.source_measurements;
-    const movementReason = typeof measurements?.movementReason === "string"
-      ? measurements.movementReason
-      : "Using the current approved practice-market signal baseline.";
+    const movementReason =
+      typeof measurements?.movementReason === "string"
+        ? measurements.movementReason
+        : "Using the current approved practice-market signal baseline.";
 
     return {
       ...market,
-      price: snapshot ? Number(snapshot.price_stkz) : calculateMarketPrice(market.signals),
+      price: snapshot
+        ? Number(snapshot.price_stkz)
+        : calculateMarketPrice(market.signals),
       change: snapshot ? Number(snapshot.daily_change) : market.change,
       metadata: getMarketMetadata(market),
       snapshot: snapshot
-        ? { capturedAt: snapshot.captured_at, score: Number(snapshot.score), pageviews: snapshot.pageviews ? Number(snapshot.pageviews) : null, movementReason, refreshStatus: "verified" as const }
-        : { capturedAt: null, score: calculateMarketPrice(market.signals), pageviews: null, movementReason: "Waiting for the first approved public-signal snapshot.", refreshStatus: "fallback" as const },
+        ? {
+            capturedAt: snapshot.captured_at,
+            score: Number(snapshot.score),
+            pageviews: snapshot.pageviews ? Number(snapshot.pageviews) : null,
+            movementReason,
+            refreshStatus: "verified" as const,
+          }
+        : {
+            capturedAt: null,
+            score: calculateMarketPrice(market.signals),
+            pageviews: null,
+            movementReason:
+              "Waiting for the first approved public-signal snapshot.",
+            refreshStatus: "fallback" as const,
+          },
     };
   });
 }
