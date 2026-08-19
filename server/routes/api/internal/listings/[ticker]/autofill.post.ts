@@ -29,8 +29,14 @@ type WikidataSearchResponse = {
   search?: Array<{ id?: string }>;
 };
 
+type WikidataEntitiesResponse = {
+  entities?: Record<string, WikidataEntity>;
+};
+
 function getClaimValue(entity: WikidataEntity, property: string) {
-  return entity.claims?.[property]?.[0]?.mainsnak?.datavalue?.value?.trim() ?? "";
+  return (
+    entity.claims?.[property]?.[0]?.mainsnak?.datavalue?.value?.trim() ?? ""
+  );
 }
 
 function isWebsiteUrl(value: string) {
@@ -57,12 +63,13 @@ async function findWikidataId(name: string) {
 
     if (response.ok) {
       const summary = (await response.json()) as { wikibase_item?: string };
+
       if (summary.wikibase_item) {
         return summary.wikibase_item;
       }
     }
   } catch {
-    // Fall through to the Wikidata name search.
+    // Use Wikidata search when the Wikipedia summary is unavailable.
   }
 
   const searchUrl = new URL("https://www.wikidata.org/w/api.php");
@@ -86,6 +93,32 @@ async function findWikidataId(name: string) {
 
     const result = (await response.json()) as WikidataSearchResponse;
     return result.search?.[0]?.id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function getWikidataEntity(id: string) {
+  const entityUrl = new URL("https://www.wikidata.org/w/api.php");
+  entityUrl.searchParams.set("action", "wbgetentities");
+  entityUrl.searchParams.set("format", "json");
+  entityUrl.searchParams.set("ids", id);
+  entityUrl.searchParams.set("props", "claims");
+
+  try {
+    const response = await fetch(entityUrl, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "CelebStockz listing metadata lookup",
+      },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const payload = (await response.json()) as WikidataEntitiesResponse;
+    return payload.entities?.[id] ?? null;
   } catch {
     return null;
   }
@@ -118,35 +151,11 @@ export default defineHandler(async (event) => {
   if (!wikidataId) {
     throw createError({
       statusCode: 404,
-      statusMessage:
-        "No public Wikidata record could be found for this listing.",
+      statusMessage: "No public Wikidata record could be found for this listing.",
     });
   }
 
-  let entity: WikidataEntity | undefined;
-
-  try {
-    const entityResponse = await fetch(
-      `https://www.wikidata.org/wiki/Special:EntityData/${encodeURIComponent(
-        wikidataId,
-      )}.json`,
-      {
-        headers: {
-          accept: "application/json",
-          "user-agent": "CelebStockz listing metadata lookup",
-        },
-      },
-    );
-
-    if (entityResponse.ok) {
-      const entityPayload = (await entityResponse.json()) as {
-        entities?: Record<string, WikidataEntity>;
-      };
-      entity = entityPayload.entities?.[wikidataId];
-    }
-  } catch {
-    entity = undefined;
-  }
+  const entity = await getWikidataEntity(wikidataId);
 
   if (!entity) {
     throw createError({
@@ -172,10 +181,19 @@ export default defineHandler(async (event) => {
   ]);
 
   const existingListing = listingRows[0];
-  const savedWebsiteUrl = existingListing?.website_url?.trim() || websiteUrl;
+  const existingWebsiteUrl = existingListing?.website_url?.trim() ?? "";
   const channels = { ...systemSettings.youtubeChannels };
-  const existingChannelId = channels[ticker]?.trim();
+  const existingChannelId = channels[ticker]?.trim() ?? "";
+  const savedWebsiteUrl = existingWebsiteUrl || websiteUrl;
   const savedYoutubeChannelId = existingChannelId || youtubeChannelId;
+
+  if (!savedWebsiteUrl && !savedYoutubeChannelId) {
+    throw createError({
+      statusCode: 404,
+      statusMessage:
+        "No official website or YouTube channel is listed in this public profile. You can add verified details manually.",
+    });
+  }
 
   if (savedYoutubeChannelId) {
     channels[ticker] = savedYoutubeChannelId;
@@ -215,7 +233,7 @@ export default defineHandler(async (event) => {
       youtube: Boolean(youtubeChannelId),
     },
     preserved: {
-      website: Boolean(existingListing?.website_url?.trim()),
+      website: Boolean(existingWebsiteUrl),
       youtube: Boolean(existingChannelId),
     },
   };
