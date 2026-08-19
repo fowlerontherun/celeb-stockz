@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, WalletCards } from "lucide-react";
+import { RefreshCw, Trash2, WalletCards } from "lucide-react";
 import type { CategorizedCelebrity } from "@/components/CategoryMarkets";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 type WalletData = {
   balanceStkz: number;
@@ -12,29 +12,70 @@ type WalletData = {
   }>;
 };
 
+type OpenOrder = {
+  id: number;
+  ticker: string;
+  side: "buy" | "sell";
+  orderType: "limit" | "stop_market" | "stop_limit";
+  amountStkz: number;
+  limitPrice: number | null;
+  stopPrice: number | null;
+};
+
 type LivePortfolioProps = {
   markets: CategorizedCelebrity[];
   onTrade: (market: CategorizedCelebrity) => void;
 };
 
+function getOrderTrigger(order: OpenOrder) {
+  if (order.orderType === "limit") {
+    return `Limit ${order.limitPrice?.toFixed(2)} STKZ`;
+  }
+
+  if (order.orderType === "stop_market") {
+    return `Stop ${order.stopPrice?.toFixed(2)} STKZ`;
+  }
+
+  return `Stop ${order.stopPrice?.toFixed(2)} · limit ${order.limitPrice?.toFixed(2)}`;
+}
+
 export function LivePortfolio({ markets, onTrade }: LivePortfolioProps) {
   const [wallet, setWallet] = useState<WalletData | null>(null);
+  const [orders, setOrders] = useState<OpenOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [cancellingOrderId, setCancellingOrderId] = useState<number | null>(
+    null,
+  );
 
   const loadPortfolio = useCallback(async () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/wallet", { credentials: "include" });
-      const data = (await response.json()) as WalletData & {
+      const [walletResponse, ordersResponse] = await Promise.all([
+        fetch("/api/wallet", { credentials: "include" }),
+        fetch("/api/orders", { credentials: "include" }),
+      ]);
+      const walletData = (await walletResponse.json()) as WalletData & {
+        statusMessage?: string;
+      };
+      const orderData = (await ordersResponse.json()) as OpenOrder[] & {
         statusMessage?: string;
       };
 
-      if (!response.ok) {
-        throw new Error(data.statusMessage ?? "Could not load your portfolio.");
+      if (!walletResponse.ok) {
+        throw new Error(
+          walletData.statusMessage ?? "Could not load your portfolio.",
+        );
       }
 
-      setWallet(data);
+      if (!ordersResponse.ok) {
+        throw new Error(
+          orderData.statusMessage ?? "Could not load your pending orders.",
+        );
+      }
+
+      setWallet(walletData);
+      setOrders(orderData);
     } catch (error) {
       showError(
         error instanceof Error ? error.message : "Could not load your portfolio.",
@@ -47,9 +88,39 @@ export function LivePortfolio({ markets, onTrade }: LivePortfolioProps) {
   useEffect(() => {
     void loadPortfolio();
     window.addEventListener("wallet:updated", loadPortfolio);
+    window.addEventListener("orders:updated", loadPortfolio);
 
-    return () => window.removeEventListener("wallet:updated", loadPortfolio);
+    return () => {
+      window.removeEventListener("wallet:updated", loadPortfolio);
+      window.removeEventListener("orders:updated", loadPortfolio);
+    };
   }, [loadPortfolio]);
+
+  const cancelOrder = async (orderId: number) => {
+    setCancellingOrderId(orderId);
+
+    try {
+      const response = await fetch(`/api/orders/${orderId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await response.json()) as { statusMessage?: string };
+
+      if (!response.ok) {
+        throw new Error(data.statusMessage ?? "Could not cancel this order.");
+      }
+
+      setOrders((current) => current.filter((order) => order.id !== orderId));
+      window.dispatchEvent(new Event("orders:updated"));
+      showSuccess("Pending order cancelled.");
+    } catch (error) {
+      showError(
+        error instanceof Error ? error.message : "Could not cancel this order.",
+      );
+    } finally {
+      setCancellingOrderId(null);
+    }
+  };
 
   const holdings = useMemo(
     () =>
@@ -175,6 +246,67 @@ export function LivePortfolio({ markets, onTrade }: LivePortfolioProps) {
                     Trade
                   </button>
                 </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-7">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-2xl font-black">Open orders</h2>
+          <span className="rounded-lg bg-[#ff7282]/15 px-2 py-1 text-xs font-bold text-[#ffb2bc]">
+            {orders.length} pending
+          </span>
+        </div>
+
+        {isLoading ? (
+          <div className="mt-3 h-24 rounded-[22px] border border-white/10 bg-[#1e112f]" />
+        ) : orders.length === 0 ? (
+          <div className="mt-3 rounded-[22px] border border-dashed border-white/15 bg-white/[.03] p-5 text-sm text-[#a99ab7]">
+            No pending orders. Set a limit or stop order from any trade sheet.
+          </div>
+        ) : (
+          <div className="mt-3 overflow-hidden rounded-[22px] border border-white/10 bg-[#1e112f]">
+            {orders.map((order) => {
+              const isBuy = order.side === "buy";
+
+              return (
+                <article
+                  key={order.id}
+                  className="flex items-center gap-3 border-b border-white/5 p-4 last:border-0"
+                >
+                  <span
+                    className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl text-xs font-black ${
+                      isBuy
+                        ? "bg-[#183b33] text-[#62e7b6]"
+                        : "bg-[#482332] text-[#ff9ca5]"
+                    }`}
+                  >
+                    {isBuy ? "B" : "S"}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-black">
+                      {isBuy ? "Buy" : "Sell"} {order.ticker}
+                    </p>
+                    <p className="mt-0.5 text-xs text-[#9f90ac]">
+                      {order.orderType.replaceAll("_", " ")} ·{" "}
+                      {order.amountStkz.toFixed(2)} STKZ
+                    </p>
+                    <p className="mt-1 text-xs font-bold text-[#c99bff]">
+                      {getOrderTrigger(order)}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    disabled={cancellingOrderId === order.id}
+                    onClick={() => void cancelOrder(order.id)}
+                    className="inline-flex items-center gap-1 rounded-lg border border-[#ff7282]/30 px-3 py-2 text-xs font-bold text-[#ff9ca5] transition hover:bg-[#ff7282]/10 disabled:opacity-50"
+                  >
+                    <Trash2 size={14} />
+                    {cancellingOrderId === order.id ? "Cancelling…" : "Cancel"}
+                  </button>
+                </article>
               );
             })}
           </div>
