@@ -25,10 +25,27 @@ type PageviewResult = {
 const DAILY_MOVE_CAP = 15;
 const REVIEW_MOVE_THRESHOLD = 30;
 const SOURCE_CACHE_MS = 30 * 60 * 1000;
-const pageviewCache = new Map<string, { result: PageviewResult; expiresAt: number }>();
+const pageviewCache = new Map<
+  string,
+  { result: PageviewResult; expiresAt: number }
+>();
 
 function formatDate(date: Date) {
   return date.toISOString().slice(0, 10).replaceAll("-", "");
+}
+
+function describePageviewChange(
+  currentViews: number | null,
+  previousViews: number | null,
+) {
+  if (currentViews === null || previousViews === null || previousViews <= 0) {
+    return "Wikipedia interest was verified in the latest refresh.";
+  }
+
+  const change = ((currentViews - previousViews) / previousViews) * 100;
+  const direction = change >= 0 ? "up" : "down";
+
+  return `Wikipedia views ${direction} ${Math.abs(change).toFixed(1)}%.`;
 }
 
 async function getWikipediaViews(article: string): Promise<PageviewResult> {
@@ -45,7 +62,9 @@ async function getWikipediaViews(article: string): Promise<PageviewResult> {
 
   try {
     const response = await fetch(url, {
-      headers: { "user-agent": "CelebStockz practice-market signal monitor" },
+      headers: {
+        "user-agent": "CelebStockz practice-market signal monitor",
+      },
     });
 
     if (!response.ok) {
@@ -57,8 +76,14 @@ async function getWikipediaViews(article: string): Promise<PageviewResult> {
     };
     const views = data.items?.[0]?.views ?? null;
 
-    if (views !== null && (!Number.isSafeInteger(views) || views < 0 || views > 1_000_000_000)) {
-      console.error("Unexpected Wikimedia pageview response", { article, views });
+    if (
+      views !== null &&
+      (!Number.isSafeInteger(views) || views < 0 || views > 1_000_000_000)
+    ) {
+      console.error("Unexpected Wikimedia pageview response", {
+        article,
+        views,
+      });
       return { views: null, status: "unavailable" };
     }
 
@@ -132,9 +157,14 @@ export async function refreshMarketSnapshots() {
     const metadata = getMarketMetadata(market);
     const pageviews = await getWikipediaViews(metadata.wikipediaTitle);
     const previous = await getLatestVerifiedSnapshot(market.ticker);
+    const previousPageviews =
+      previous?.pageviews === null || previous?.pageviews === undefined
+        ? null
+        : Number(previous.pageviews);
 
     if (pageviews.status === "unavailable" && previous) {
       unavailableCount += 1;
+
       await sql`
         INSERT INTO market_snapshots (
           ticker, price_stkz, score, daily_change, pageviews, official_reach,
@@ -148,8 +178,14 @@ export async function refreshMarketSnapshots() {
           null,
           ${market.signals.socialFollowersMillions * 1_000_000},
           ${JSON.stringify({
-            wikipedia: { article: metadata.wikipediaTitle, status: "unavailable" },
-            fallback: { capturedAt: previous.captured_at, reason: "Retained last verified snapshot" },
+            wikipedia: {
+              article: metadata.wikipediaTitle,
+              status: "unavailable",
+            },
+            fallback: {
+              capturedAt: previous.captured_at,
+              reason: "Retained last verified snapshot",
+            },
           })}::jsonb,
           'unavailable'
         )
@@ -158,15 +194,18 @@ export async function refreshMarketSnapshots() {
     }
 
     const score = calculateTransparentScore(market, pageviews.views);
-    const previousPrice = previous
-      ? Number(previous.price_stkz)
-      : score;
+    const previousPrice = previous ? Number(previous.price_stkz) : score;
     const rawMove = previousPrice
       ? ((score - previousPrice) / previousPrice) * 100
       : 0;
+    const movementReason = describePageviewChange(
+      pageviews.views,
+      previousPageviews,
+    );
 
     if (previous && Math.abs(rawMove) > REVIEW_MOVE_THRESHOLD) {
       flaggedCount += 1;
+
       await sql`
         INSERT INTO market_snapshots (
           ticker, price_stkz, score, daily_change, pageviews, official_reach,
@@ -183,6 +222,7 @@ export async function refreshMarketSnapshots() {
             wikipedia: {
               article: metadata.wikipediaTitle,
               dailyPageviews: pageviews.views,
+              previousDailyPageviews: previousPageviews,
               status: pageviews.status,
             },
             anomaly: {
@@ -221,8 +261,10 @@ export async function refreshMarketSnapshots() {
           wikipedia: {
             article: metadata.wikipediaTitle,
             dailyPageviews: pageviews.views,
+            previousDailyPageviews: previousPageviews,
             status: pageviews.status,
           },
+          movementReason,
           officialPlatformReach: {
             value: market.signals.socialFollowersMillions * 1_000_000,
             status: "modeled-baseline",
@@ -235,10 +277,7 @@ export async function refreshMarketSnapshots() {
     `;
   }
 
-  const status =
-    unavailableCount || flaggedCount
-      ? "degraded"
-      : "healthy";
+  const status = unavailableCount || flaggedCount ? "degraded" : "healthy";
 
   await sql`
     INSERT INTO market_source_health (
@@ -306,6 +345,11 @@ export async function getSnapshotMarkets() {
   return eligibleMarkets.map((market) => {
     const snapshot = snapshots.get(market.ticker);
     const metadata = getMarketMetadata(market);
+    const measurements = snapshot?.source_measurements;
+    const movementReason =
+      typeof measurements?.movementReason === "string"
+        ? measurements.movementReason
+        : "Using the current approved practice-market signal baseline.";
 
     return {
       ...market,
@@ -319,14 +363,15 @@ export async function getSnapshotMarkets() {
             capturedAt: snapshot.captured_at,
             score: Number(snapshot.score),
             pageviews: snapshot.pageviews ? Number(snapshot.pageviews) : null,
-            measurements: snapshot.source_measurements,
+            movementReason,
             refreshStatus: "verified" as const,
           }
         : {
             capturedAt: null,
             score: calculateMarketPrice(market.signals),
             pageviews: null,
-            measurements: null,
+            movementReason:
+              "Waiting for the first approved public-signal snapshot.",
             refreshStatus: "fallback" as const,
           },
     };
@@ -335,7 +380,9 @@ export async function getSnapshotMarkets() {
 
 export async function getRecentSnapshotHistory(ticker: string) {
   const rows = await sql<SnapshotRow[]>`
-    SELECT ticker, captured_at, price_stkz, score, daily_change, pageviews, source_measurements, refresh_status
+    SELECT
+      ticker, captured_at, price_stkz, score, daily_change, pageviews,
+      source_measurements, refresh_status
     FROM market_snapshots
     WHERE ticker = ${ticker} AND refresh_status = 'verified'
     ORDER BY captured_at DESC
