@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Activity, Database, Settings2 } from "lucide-react";
+import { Activity, Database, LockKeyhole, Settings2 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const tabs = [
   { to: "/operations", label: "Operations", icon: Activity },
   { to: "/operations/providers", label: "Data providers", icon: Database },
-  { to: "/operations/settings", label: "System settings", icon: Settings2 },
+  { to: "/operations/live-stkz", label: "Live STKZ launch", icon: LockKeyhole },
 ];
 
 export function OperationsShell({ children }: { children: ReactNode }) {

@@ -7,6 +7,7 @@ import { OperationsShell } from "@/components/OperationsShell";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Index from "./pages/Index";
+import LiveStkzPreview from "./pages/LiveStkzPreview";
 import MarketOperations from "./pages/MarketOperations";
 import MarketTransparency from "./pages/MarketTransparency";
 import NotFound from "./pages/NotFound";
@@ -31,7 +32,8 @@ const App = () => (
             <Route path="/profile" element={<AccountGate><Profile /></AccountGate>} />
             <Route path="/operations" element={<AccountGate><OperationsShell><MarketOperations /></OperationsShell></AccountGate>} />
             <Route path="/operations/providers" element={<AccountGate><OperationsShell><ProviderConfiguration /></OperationsShell></AccountGate>} />
-            <Route path="/operations/settings" element={<AccountGate><OperationsShell><MarketOperations /></OperationsShell></AccountGate>} />
+            <Route path="/operations/live-stkz" element={<AccountGate><OperationsShell><LiveStkzPreview /></OperationsShell></AccountGate>} />
+            <Route path="/live-stkz" element={<AccountGate><OperationsShell><LiveStkzPreview /></OperationsShell></AccountGate>} />
             <Route path="/youtube-diagnostics" element={<AccountGate><YoutubeDiagnostics /></AccountGate>} />
             <Route path="/market-data" element={<AccountGate><MarketTransparency /></AccountGate>} />
             <Route path="/auth/:path" element={<AuthPage />} />

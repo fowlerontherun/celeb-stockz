@@ -4,8 +4,10 @@ import {
   AlertTriangle,
   CheckCircle2,
   Clock3,
+  Database,
   Globe,
   KeyRound,
+  LockKeyhole,
   Newspaper,
   PauseCircle,
   PlayCircle,
@@ -475,6 +477,21 @@ export default function MarketOperations() {
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
               Configure data providers, test live signals, control practice trading, and monitor the health of the market refresh system.
             </p>
+
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                to="/operations/providers"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-[#c99bff] hover:bg-white/10 hover:text-white"
+              >
+                <Database size={14} /> Data providers & API suite
+              </Link>
+              <Link
+                to="/operations/live-stkz"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-3 py-2 text-xs font-bold text-[#ffe2a3] hover:bg-[#ffd17b]/20"
+              >
+                <LockKeyhole size={14} /> Live STKZ launch tracker
+              </Link>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
