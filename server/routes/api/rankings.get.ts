@@ -6,6 +6,7 @@ import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
 type RankingRow = {
   user_id: string;
   display_name: string | null;
+  nickname: string | null;
   balance_stkz: string;
   ticker: string | null;
   quantity: string | null;
@@ -23,6 +24,7 @@ export default defineHandler(async (event) => {
       SELECT
         wallets.user_id,
         profiles.display_name,
+        profiles.nickname,
         wallets.balance_stkz,
         positions.ticker,
         positions.quantity
@@ -35,11 +37,16 @@ export default defineHandler(async (event) => {
     getLatestVerifiedPrices(),
   ]);
 
-  const traders = new Map<string, { name: string; netWorth: number }>();
+  const traders = new Map<string, { name: string; nickname: string | null; netWorth: number }>();
 
   for (const row of rows) {
+    const defaultName = row.display_name?.trim() || `Trader ${row.user_id.slice(-4).toUpperCase()}`;
+    const nick = row.nickname?.trim() || null;
+    const finalName = nick || defaultName;
+
     const existing = traders.get(row.user_id) ?? {
-      name: row.display_name?.trim() || `Trader ${row.user_id.slice(-4).toUpperCase()}`,
+      name: finalName,
+      nickname: nick,
       netWorth: Number(row.balance_stkz),
     };
 
@@ -54,6 +61,7 @@ export default defineHandler(async (event) => {
     .map(([traderId, trader]) => ({
       traderId,
       name: trader.name,
+      nickname: trader.nickname,
       netWorth: Number(trader.netWorth.toFixed(2)),
       profitLoss: Number((trader.netWorth - 10000).toFixed(2)),
       isCurrentUser: traderId === userId,

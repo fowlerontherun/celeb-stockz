@@ -10,13 +10,14 @@ export default defineHandler(async (event) => {
   }
 
   const profiles = await sql`
-    SELECT display_name, address, phone_number
+    SELECT display_name, nickname, address, phone_number
     FROM user_profiles
     WHERE user_id = ${userId}
   `;
 
   return profiles[0] ?? {
     display_name: "",
+    nickname: "",
     address: "",
     phone_number: "",
   };

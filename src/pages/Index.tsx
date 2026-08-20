@@ -5,6 +5,7 @@ import {
   ChartNoAxesCombined,
   Home,
   LayoutGrid,
+  Shield,
   Star,
   Trophy,
   TrendingUp,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { ClubsPanel, WatchlistPanel, type Celebrity } from "@/components/ExperiencePanels";
 import { CategoryMarkets, type CategorizedCelebrity } from "@/components/CategoryMarkets";
+import { CustomLeagues } from "@/components/CustomLeagues";
 import { LivePortfolio } from "@/components/LivePortfolio";
 import { LiveRankings } from "@/components/LiveRankings";
 import { TopMovers } from "@/components/TopMovers";
@@ -46,12 +48,13 @@ const fallbackMarkets: CelebrityMarket[] = [
   { name: "Daniel Kaluuya", ticker: "KALUUYA", category: "Film", price: 45.89, change: 4.1, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Daniel%20Kaluuya%20by%20Gage%20Skidmore.jpg?width=900", birthYear: 1989, nationality: "British", signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 1.7, trendScore: 74, monthlySearchesMillions: 2.4, newsStories: 260 } },
 ];
 
-type Page = "Home" | "Markets" | "Movers" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs" | "Practice";
+type Page = "Home" | "Markets" | "Movers" | "Leagues" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs" | "Practice";
 
 const navItems: Array<{ page: Page; icon: ComponentType<{ size?: number; className?: string }> }> = [
   { page: "Home", icon: Home },
   { page: "Markets", icon: LayoutGrid },
   { page: "Movers", icon: TrendingUp },
+  { page: "Leagues", icon: Shield },
   { page: "Watchlist", icon: Star },
   { page: "Portfolio", icon: Wallet },
   { page: "Rankings", icon: Trophy },
@@ -141,6 +144,7 @@ export default function Index() {
   const content =
     page === "Markets" ? <CategoryMarkets markets={markets} onTrade={openTrade} /> :
     page === "Movers" ? <TopMovers markets={markets} onTrade={openTrade} /> :
+    page === "Leagues" ? <CustomLeagues /> :
     page === "Watchlist" ? <WatchlistPanel celebs={watchlist} onTrade={openTrade} onRemove={(ticker) => void removeFromWatchlist(ticker)} /> :
     page === "Portfolio" ? <LivePortfolio markets={markets} onTrade={openTrade} /> :
     page === "Rankings" ? <LiveRankings /> :
@@ -152,6 +156,7 @@ export default function Index() {
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for live trading only.</p>
         <div className="mt-6 flex flex-wrap gap-3">
           <button type="button" onClick={() => setPage("Markets")} className="rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white hover:bg-[#9361f5]">Browse market categories</button>
+          <button type="button" onClick={() => setPage("Leagues")} className="rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-5 py-3 text-sm font-black text-[#ffe2a3] hover:bg-[#ffd17b]/20">Player Leagues</button>
           <button type="button" onClick={() => setPage("Movers")} className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-[#e6d8ff] hover:bg-white/10">View top movers</button>
         </div>
         <OnboardingRecap onStartTrading={() => setPage("Markets")} />

@@ -26,7 +26,7 @@ export default defineHandler(async (event) => {
       membership.user_id,
       membership.role,
       membership.joined_at,
-      COALESCE(NULLIF(profiles.display_name, ''), 'Club member') AS display_name
+      COALESCE(NULLIF(profiles.nickname, ''), NULLIF(profiles.display_name, ''), 'Club member') AS display_name
     FROM club_members AS membership
     LEFT JOIN user_profiles AS profiles ON profiles.user_id = membership.user_id
     WHERE membership.club_id = ${club.id}

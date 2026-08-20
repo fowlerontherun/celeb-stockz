@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Crown, Gem, LoaderCircle, RefreshCw } from "lucide-react";
+import { Crown, Gem, LoaderCircle, RefreshCw, Sparkles } from "lucide-react";
 import { showError } from "@/utils/toast";
 
 type Ranking = {
   traderId: string;
   name: string;
+  nickname: string | null;
   netWorth: number;
   profitLoss: number;
   isCurrentUser: boolean;
@@ -87,7 +88,7 @@ export function LiveRankings() {
 
       <p className="mt-3 text-sm leading-6 text-[#b9a9c5]">
         Standings use each trader's real STKZ balance and the current modeled
-        value of their holdings.
+        value of their holdings. Custom player nicknames are shown below.
       </p>
 
       <section className="mt-7 overflow-hidden rounded-[28px] border border-white/10 bg-[#1e112f] p-4 sm:p-6">
@@ -132,14 +133,25 @@ export function LiveRankings() {
                     trader.rank
                   )}
                 </span>
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#513266] font-black">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#513266] font-display font-black text-white">
                   {trader.name[0]?.toUpperCase() ?? "T"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-bold">
-                    {trader.name}
-                    {trader.isCurrentUser ? " · you" : ""}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="truncate text-sm font-black">
+                      {trader.name}
+                    </p>
+                    {trader.nickname && (
+                      <span className="rounded bg-[#ffd17b]/15 px-1.5 py-0.5 text-[9px] font-black text-[#ffd17b]">
+                        NICK
+                      </span>
+                    )}
+                    {trader.isCurrentUser && (
+                      <span className="rounded bg-[#7c3aed]/30 px-1.5 py-0.5 text-[9px] font-black text-[#d8c1ff]">
+                        YOU
+                      </span>
+                    )}
+                  </div>
                   <p
                     className={`mt-0.5 text-xs font-bold ${
                       trader.profitLoss >= 0
@@ -174,8 +186,7 @@ export function LiveRankings() {
       <div className="mt-5 flex gap-3 rounded-2xl border border-[#f5ab43]/30 bg-[#2e1e30] p-4">
         <Gem className="shrink-0 text-[#ffd17b]" />
         <p className="text-sm leading-5 text-[#e2d5dd]">
-          Your net worth updates after every completed live trade and uses
-          the latest modeled market prices.
+          Set your custom trading nickname in <b>Profile & Settings</b> to show your handle on global and league rankings.
         </p>
       </div>
     </div>
