@@ -230,6 +230,7 @@ export function CategoryMarkets({
             const age = new Date().getFullYear() - market.birthYear;
             const tier = getTier(market.price);
             const verified = market.snapshot?.refreshStatus === "verified";
+            const isLocked = Boolean(market.access && !market.access.isUnlocked);
 
             return (
               <article
@@ -257,10 +258,11 @@ export function CategoryMarkets({
                   >
                     Tier {tier}
                   </span>
-                  {market.access && !market.access.isUnlocked && (
-                    <Lock
-                      className="absolute right-3 bottom-3 w-5 h-5 text-[#ff9ca5] shrink-0"
-                    />
+                  {isLocked && (
+                    <div className="absolute right-3 top-3 flex items-center gap-1 rounded-lg bg-[#ff7282]/20 px-2 py-1 text-[10px] font-black text-[#ff9ca5] backdrop-blur-sm">
+                      <Lock size={12} />
+                      PACK LOCKED
+                    </div>
                   )}
                 </div>
 
@@ -323,11 +325,11 @@ export function CategoryMarkets({
                         {tierDetails[tier].description}
                       </p>
                     </div>
-                    <span className="rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white">
-                      {market.access && !market.access.isUnlocked ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white">
+                      {isLocked ? (
                         <>
-                          <Lock className="mr-1 h-4 w-4" />
-                          View details
+                          <Lock size={13} />
+                          Unlock pack
                         </>
                       ) : (
                         "View details"

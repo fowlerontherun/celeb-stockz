@@ -150,7 +150,10 @@ export default function Index() {
         <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Signal-priced practice markets</p>
         <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for live trading only.</p>
-        <button type="button" onClick={() => setPage("Markets")} className="mt-6 rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white hover:bg-[#9361f5]">Browse market categories</button>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <button type="button" onClick={() => setPage("Markets")} className="rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white hover:bg-[#9361f5]">Browse market categories</button>
+          <button type="button" onClick={() => setPage("Movers")} className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-[#e6d8ff] hover:bg-white/10">View top movers</button>
+        </div>
         <OnboardingRecap onStartTrading={() => setPage("Markets")} />
       </div>
     );
@@ -183,7 +186,15 @@ export default function Index() {
             <div className="flex items-start justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">{selected.category} · signal-priced live market</p><h2 className="font-display mt-1 text-2xl font-black">Trade {selected.ticker}</h2></div><button type="button" onClick={() => setTradeOpen(false)} aria-label="Close trade sheet" className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1]"><X size={18} /></button></div>
             <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1"><img src={selected.image} alt={selected.name} className="h-full w-full object-contain" /></div><div><p className="font-bold">{selected.name}</p><p className="text-xs text-[#9b8ba8]">{selected.signals.socialFollowersMillions}M followers · {selected.signals.hashtagViewsBillions}B hashtag views</p></div></div>
             <MarketDetailPanel market={selected} />
-            <div className="mt-5"><TradeControls key={selected.ticker} ticker={selected.ticker} price={selected.price} onTradeComplete={() => setTradeOpen(false)} /></div>
+            <div className="mt-5">
+              <TradeControls
+                key={selected.ticker}
+                ticker={selected.ticker}
+                price={selected.price}
+                access={selected.access}
+                onTradeComplete={() => setTradeOpen(false)}
+              />
+            </div>
             <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">Prices use a reproducible fame-signal model and are for live trading only.</p>
           </section>
         </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { LoaderCircle } from "lucide-react";
+import { Link } from "react-router-dom";
+import { LoaderCircle, Lock, PackageOpen } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 type WalletData = {
@@ -12,6 +13,11 @@ type OrderType = "market" | "limit" | "stop_market" | "stop_limit";
 type TradeControlsProps = {
   ticker: string;
   price: number;
+  access?: {
+    isStandard: boolean;
+    isUnlocked: boolean;
+    requiredPacks: Array<{ id: number; name: string }>;
+  };
   onTradeComplete?: () => void;
 };
 
@@ -20,6 +26,7 @@ const TRANSACTION_FEE_RATE = 0.01;
 export function TradeControls({
   ticker,
   price,
+  access,
   onTradeComplete,
 }: TradeControlsProps) {
   const [wallet, setWallet] = useState<WalletData | null>(null);
@@ -29,6 +36,8 @@ export function TradeControls({
   const [limitPrice, setLimitPrice] = useState(price.toFixed(2));
   const [stopPrice, setStopPrice] = useState(price.toFixed(2));
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isLocked = Boolean(access && !access.isUnlocked);
 
   const positionQuantity = useMemo(
     () => wallet?.positions.find((position) => position.ticker === ticker)?.quantity ?? 0,
@@ -61,6 +70,11 @@ export function TradeControls({
   }, [price, ticker]);
 
   const submitTrade = async () => {
+    if (isLocked) {
+      showError(`Unlock ${access?.requiredPacks.map((p) => p.name).join(" or ")} to trade this market.`);
+      return;
+    }
+
     const amountStkz = Number(amount);
     const parsedLimit = Number(limitPrice);
     const parsedStop = Number(stopPrice);
@@ -124,19 +138,50 @@ export function TradeControls({
       {label}
       <input
         value={value}
+        disabled={isLocked}
         onChange={(event) => onChange(event.target.value.replace(/[^0-9.]/g, ""))}
         inputMode="decimal"
-        className="mt-2 w-full rounded-xl border border-white/10 bg-[#140b20] px-4 py-3 text-base font-black text-white outline-none focus:border-[#a97cff]"
+        className="mt-2 w-full rounded-xl border border-white/10 bg-[#140b20] px-4 py-3 text-base font-black text-white outline-none focus:border-[#a97cff] disabled:opacity-50"
       />
     </label>
   );
 
   return (
     <div className="space-y-4">
+      {isLocked && (
+        <div className="rounded-2xl border border-[#ff7282]/35 bg-[#31162b] p-4 text-center">
+          <Lock size={20} className="mx-auto text-[#ff9ca5]" />
+          <p className="mt-2 font-display text-base font-black text-[#ffb2bc]">
+            Pack Unlock Required
+          </p>
+          <p className="mt-1 text-xs text-[#ddcad8]">
+            This market is exclusive to {access?.requiredPacks.map((p) => p.name).join(" or ")}.
+          </p>
+          <Link
+            to="/packs"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[#ff7282] px-4 py-2 text-xs font-black text-[#401b2d] hover:bg-[#ff8e9a]"
+          >
+            <PackageOpen size={14} />
+            Go to Celebrity Packs
+          </Link>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 rounded-xl bg-white/5 p-1">
         {(["buy", "sell"] as const).map((option) => (
-          <button key={option} type="button" onClick={() => setSide(option)}
-            className={`rounded-lg py-2.5 text-sm font-black capitalize ${side === option ? option === "buy" ? "bg-[#3ed9a3] text-[#112b24]" : "bg-[#ff7282] text-[#401b2d]" : "text-[#a89aad]"}`}>
+          <button
+            key={option}
+            type="button"
+            disabled={isLocked}
+            onClick={() => setSide(option)}
+            className={`rounded-lg py-2.5 text-sm font-black capitalize transition disabled:opacity-40 ${
+              side === option
+                ? option === "buy"
+                  ? "bg-[#3ed9a3] text-[#112b24]"
+                  : "bg-[#ff7282] text-[#401b2d]"
+                : "text-[#a89aad]"
+            }`}
+          >
             {option}
           </button>
         ))}
@@ -149,8 +194,17 @@ export function TradeControls({
           ["stop_market", "Stop market"],
           ["stop_limit", "Stop limit"],
         ] as const).map(([value, label]) => (
-          <button key={value} type="button" onClick={() => setOrderType(value)}
-            className={`rounded-xl border px-3 py-2.5 text-xs font-black transition ${orderType === value ? "border-[#a97cff] bg-[#7c3aed] text-white" : "border-white/10 bg-white/[.04] text-[#b9acc9]"}`}>
+          <button
+            key={value}
+            type="button"
+            disabled={isLocked}
+            onClick={() => setOrderType(value)}
+            className={`rounded-xl border px-3 py-2.5 text-xs font-black transition disabled:opacity-40 ${
+              orderType === value
+                ? "border-[#a97cff] bg-[#7c3aed] text-white"
+                : "border-white/10 bg-white/[.04] text-[#b9acc9]"
+            }`}
+          >
             {label}
           </button>
         ))}
@@ -159,15 +213,32 @@ export function TradeControls({
       <div className="rounded-2xl border border-white/10 bg-white/[.04] p-4">
         <div className="flex justify-between text-xs font-bold text-[#b6a8c1]">
           <span>{side === "buy" ? "Available to buy" : `Available ${ticker}`}</span>
-          <span className="text-[#fff8f2]">{side === "buy" ? `${grossMaxAmount.toLocaleString(undefined, { maximumFractionDigits: 2 })} STKZ` : `${positionQuantity.toFixed(4)} shares`}</span>
+          <span className="text-[#fff8f2]">
+            {side === "buy"
+              ? `${grossMaxAmount.toLocaleString(undefined, {
+                  maximumFractionDigits: 2,
+                })} STKZ`
+              : `${positionQuantity.toFixed(4)} shares`}
+          </span>
         </div>
         <label className="mt-4 block text-xs font-bold uppercase tracking-[.13em] text-[#a89aad]">
           Amount (STKZ)
           <div className="mt-2 flex gap-2">
-            <input value={amount} onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g, ""))} inputMode="decimal"
-              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#140b20] px-4 py-3 text-lg font-black text-white outline-none focus:border-[#a97cff]" />
-            <button type="button" onClick={() => setAmount(maxAmount.toFixed(2))} disabled={!wallet || maxAmount <= 0}
-              className="rounded-xl bg-[#7c3aed] px-4 text-xs font-black text-white disabled:opacity-40">Max</button>
+            <input
+              value={amount}
+              disabled={isLocked}
+              onChange={(event) => setAmount(event.target.value.replace(/[^0-9.]/g, ""))}
+              inputMode="decimal"
+              className="min-w-0 flex-1 rounded-xl border border-white/10 bg-[#140b20] px-4 py-3 text-lg font-black text-white outline-none focus:border-[#a97cff] disabled:opacity-50"
+            />
+            <button
+              type="button"
+              onClick={() => setAmount(maxAmount.toFixed(2))}
+              disabled={isLocked || !wallet || maxAmount <= 0}
+              className="rounded-xl bg-[#7c3aed] px-4 text-xs font-black text-white disabled:opacity-40"
+            >
+              Max
+            </button>
           </div>
         </label>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -175,7 +246,8 @@ export function TradeControls({
           {needsStop && priceInput("Stop price (STKZ)", stopPrice, setStopPrice)}
         </div>
         <div className="mt-3 flex justify-between text-xs text-[#b6a8c1]">
-          <span>Current modeled price</span><span className="font-bold text-white">{price.toFixed(2)} STKZ</span>
+          <span>Current modeled price</span>
+          <span className="font-bold text-white">{price.toFixed(2)} STKZ</span>
         </div>
         <div className="mt-3 flex justify-between rounded-xl bg-[#ffd17b]/10 px-3 py-2 text-xs">
           <span className="font-bold text-[#ffd17b]">Transaction fee · 1%</span>
@@ -188,10 +260,20 @@ export function TradeControls({
         </p>
       </div>
 
-      <button type="button" onClick={() => void submitTrade()} disabled={isSubmitting || !wallet}
-        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-black disabled:opacity-50 ${side === "buy" ? "bg-[#3ed9a3] text-[#112b24]" : "bg-[#ff7282] text-[#401b2d]"}`}>
+      <button
+        type="button"
+        onClick={() => void submitTrade()}
+        disabled={isLocked || isSubmitting || !wallet}
+        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-black disabled:opacity-50 ${
+          side === "buy"
+            ? "bg-[#3ed9a3] text-[#112b24]"
+            : "bg-[#ff7282] text-[#401b2d]"
+        }`}
+      >
         {isSubmitting && <LoaderCircle size={17} className="animate-spin" />}
-        {orderType === "market" ? `${side === "buy" ? "Buy" : "Sell"} ${ticker}` : `Place ${orderType.replace(/_/g, " ")} order`}
+        {orderType === "market"
+          ? `${side === "buy" ? "Buy" : "Sell"} ${ticker}`
+          : `Place ${orderType.replace(/_/g, " ")} order`}
       </button>
     </div>
   );
