@@ -220,6 +220,7 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
                     fontSize: 11,
                   }}
                   formatter={(value: number) => [`${value.toFixed(2)} STKZ`, "Price"]}
+                  labelFormatter={() => "Recorded market price"}
                 />
                 <Area
                   type="monotone"

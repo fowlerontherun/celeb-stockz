@@ -23,7 +23,7 @@ type Goal = {
 };
 
 const goalLabels = {
-  first_trade: "Complete practice trades",
+  first_trade: "Complete live trades",
   watchlist: "Follow markets",
   categories: "Hold market categories",
 };
@@ -47,13 +47,13 @@ export function PracticeTools({ markets }: { markets: CategorizedCelebrity[] }) 
         fetch("/api/practice/goal", { credentials: "include" }),
       ]);
       if (!walletResponse.ok || !journalResponse.ok || !goalResponse.ok) {
-        throw new Error("Could not load your practice tools.");
+        throw new Error("Could not load your live tools.");
       }
       setWallet(await walletResponse.json() as Wallet);
       setEntries((await journalResponse.json() as { entries: JournalEntry[] }).entries);
       setGoal((await goalResponse.json() as { goal: Goal }).goal);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Could not load your practice tools.");
+      showError(error instanceof Error ? error.message : "Could not load your live tools.");
     }
   };
 
@@ -96,7 +96,7 @@ export function PracticeTools({ markets }: { markets: CategorizedCelebrity[] }) 
       if (!response.ok) throw new Error(data.statusMessage ?? "Could not save your journal entry.");
       setEntries((current) => [data, ...current]);
       setNote("");
-      showSuccess("Practice note saved.");
+      showSuccess("Live trade note saved.");
     } catch (error) {
       showError(error instanceof Error ? error.message : "Could not save your journal entry.");
     } finally {
@@ -114,7 +114,7 @@ export function PracticeTools({ markets }: { markets: CategorizedCelebrity[] }) 
       });
       if (!response.ok) throw new Error("Could not save your goal.");
       await load();
-      showSuccess("Practice goal updated.");
+      showSuccess("Live trade goal updated.");
     } catch (error) {
       showError(error instanceof Error ? error.message : "Could not save your goal.");
     }
@@ -122,13 +122,13 @@ export function PracticeTools({ markets }: { markets: CategorizedCelebrity[] }) 
 
   return (
     <div className="animate-in fade-in duration-300">
-      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Practice studio</p>
+      <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Live studio</p>
       <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Build your trading muscle.</h1>
       <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Journal your thinking, track a personal goal, and explore hypothetical modeled moves. Nothing here is financial advice or a market forecast.</p>
 
       <div className="mt-7 grid gap-5 xl:grid-cols-2">
         <section className="rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-6">
-          <div className="flex items-center gap-2"><Target className="text-[#ffd17b]" size={19} /><h2 className="font-display text-2xl font-black">Your practice goal</h2></div>
+          <div className="flex items-center gap-2"><Target className="text-[#ffd17b]" size={19} /><h2 className="font-display text-2xl font-black">Your live goal</h2></div>
           {goal && <><p className="mt-4 text-sm font-bold">{goalLabels[goal.type]}</p><p className="mt-1 text-sm text-[#b9a9c5]">{goal.progress} of {goal.targetValue} complete</p><div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#ff7282]" style={{ width: `${Math.min(100, (goal.progress / goal.targetValue) * 100)}%` }} /></div></>}
           <div className="mt-5 grid gap-2 sm:grid-cols-[1fr_5rem]">
             <select value={goal?.type ?? "first_trade"} onChange={(event) => goal && void updateGoal(event.target.value as Goal["type"], goal.targetValue)} className="rounded-xl border border-white/10 bg-[#160c25] px-3 py-3 text-sm font-bold outline-none focus:border-[#a97cff]">
@@ -140,7 +140,7 @@ export function PracticeTools({ markets }: { markets: CategorizedCelebrity[] }) 
 
         <section className="rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-6">
           <div className="flex items-center gap-2"><CircleGauge className="text-[#62e7b6]" size={19} /><h2 className="font-display text-2xl font-black">Category allocation</h2></div>
-          {allocation.length ? <div className="mt-5 space-y-3">{allocation.map((item) => <div key={item.category}><div className="flex justify-between text-sm"><span className="font-bold">{item.category}</span><span className="text-[#c4b4d0]">{item.share.toFixed(0)}% · {item.value.toFixed(0)} STKZ</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#62e7b6]" style={{ width: `${item.share}%` }} /></div></div>)}</div> : <p className="mt-5 text-sm leading-6 text-[#b9a9c5]">Your category mix will appear after you hold a practice-market position.</p>}
+          {allocation.length ? <div className="mt-5 space-y-3">{allocation.map((item) => <div key={item.category}><div className="flex justify-between text-sm"><span className="font-bold">{item.category}</span><span className="text-[#c4b4d0]">{item.share.toFixed(0)}% · {item.value.toFixed(0)} STKZ</span></div><div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[#62e7b6]" style={{ width: `${item.share}%` }} /></div></div>)}</div> : <p className="mt-5 text-sm leading-6 text-[#b9a9c5]">Your category mix will appear after you hold a live-market position.</p>}
         </section>
 
         <section className="rounded-[28px] border border-white/10 bg-[#211230] p-5 sm:p-6">
@@ -155,9 +155,9 @@ export function PracticeTools({ markets }: { markets: CategorizedCelebrity[] }) 
         </section>
 
         <section className="rounded-[28px] border border-[#ffd17b]/25 bg-[#2a1b32] p-5 sm:p-6">
-          <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">Hypothetical only</p>
+          <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">Live only</p>
           <h2 className="font-display mt-2 text-2xl font-black">Modeled move simulator</h2>
-          <p className="mt-2 text-sm leading-6 text-[#d8c9d8]">Explore a simple percentage change against the latest displayed practice snapshot. It never changes a market price or your holdings.</p>
+          <p className="mt-2 text-sm leading-6 text-[#d8c9d8]">Explore a simple percentage change against the latest displayed live snapshot. It never changes a market price or your holdings.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <select value={scenarioTicker} onChange={(event) => setScenarioTicker(event.target.value)} className="rounded-xl border border-white/10 bg-[#160c25] px-3 py-3 text-sm font-bold outline-none focus:border-[#ffd17b]">{markets.map((market) => <option key={market.ticker} value={market.ticker}>{market.name}</option>)}</select>
             <label className="rounded-xl border border-white/10 bg-[#160c25] px-3 py-2 text-xs font-bold text-[#b9a9c5]">Signal change %<input value={scenarioMove} onChange={(event) => setScenarioMove(event.target.value)} inputMode="decimal" className="mt-1 w-full bg-transparent text-lg font-black text-white outline-none" /></label>

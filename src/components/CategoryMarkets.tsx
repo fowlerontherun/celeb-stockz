@@ -1,10 +1,13 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   Clapperboard,
   Gamepad2,
   Landmark,
   Laugh,
+  Lock,
   Music2,
+  PackageOpen,
   Search,
   Shirt,
   Trophy,
@@ -28,6 +31,11 @@ export type CategorizedCelebrity = Celebrity & {
   category: MarketCategory;
   birthYear: number;
   nationality: string;
+  access?: {
+    isStandard: boolean;
+    isUnlocked: boolean;
+    requiredPacks: Array<{ id: number; name: string }>;
+  };
   snapshot?: {
     capturedAt: string | null;
     score: number;
@@ -88,7 +96,7 @@ function getTier(price: number): Tier {
 }
 
 function formatSnapshotTime(capturedAt: string | null | undefined) {
-  if (!capturedAt) return "Awaiting first approved snapshot";
+  if (!capturedAt) return "Awaiting first snapshot";
 
   return new Intl.DateTimeFormat([], {
     month: "short",
@@ -96,6 +104,30 @@ function formatSnapshotTime(capturedAt: string | null | undefined) {
     hour: "2-digit",
     minute: "2-digit",
   }).format(new Date(capturedAt));
+}
+
+function getAccessBadge(market: CategorizedCelebrity) {
+  const access = market.access ?? { isStandard: true, isUnlocked: true, requiredPacks: [] };
+  if (access.isStandard) {
+    return (
+      <span className="rounded-lg px-2 py-1 text-[10px] font-black text-[#fff8f2]">
+        Standard market
+      </span>
+    );
+  }
+  if (access.isUnlocked) {
+    return (
+      <span className="rounded-lg px-2 py-1 text-[10px] font-black text-[#62e7b6]">
+        Unlocked
+      </span>
+    );
+  }
+  const packNames = access.requiredPacks.map((p) => p.name).join(" or ");
+  return (
+    <span className="rounded-lg px-2 py-1 text-[10px] font-black text-[#ff9ca5]">
+      Locked · {packNames}
+    </span>
+  );
 }
 
 export function CategoryMarkets({
@@ -129,14 +161,14 @@ export function CategoryMarkets({
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">
-            Explore practice markets
+            Explore live markets
           </p>
           <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">
             Browse by culture.
           </h1>
         </div>
         <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">
-          {markets.length} eligible markets · saved snapshots
+          {markets.length} eligible markets
         </p>
       </div>
 
@@ -174,7 +206,7 @@ export function CategoryMarkets({
             className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${
               activeCategory === name
                 ? "bg-[#7c3aed] text-white shadow-lg"
-                : "border border-white/10 bg-white/[.04] text-[#b9acc9] hover:bg-white/10"
+                : "border border-white/10 bg-white/[.04] text-[#b9acc9] hover:bg-white/10"`
             }`}
           >
             <Icon
@@ -251,6 +283,11 @@ export function CategoryMarkets({
                   >
                     Tier {tier}
                   </span>
+                  {market.access && !market.access.isUnlocked && (
+                    <Lock
+                      className="absolute right-3 bottom-3 w-5 h-5 text-[#ff9ca5] shrink-0"
+                    />
+                  )}
                 </div>
 
                 <div className="p-4">
@@ -293,8 +330,8 @@ export function CategoryMarkets({
                       </p>
                       <p
                         className={`mt-1 text-[10px] font-bold ${
-                          verified ? "text-[#62e7b6]" : "text-[#ffd17b]"
-                        }`}
+                          verified ? "text-[#62e7b6]" : "text-[#ffd17b]"}
+                        `}
                       >
                         {verified ? "Verified snapshot" : "Safe fallback"} ·{" "}
                         {formatSnapshotTime(market.snapshot?.capturedAt)}
@@ -313,7 +350,14 @@ export function CategoryMarkets({
                       </p>
                     </div>
                     <span className="rounded-xl bg-[#7c3aed] px-4 py-2.5 text-xs font-black text-white">
-                      View details
+                      {market.access && !market.access.isUnlocked ? (
+                        <>
+                          <Lock className="mr-1 h-4 w-4" />
+                          View details
+                        </>
+                      ) : (
+                        "View details"
+                      )}
                     </span>
                   </div>
                 </div>

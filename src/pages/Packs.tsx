@@ -1,4 +1,8 @@
 import { useEffect, useState } from "react";
+import { Link } from "reactWe need to continue updating Packs page. The previous code snippet was cut off. Let's see the context:
+
+<dyad-write path="src/pages/Packs.tsx" description="Update Packs to remove practice references">
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -122,15 +126,16 @@ export default function Packs() {
                       >
                         {pack.unlocked ? (
                           <CheckCircle2 size={22} />
-                        ) : isClassified ? (
-                          <EyeOff size={20} />
-                        ) : (
-                          <PackageOpen size={21} />
-                        )}
+                        ) : isClassified
+                          ? (
+                            <EyeOff size={20} />
+                          ) : (
+                            <PackageOpen size={21} />
+                          )}
                       </div>
 
                       <span
-                        className={`rounded-lg px-2.5 py-1 text-[10px] font-black tracking-wider ${
+                        className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${
                           pack.unlocked
                             ? "bg-[#62e7b6]/20 text-[#62e7b6]"
                             : pack.isAvailable
@@ -168,33 +173,9 @@ export default function Packs() {
                       {isClassified
                         ? "Theme and celebrity market roster will be unveiled upon announcement."
                         : `${pack.memberCount} celebrity market${
-                            pack.memberCount === 1 ? "" : "s"
-                          }`}
+                          pack.memberCount === 1 ? "" : "s"
+                        }`}
                     </p>
-                  </div>
-
-                  <div className="mt-6 border-t border-white/5 pt-4">
-                    <div className="flex items-center justify-between rounded-xl bg-white/[.04] px-3.5 py-2.5">
-                      <div className="flex items-center gap-2">
-                        {pack.availableAt && !isClassified ? (
-                          <CalendarDays size={14} className="text-[#c99bff]" />
-                        ) : null}
-                        <span className="text-xs font-bold text-[#e6d8ff]">
-                          {pack.unlocked
-                            ? "Full Access"
-                            : pack.isAvailable
-                            ? `£${pack.priceGbp.toFixed(2)}`
-                            : pack.availableAt && !isClassified
-                            ? new Intl.DateTimeFormat([], {
-                                dateStyle: "medium",
-                              }).format(new Date(pack.availableAt))
-                            : "To be announced"}
-                        </span>
-                      </div>
-                      {!pack.unlocked && (
-                        <LockKeyhole size={15} className="text-[#c99bff]" />
-                      )}
-                    </div>
                   </div>
                 </article>
               );

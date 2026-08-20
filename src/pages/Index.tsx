@@ -149,7 +149,7 @@ export default function Index() {
       <div className="animate-in fade-in duration-300">
         <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Signal-priced practice markets</p>
         <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for practice trading only.</p>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for live trading only.</p>
         <button type="button" onClick={() => setPage("Markets")} className="mt-6 rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white hover:bg-[#9361f5]">Browse market categories</button>
         <OnboardingRecap onStartTrading={() => setPage("Markets")} />
       </div>
@@ -161,7 +161,7 @@ export default function Index() {
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-white/10 bg-[#170d29] px-5 py-7 lg:flex">
           <div className="flex items-center gap-2 px-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={20} /></div><span className="font-display text-xl font-black">Celeb<span className="text-[#ff7282]">Stockz</span></span></div>
           <div className="mt-11 space-y-2">{navItems.map(({ page: itemPage, icon: Icon }) => <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${page === itemPage ? "bg-[#7c3aed] text-white shadow-lg" : "text-[#b9acc9] hover:bg-white/5 hover:text-white"}`}><Icon size={18} />{itemPage}</button>)}</div>
-          <p className="mt-auto px-2 text-[10px] leading-4 text-[#7c6d8e]">Synthetic celebrity assets for entertainment only. Not investment advice.</p>
+          <p className="mt-auto px-2 text-[10px] leading-4 text-[#7c6d8e]">Live celebrity assets for entertainment only. Not investment advice.</p>
         </aside>
 
         <section className="w-full overflow-hidden">
@@ -180,11 +180,11 @@ export default function Index() {
       {tradeOpen && (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0e0717]/75 p-3 backdrop-blur-sm sm:grid sm:place-items-center sm:p-6">
           <section className="mx-auto w-full max-w-md rounded-[30px] border border-white/10 bg-[#211230] p-6 shadow-2xl">
-            <div className="flex items-start justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">{selected.category} · signal-priced practice market</p><h2 className="font-display mt-1 text-2xl font-black">Trade {selected.ticker}</h2></div><button type="button" onClick={() => setTradeOpen(false)} aria-label="Close trade sheet" className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1]"><X size={18} /></button></div>
+            <div className="flex items-start justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">{selected.category} · signal-priced live market</p><h2 className="font-display mt-1 text-2xl font-black">Trade {selected.ticker}</h2></div><button type="button" onClick={() => setTradeOpen(false)} aria-label="Close trade sheet" className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1]"><X size={18} /></button></div>
             <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1"><img src={selected.image} alt={selected.name} className="h-full w-full object-contain" /></div><div><p className="font-bold">{selected.name}</p><p className="text-xs text-[#9b8ba8]">{selected.signals.socialFollowersMillions}M followers · {selected.signals.hashtagViewsBillions}B hashtag views</p></div></div>
             <MarketDetailPanel market={selected} />
             <div className="mt-5"><TradeControls key={selected.ticker} ticker={selected.ticker} price={selected.price} onTradeComplete={() => setTradeOpen(false)} /></div>
-            <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">Prices use a reproducible fame-signal model and are for practice trading only.</p>
+            <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">Prices use a reproducible fame-signal model and are for live trading only.</p>
           </section>
         </div>
       )}

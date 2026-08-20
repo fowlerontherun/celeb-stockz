@@ -170,14 +170,14 @@ export function LiveStkzDevelopment() {
         <div className="flex items-center gap-2 text-[#ffd17b]">
           <ReceiptPoundSterling size={20} />
           <p className="text-xs font-extrabold uppercase tracking-[.16em]">
-            Future fee ledger
+            Live fee ledger
           </p>
         </div>
         <h2 className="font-display mt-2 text-2xl font-black">
           £{data.ledger.totalFeesGbp.toFixed(2)} tracked
         </h2>
         <p className="mt-2 text-sm leading-6 text-[#d9c9d9]">
-          The ledger is ready for auditable 2% platform-fee records after launch approval. No payments or entries have been created.
+          The ledger is ready for auditable live-trade fee records after launch approval. No payments or entries have been created.
         </p>
         <div className="mt-5 rounded-2xl border border-white/10 bg-black/10 p-4">
           <p className="text-xs font-bold text-[#cdbccc]">Settled transactions</p>

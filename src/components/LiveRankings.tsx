@@ -86,7 +86,7 @@ export function LiveRankings() {
       </div>
 
       <p className="mt-3 text-sm leading-6 text-[#b9a9c5]">
-        Standings use each trader’s real STKZ balance and the current modeled
+        Standings use each trader's real STKZ balance and the current modeled
         value of their holdings.
       </p>
 
@@ -144,7 +144,7 @@ export function LiveRankings() {
                     className={`mt-0.5 text-xs font-bold ${
                       trader.profitLoss >= 0
                         ? "text-[#62e7b6]"
-                        : "text-[#ff9ca5]"
+                        : "text-[#ff9ca5]"}
                     }`}
                   >
                     {trader.profitLoss >= 0 ? "+" : ""}
@@ -174,7 +174,7 @@ export function LiveRankings() {
       <div className="mt-5 flex gap-3 rounded-2xl border border-[#f5ab43]/30 bg-[#2e1e30] p-4">
         <Gem className="shrink-0 text-[#ffd17b]" />
         <p className="text-sm leading-5 text-[#e2d5dd]">
-          Your net worth updates after every completed practice trade and uses
+          Your net worth updates after every completed live trade and uses
           the latest modeled market prices.
         </p>
       </div>

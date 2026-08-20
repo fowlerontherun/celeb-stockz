@@ -127,10 +127,10 @@ export default function Profile() {
           <Link to="/auth/forgot-password" className="mt-4 flex w-fit items-center gap-2 text-sm font-bold text-[#c99bff] hover:text-white"><KeyRound size={16} />Change password securely</Link>
         </section>
 
-        <section className="mt-5 rounded-[28px] border border-[#ff7282]/30 bg-[#2d172d] p-5 sm:p-7">
-          <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#ff9ca5]">Practice account</p>
+        <section className="mt-5 rounded-[28px] border border-[#ffd17b]/30 bg-[#2e1832] p-5 sm:p-7">
+          <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">Live account</p>
           <h2 className="font-display mt-2 text-xl font-black">Start fresh</h2>
-          <p className="mt-2 text-sm leading-6 text-[#dcc6d4]">Empty your portfolio and trade history, then restore your 10,000 STKZ test balance.</p>
+          <p className="mt-2 text-sm leading-6 text-[#d8c9d8]">Empty your portfolio and trade history, then restore your 10,000 STKZ test balance.</p>
           <button onClick={() => void resetAccount()} disabled={isResetting} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#401b2d] disabled:opacity-50"><RotateCcw size={16} />{isResetting ? "Resetting…" : "Reset test account"}</button>
         </section>
       </div>

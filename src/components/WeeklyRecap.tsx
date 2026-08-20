@@ -24,7 +24,7 @@ const defaultPreferences: Preferences = {
   onboarding_dismissed: false,
 };
 
-export function OnboardingRecap({ onStartTrading }: { onStartTrading: () => void }) {
+export function WeeklyRecap({ onStartTrading }: { onStartTrading: () => void }) {
   const [preferences, setPreferences] = useState(defaultPreferences);
   const [recap, setRecap] = useState<Recap | null>(null);
   const [isSaving, setIsSaving] = useState(false);

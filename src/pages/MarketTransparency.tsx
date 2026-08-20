@@ -230,7 +230,7 @@ export default function MarketTransparency() {
           <p className="mt-4 text-xs leading-5 text-[#a99ab7]">
             Addition, pause, retirement, and source-review decisions are
             retained in the internal market review record. Modeled prices never
-            represent a person’s financial value.
+            represent a person's financial value.
           </p>
         </section>
 
@@ -279,7 +279,7 @@ export default function MarketTransparency() {
             placeholder="Describe what needs attention and include a public source when useful."
             className="mt-4 min-h-28 w-full rounded-xl border border-white/10 bg-[#160c25] px-4 py-3 text-sm text-white outline-none placeholder:text-[#82738e] focus:border-[#a97cff]"
           />
-          <div className="mt-2 flex items-center justify-between gap-3">
+          <div className="mt-2 flex items-center justify-between">
             <p className="text-[10px] font-bold text-[#9f90ac]">
               {requestDetail.length}/1500 characters
             </p>
