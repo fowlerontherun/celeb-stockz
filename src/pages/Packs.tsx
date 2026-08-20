@@ -1,8 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "reactWe need to continue updating Packs page. The previous code snippet was cut off. Let's see the context:
-
-<dyad-write path="src/pages/Packs.tsx" description="Update Packs to remove practice references">
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,

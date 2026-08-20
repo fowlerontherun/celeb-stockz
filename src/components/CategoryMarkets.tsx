@@ -156,6 +156,18 @@ export function CategoryMarkets({
     [activeCategory, activeTier, markets, normalizedQuery],
   );
 
+  const allTierButtonClass = `rounded-xl px-3 py-2 text-xs font-black transition ${
+    activeTier === "All"
+      ? "bg-white text-[#251433]"
+      : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
+  }`;
+
+  const tierButtonClass = (tier: Tier) => `rounded-xl px-3 py-2 text-xs font-black transition ${
+    activeTier === tier
+      ? tierDetails[tier].className
+      : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
+  }`;
+
   return (
     <div className="animate-in fade-in duration-300">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
@@ -206,7 +218,7 @@ export function CategoryMarkets({
             className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${
               activeCategory === name
                 ? "bg-[#7c3aed] text-white shadow-lg"
-                : "border border-white/10 bg-white/[.04] text-[#b9acc9] hover:bg-white/10"`
+                : "border border-white/10 bg-white/[.04] text-[#b9acc9] hover:bg-white/10"
             }`}
           >
             <Icon
@@ -222,11 +234,7 @@ export function CategoryMarkets({
         <button
           type="button"
           onClick={() => setActiveTier("All")}
-          className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-            activeTier === "All"
-              ? "bg-white text-[#251433]"
-              : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
-          }`}
+          className={allTierButtonClass}
         >
           All tiers
         </button>
@@ -235,11 +243,7 @@ export function CategoryMarkets({
             key={tier}
             type="button"
             onClick={() => setActiveTier(tier)}
-            className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-              activeTier === tier
-                ? tierDetails[tier].className
-                : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
-            }`}
+            className={tierButtonClass(tier)}
           >
             {tierDetails[tier].label}
           </button>
