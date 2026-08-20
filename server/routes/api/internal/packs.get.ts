@@ -21,9 +21,20 @@ export default defineHandler(async (event) => {
       packs.available_at,
       packs.is_published,
       packs.is_announced,
-      COUNT(members.ticker)::int AS member_count
+      COUNT(members.ticker)::int AS member_count,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'ticker', members.ticker,
+            'name', COALESCE(cm.display_name, members.ticker),
+            'category', COALESCE(cm.category, 'Entertainment')
+          )
+        ) FILTER (WHERE members.ticker IS NOT NULL),
+        '[]'::json
+      ) AS members
     FROM celebrity_packs AS packs
     LEFT JOIN celebrity_pack_members AS members ON members.pack_id = packs.id
+    LEFT JOIN celebrity_markets AS cm ON cm.ticker = members.ticker
     GROUP BY packs.id
     ORDER BY packs.id
   `;

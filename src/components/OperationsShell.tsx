@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
-import { Activity, Database, LockKeyhole, Settings2 } from "lucide-react";
+import { Activity, Database, LockKeyhole, PackageOpen } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const tabs = [
   { to: "/operations", label: "Operations", icon: Activity },
+  { to: "/operations/packs", label: "Celebrity packs", icon: PackageOpen },
   { to: "/operations/providers", label: "Data providers", icon: Database },
   { to: "/operations/live-stkz", label: "Live STKZ launch", icon: LockKeyhole },
 ];

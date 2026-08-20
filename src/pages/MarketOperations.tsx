@@ -9,6 +9,7 @@ import {
   KeyRound,
   LockKeyhole,
   Newspaper,
+  PackageOpen,
   PauseCircle,
   PlayCircle,
   RefreshCw,
@@ -21,7 +22,6 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ListingAdmin } from "@/components/ListingAdmin";
-import { PackAdmin } from "@/components/PackAdmin";
 import { showError, showSuccess } from "@/utils/toast";
 
 type Source = {
@@ -480,6 +480,12 @@ export default function MarketOperations() {
 
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
+                to="/operations/packs"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-3 py-2 text-xs font-bold text-[#ffe2a3] hover:bg-[#ffd17b]/20"
+              >
+                <PackageOpen size={14} /> Celebrity packs manager
+              </Link>
+              <Link
                 to="/operations/providers"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-[#c99bff] hover:bg-white/10 hover:text-white"
               >
@@ -487,7 +493,7 @@ export default function MarketOperations() {
               </Link>
               <Link
                 to="/operations/live-stkz"
-                className="inline-flex items-center gap-1.5 rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-3 py-2 text-xs font-bold text-[#ffe2a3] hover:bg-[#ffd17b]/20"
+                className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-[#d8c1ff] hover:bg-white/10 hover:text-white"
               >
                 <LockKeyhole size={14} /> Live STKZ launch tracker
               </Link>
@@ -525,7 +531,6 @@ export default function MarketOperations() {
         </section>
 
         <ListingAdmin />
-        <PackAdmin />
 
         <section className="mt-7 rounded-[28px] border border-[#62e7b6]/30 bg-[#162725] p-5 sm:p-7">
           <div className="flex items-center gap-2 text-[#62e7b6]">

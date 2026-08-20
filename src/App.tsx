@@ -12,6 +12,7 @@ import MarketOperations from "./pages/MarketOperations";
 import MarketTransparency from "./pages/MarketTransparency";
 import NotFound from "./pages/NotFound";
 import Packs from "./pages/Packs";
+import PackManagement from "./pages/PackManagement";
 import Profile from "./pages/Profile";
 import ProviderConfiguration from "./pages/ProviderConfiguration";
 import YoutubeDiagnostics from "./pages/YoutubeDiagnostics";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/packs" element={<AccountGate><Packs /></AccountGate>} />
             <Route path="/profile" element={<AccountGate><Profile /></AccountGate>} />
             <Route path="/operations" element={<AccountGate><OperationsShell><MarketOperations /></OperationsShell></AccountGate>} />
+            <Route path="/operations/packs" element={<AccountGate><OperationsShell><PackManagement /></OperationsShell></AccountGate>} />
             <Route path="/operations/providers" element={<AccountGate><OperationsShell><ProviderConfiguration /></OperationsShell></AccountGate>} />
             <Route path="/operations/live-stkz" element={<AccountGate><OperationsShell><LiveStkzPreview /></OperationsShell></AccountGate>} />
             <Route path="/live-stkz" element={<AccountGate><OperationsShell><LiveStkzPreview /></OperationsShell></AccountGate>} />
