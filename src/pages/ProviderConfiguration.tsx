@@ -4,9 +4,12 @@ import {
   ArrowLeft,
   CheckCircle2,
   Database,
+  Globe,
   KeyRound,
   LoaderCircle,
+  Play,
   Save,
+  ShieldAlert,
 } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
@@ -26,6 +29,7 @@ type ProviderKey = "webz" | "tmdb" | "lastfm" | "sportsdb";
 const providers: Array<{
   key: ProviderKey;
   label: string;
+  authType: string;
   description: string;
   placeholder: string;
   inputName: "webzApiKey" | "tmdbApiKey" | "lastfmApiKey" | "sportsdbApiKey";
@@ -34,15 +38,17 @@ const providers: Array<{
   {
     key: "webz",
     label: "Webz.io",
-    description: "Optional global news coverage for capped entertainment context.",
-    placeholder: "Webz.io API key",
+    authType: "API Token",
+    description: "Global news sentiment and mentions for entertainment figures.",
+    placeholder: "Webz.io API token",
     inputName: "webzApiKey",
     color: "text-[#ff9ca5]",
   },
   {
     key: "tmdb",
-    label: "TMDB",
-    description: "Optional screen-profile popularity for film and television markets.",
+    label: "The Movie Database (TMDB)",
+    authType: "API Key (v3)",
+    description: "Actor, director, and television popularity indices.",
     placeholder: "TMDB API key",
     inputName: "tmdbApiKey",
     color: "text-[#72c8ff]",
@@ -50,7 +56,8 @@ const providers: Array<{
   {
     key: "lastfm",
     label: "Last.fm",
-    description: "Optional listener counts for music-market context.",
+    authType: "API Key",
+    description: "Artist listening counts, global reach, and scrobble momentum.",
     placeholder: "Last.fm API key",
     inputName: "lastfmApiKey",
     color: "text-[#62e7b6]",
@@ -58,8 +65,9 @@ const providers: Array<{
   {
     key: "sportsdb",
     label: "TheSportsDB",
-    description: "Optional athlete profile matching for sport-market context.",
-    placeholder: "TheSportsDB API key",
+    authType: "API Key / Tier Token",
+    description: "Athlete recognition, team affiliations, and career validation.",
+    placeholder: "TheSportsDB API key (e.g. 3 or premium key)",
     inputName: "sportsdbApiKey",
     color: "text-[#ffd17b]",
   },
@@ -75,6 +83,7 @@ export default function ProviderConfiguration() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
 
   useEffect(() => {
     void fetch("/api/internal/provider-settings", {
@@ -146,6 +155,27 @@ export default function ProviderConfiguration() {
     }
   };
 
+  const testProvider = async (providerName: string) => {
+    setTestingProvider(providerName);
+    try {
+      const response = await fetch("/api/internal/provider-test", {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ provider: providerName }),
+      });
+      const data = (await response.json()) as { ok?: boolean; message?: string; statusMessage?: string };
+      if (!response.ok || !data.ok) {
+        throw new Error(data.message || data.statusMessage || "Test request failed.");
+      }
+      showSuccess(`${providerName.toUpperCase()} test: ${data.message}`);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Provider connection test failed.");
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#120b20] text-[#c99bff]">
@@ -175,16 +205,66 @@ export default function ProviderConfiguration() {
                 Restricted configuration
               </p>
               <h1 className="font-display mt-2 text-3xl font-black sm:text-4xl">
-                Data provider connections
+                External data providers & API keys
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
-                Add optional provider keys to enrich the practice-market refresh.
-                Every provider contribution is capped and cached daily.
+                All third-party data feeds, API credentials, and open datasets that contribute to the fame-signal calculation model.
               </p>
             </div>
           </div>
         </header>
 
+        {/* Free / Open datasets section */}
+        <section className="mt-6 rounded-[26px] border border-[#62e7b6]/30 bg-[#162925] p-5 sm:p-6">
+          <div className="flex items-center gap-2 text-[#62e7b6]">
+            <Globe size={18} />
+            <h2 className="font-display text-xl font-black">Built-in open datasets (No API keys required)</h2>
+          </div>
+          <p className="mt-2 text-sm text-[#c5ded8]">
+            These primary signal providers run out of the box with zero external subscription costs or keys.
+          </p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-[#62e7b6]">Wikimedia Foundation REST API</span>
+                <span className="rounded-lg bg-[#183b33] px-2 py-1 text-[10px] font-black text-[#62e7b6]">LIVE</span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-[#b9ded5]">
+                Provides daily pageviews & 7-day revision tracking. Authenticates using a policy-compliant User-Agent header.
+              </p>
+              <button
+                type="button"
+                disabled={testingProvider === "wikipedia"}
+                onClick={() => void testProvider("wikipedia")}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20"
+              >
+                {testingProvider === "wikipedia" ? <LoaderCircle size={13} className="animate-spin" /> : <Play size={13} />}
+                Test connection
+              </button>
+            </div>
+
+            <div className="rounded-xl border border-white/10 bg-black/20 p-4">
+              <div className="flex items-center justify-between">
+                <span className="font-black text-[#62e7b6]">GDELT 2.0 Global News API</span>
+                <span className="rounded-lg bg-[#183b33] px-2 py-1 text-[10px] font-black text-[#62e7b6]">LIVE</span>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-[#b9ded5]">
+                Aggregates worldwide broadcast, print, and web news volume for celebrity names with zero API key requirement.
+              </p>
+              <button
+                type="button"
+                disabled={testingProvider === "gdelt"}
+                onClick={() => void testProvider("gdelt")}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20"
+              >
+                {testingProvider === "gdelt" ? <LoaderCircle size={13} className="animate-spin" /> : <Play size={13} />}
+                Test connection
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* Entertainment Source Key Configurations */}
         <section className="mt-6 grid gap-4 sm:grid-cols-2">
           {providers.map((provider) => {
             const configured = status?.[provider.key] ?? false;
@@ -198,6 +278,9 @@ export default function ProviderConfiguration() {
                   <div>
                     <p className={`font-display text-xl font-black ${provider.color}`}>
                       {provider.label}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-[#a99ab7]">
+                      Auth: {provider.authType}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-[#c4b4d0]">
                       {provider.description}
@@ -216,7 +299,7 @@ export default function ProviderConfiguration() {
                 </div>
 
                 <label className="mt-5 block text-xs font-bold uppercase tracking-[.13em] text-[#b9a9c5]">
-                  Replace API key
+                  Update credentials
                   <div className="relative mt-2">
                     <KeyRound
                       size={15}
@@ -241,18 +324,38 @@ export default function ProviderConfiguration() {
                     />
                   </div>
                 </label>
+
+                {configured && (
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      disabled={testingProvider === provider.key}
+                      onClick={() => void testProvider(provider.key)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-bold text-[#c99bff] hover:bg-white/10"
+                    >
+                      {testingProvider === provider.key ? (
+                        <LoaderCircle size={13} className="animate-spin" />
+                      ) : (
+                        <Play size={13} />
+                      )}
+                      Test saved key
+                    </button>
+                  </div>
+                )}
               </article>
             );
           })}
         </section>
 
         <section className="mt-6 rounded-[26px] border border-[#ffd17b]/25 bg-[#2a1b32] p-5 sm:p-6">
-          <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#ffd17b]">
-            Safe handling
-          </p>
+          <div className="flex items-center gap-2 text-[#ffd17b]">
+            <ShieldAlert size={18} />
+            <p className="text-xs font-extrabold uppercase tracking-[.16em]">
+              Security & Storage
+            </p>
+          </div>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-[#d8c9d8]">
-            Keys are stored server-side and never returned to the browser.
-            Leave a saved provider blank to keep its current key unchanged.
+            All provider API keys and tokens are stored in the server PostgreSQL database and are never delivered to the client browser. Leave a saved field blank to retain the current key.
           </p>
           <button
             type="button"
