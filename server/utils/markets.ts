@@ -73,13 +73,39 @@ function profileImage(ticker: string) {
   return `/api/celebrity-images/${encodeURIComponent(ticker)}`;
 }
 
-export const celebrityMarkets: CelebrityMarket[] = [
-  ...originalMarkets,
-  ...additionalCelebrityMarkets,
-].map((market) => ({
-  ...market,
-  image: profileImage(market.ticker),
-}));
+// Build unique deduplicated list of celebrity markets
+function buildDeduplicatedCelebrityMarkets(): CelebrityMarket[] {
+  const combined = [
+    ...originalMarkets,
+    ...additionalCelebrityMarkets,
+  ];
+
+  const seenTickers = new Set<string>();
+  const seenNames = new Set<string>();
+  const results: CelebrityMarket[] = [];
+
+  for (const market of combined) {
+    const normTicker = market.ticker.trim().toUpperCase();
+    const normName = market.name.trim().toLowerCase();
+
+    if (seenTickers.has(normTicker) || seenNames.has(normName)) {
+      continue;
+    }
+
+    seenTickers.add(normTicker);
+    seenNames.add(normName);
+
+    results.push({
+      ...market,
+      ticker: normTicker,
+      image: profileImage(normTicker),
+    });
+  }
+
+  return results;
+}
+
+export const celebrityMarkets: CelebrityMarket[] = buildDeduplicatedCelebrityMarkets();
 
 export function calculateMarketPrice(
   signals: CelebrityMarket["signals"],
