@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import {
   Clapperboard,
   Gamepad2,
@@ -7,7 +6,6 @@ import {
   Laugh,
   Lock,
   Music2,
-  PackageOpen,
   Search,
   Shirt,
   Trophy,
@@ -106,30 +104,6 @@ function formatSnapshotTime(capturedAt: string | null | undefined) {
   }).format(new Date(capturedAt));
 }
 
-function getAccessBadge(market: CategorizedCelebrity) {
-  const access = market.access ?? { isStandard: true, isUnlocked: true, requiredPacks: [] };
-  if (access.isStandard) {
-    return (
-      <span className="rounded-lg px-2 py-1 text-[10px] font-black text-[#fff8f2]">
-        Standard market
-      </span>
-    );
-  }
-  if (access.isUnlocked) {
-    return (
-      <span className="rounded-lg px-2 py-1 text-[10px] font-black text-[#62e7b6]">
-        Unlocked
-      </span>
-    );
-  }
-  const packNames = access.requiredPacks.map((p) => p.name).join(" or ");
-  return (
-    <span className="rounded-lg px-2 py-1 text-[10px] font-black text-[#ff9ca5]">
-      Locked · {packNames}
-    </span>
-  );
-}
-
 export function CategoryMarkets({
   markets,
   onTrade,
@@ -155,18 +129,6 @@ export function CategoryMarkets({
       ),
     [activeCategory, activeTier, markets, normalizedQuery],
   );
-
-  const allTierButtonClass = `rounded-xl px-3 py-2 text-xs font-black transition ${
-    activeTier === "All"
-      ? "bg-white text-[#251433]"
-      : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
-  }`;
-
-  const tierButtonClass = (tier: Tier) => `rounded-xl px-3 py-2 text-xs font-black transition ${
-    activeTier === tier
-      ? tierDetails[tier].className
-      : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
-  }`;
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -234,7 +196,11 @@ export function CategoryMarkets({
         <button
           type="button"
           onClick={() => setActiveTier("All")}
-          className={allTierButtonClass}
+          className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+            activeTier === "All"
+              ? "bg-white text-[#251433]"
+              : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
+          }`}
         >
           All tiers
         </button>
@@ -243,7 +209,11 @@ export function CategoryMarkets({
             key={tier}
             type="button"
             onClick={() => setActiveTier(tier)}
-            className={tierButtonClass(tier)}
+            className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+              activeTier === tier
+                ? tierDetails[tier].className
+                : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
+            }`}
           >
             {tierDetails[tier].label}
           </button>
@@ -334,8 +304,8 @@ export function CategoryMarkets({
                       </p>
                       <p
                         className={`mt-1 text-[10px] font-bold ${
-                          verified ? "text-[#62e7b6]" : "text-[#ffd17b]"}
-                        `}
+                          verified ? "text-[#62e7b6]" : "text-[#ffd17b]"
+                        }`}
                       >
                         {verified ? "Verified snapshot" : "Safe fallback"} ·{" "}
                         {formatSnapshotTime(market.snapshot?.capturedAt)}

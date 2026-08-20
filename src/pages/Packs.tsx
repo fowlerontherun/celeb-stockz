@@ -1,10 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
-  CalendarDays,
   CheckCircle2,
   EyeOff,
-  LockKeyhole,
   PackageOpen,
   Sparkles,
 } from "lucide-react";
