@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import {
   Clapperboard,
   Gamepad2,
+  Globe2,
   Landmark,
   Laugh,
   Lock,
@@ -45,6 +46,55 @@ export type CategorizedCelebrity = Celebrity & {
 };
 
 type Tier = "A" | "B" | "C" | "D";
+
+export const countryMetadata: Record<
+  string,
+  { flag: string; label: string; region: string }
+> = {
+  British: { flag: "🇬🇧", label: "United Kingdom", region: "UK" },
+  American: { flag: "🇺🇸", label: "United States", region: "USA" },
+  Spanish: { flag: "🇪🇸", label: "Spain", region: "Europe" },
+  French: { flag: "🇫🇷", label: "France", region: "Europe" },
+  Irish: { flag: "🇮🇪", label: "Ireland", region: "Europe" },
+  Canadian: { flag: "🇨🇦", label: "Canada", region: "Americas" },
+  Australian: { flag: "🇦🇺", label: "Australia", region: "Asia & Oceania" },
+  Italian: { flag: "🇮🇹", label: "Italy", region: "Europe" },
+  Dutch: { flag: "🇳🇱", label: "Netherlands", region: "Europe" },
+  Portuguese: { flag: "🇵🇹", label: "Portugal", region: "Europe" },
+  German: { flag: "🇩🇪", label: "Germany", region: "Europe" },
+  Greek: { flag: "🇬🇷", label: "Greece", region: "Europe" },
+  Serbian: { flag: "🇷🇸", label: "Serbia", region: "Europe" },
+  Slovenian: { flag: "🇸🇮", label: "Slovenia", region: "Europe" },
+  Polish: { flag: "🇵🇱", label: "Poland", region: "Europe" },
+  Swedish: { flag: "🇸🇪", label: "Sweden", region: "Europe" },
+  Norwegian: { flag: "🇳🇴", label: "Norway", region: "Europe" },
+  Ukrainian: { flag: "🇺🇦", label: "Ukraine", region: "Europe" },
+  Monegasque: { flag: "🇲🇨", label: "Monaco", region: "Europe" },
+  Belgian: { flag: "🇧🇪", label: "Belgium", region: "Europe" },
+  Brazilian: { flag: "🇧🇷", label: "Brazil", region: "Americas" },
+  Argentine: { flag: "🇦🇷", label: "Argentina", region: "Americas" },
+  Chilean: { flag: "🇨🇱", label: "Chile", region: "Americas" },
+  Mexican: { flag: "🇲🇽", label: "Mexico", region: "Americas" },
+  Japanese: { flag: "🇯🇵", label: "Japan", region: "Asia & Oceania" },
+  Indian: { flag: "🇮🇳", label: "India", region: "Asia & Oceania" },
+  Chinese: { flag: "🇨🇳", label: "China", region: "Asia & Oceania" },
+  "South Korean": { flag: "🇰🇷", label: "South Korea", region: "Asia & Oceania" },
+  Nigerian: { flag: "🇳🇬", label: "Nigeria", region: "Africa" },
+  "South African": { flag: "🇿🇦", label: "South Africa", region: "Africa" },
+  Egyptian: { flag: "🇪🇬", label: "Egypt", region: "Africa" },
+  "New Zealander": { flag: "🇳🇿", label: "New Zealand", region: "Asia & Oceania" },
+  Barbadian: { flag: "🇧🇧", label: "Barbados", region: "Americas" },
+  "Puerto Rican": { flag: "🇵🇷", label: "Puerto Rico", region: "Americas" },
+  Dominican: { flag: "🇩🇴", label: "Dominican Republic", region: "Americas" },
+  Russian: { flag: "🇷🇺", label: "Russia", region: "Europe" },
+};
+
+export function getCountryInfo(nationality: string) {
+  return countryMetadata[nationality] ?? { flag: "🌐", label: nationality, region: "Global" };
+}
+
+const regions = ["All", "UK", "USA", "Europe", "Americas", "Asia & Oceania", "Africa"] as const;
+type RegionFilter = typeof regions[number];
 
 const categories: Array<{
   name: MarketCategory;
@@ -112,8 +162,9 @@ export function CategoryMarkets({
   markets: CategorizedCelebrity[];
   onTrade: (market: CategorizedCelebrity) => void;
 }) {
-  const [activeCategory, setActiveCategory] =
-    useState<MarketCategory>("Music");
+  const [activeCategory, setActiveCategory] = useState<MarketCategory>("Music");
+  const [activeRegion, setActiveRegion] = useState<RegionFilter>("All");
+  const [activeCountry, setActiveCountry] = useState<string>("All");
   const [activeTier, setActiveTier] = useState<"All" | Tier>("All");
   const [hideLocked, setHideLocked] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -124,21 +175,50 @@ export function CategoryMarkets({
     [markets],
   );
 
+  // Available countries in the active category & region
+  const availableCountries = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const market of markets) {
+      if (market.category !== activeCategory) continue;
+      const info = getCountryInfo(market.nationality);
+      if (activeRegion !== "All" && info.region !== activeRegion) continue;
+      counts.set(market.nationality, (counts.get(market.nationality) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([nationality, count]) => ({
+        nationality,
+        count,
+        info: getCountryInfo(nationality),
+      }))
+      .sort((a, b) => b.count - a.count);
+  }, [activeCategory, activeRegion, markets]);
+
   const visibleMarkets = useMemo(
     () =>
       markets.filter((market) => {
         const isLocked = Boolean(market.access && !market.access.isUnlocked);
         if (hideLocked && isLocked) return false;
 
-        return (
-          market.category === activeCategory &&
-          (activeTier === "All" || getTier(market.price) === activeTier) &&
-          (!normalizedQuery ||
-            market.name.toLowerCase().includes(normalizedQuery) ||
-            market.ticker.toLowerCase().includes(normalizedQuery))
-        );
+        const info = getCountryInfo(market.nationality);
+
+        if (market.category !== activeCategory) return false;
+        if (activeRegion !== "All" && info.region !== activeRegion) return false;
+        if (activeCountry !== "All" && market.nationality !== activeCountry) return false;
+        if (activeTier !== "All" && getTier(market.price) !== activeTier) return false;
+
+        if (
+          normalizedQuery &&
+          !market.name.toLowerCase().includes(normalizedQuery) &&
+          !market.ticker.toLowerCase().includes(normalizedQuery) &&
+          !market.nationality.toLowerCase().includes(normalizedQuery) &&
+          !info.label.toLowerCase().includes(normalizedQuery)
+        ) {
+          return false;
+        }
+
+        return true;
       }),
-    [activeCategory, activeTier, hideLocked, markets, normalizedQuery],
+    [activeCategory, activeCountry, activeRegion, activeTier, hideLocked, markets, normalizedQuery],
   );
 
   return (
@@ -149,7 +229,7 @@ export function CategoryMarkets({
             Explore live markets
           </p>
           <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">
-            Browse by culture.
+            Browse by culture & country.
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -168,7 +248,7 @@ export function CategoryMarkets({
           type="search"
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
-          placeholder="Search celebrity or ticker…"
+          placeholder="Search celebrity, ticker, country or nationality…"
           className="w-full rounded-2xl border border-white/10 bg-[#1e112f] py-3 pl-11 pr-11 text-sm font-semibold text-[#fff8f2] outline-none transition placeholder:text-[#897b95] focus:border-[#a97cff] focus:ring-2 focus:ring-[#7c3aed]/30"
           aria-label="Search celebrity markets"
         />
@@ -184,12 +264,16 @@ export function CategoryMarkets({
         )}
       </label>
 
+      {/* Main Categories Bar */}
       <div className="mt-7 flex gap-2 overflow-x-auto pb-2">
         {categories.map(({ name, icon: Icon, color }) => (
           <button
             key={name}
             type="button"
-            onClick={() => setActiveCategory(name)}
+            onClick={() => {
+              setActiveCategory(name);
+              setActiveCountry("All");
+            }}
             className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${
               activeCategory === name
                 ? "bg-[#7c3aed] text-white shadow-lg"
@@ -205,6 +289,84 @@ export function CategoryMarkets({
         ))}
       </div>
 
+      {/* Country / Region Sub-Category Filter Bar */}
+      <div className="mt-4 rounded-2xl border border-white/10 bg-[#170d27] p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.14em] text-[#c99bff]">
+            <Globe2 size={15} />
+            <span>Country Sub-Categories</span>
+          </div>
+
+          {activeCountry !== "All" && (
+            <button
+              type="button"
+              onClick={() => setActiveCountry("All")}
+              className="inline-flex items-center gap-1 text-[11px] font-bold text-[#ffd17b] hover:underline"
+            >
+              Reset country filter ({getCountryInfo(activeCountry).label})
+            </button>
+          )}
+        </div>
+
+        {/* Region Selector Pills */}
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
+          {regions.map((region) => (
+            <button
+              key={region}
+              type="button"
+              onClick={() => {
+                setActiveRegion(region);
+                setActiveCountry("All");
+              }}
+              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                activeRegion === region
+                  ? "bg-[#c99bff] text-[#1e0f35]"
+                  : "border border-white/5 bg-white/[.03] text-[#b9acc9] hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              {region === "All" ? "🌐 All Regions" : region}
+            </button>
+          ))}
+        </div>
+
+        {/* Specific Country Badges for Active Category */}
+        {availableCountries.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
+            <button
+              type="button"
+              onClick={() => setActiveCountry("All")}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                activeCountry === "All"
+                  ? "bg-white/20 text-white"
+                  : "bg-white/[.03] text-[#a99ab7] hover:bg-white/10 hover:text-white"
+              }`}
+            >
+              <span>All Countries</span>
+            </button>
+
+            {availableCountries.map(({ nationality, count, info }) => (
+              <button
+                key={nationality}
+                type="button"
+                onClick={() => setActiveCountry(activeCountry === nationality ? "All" : nationality)}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                  activeCountry === nationality
+                    ? "bg-[#ffd17b] font-bold text-[#382600]"
+                    : "border border-white/5 bg-white/[.04] text-[#d5c7e2] hover:bg-white/10 hover:text-white"
+                }`}
+              >
+                <span>{info.flag}</span>
+                <span>{info.label}</span>
+                <span className="rounded bg-black/25 px-1 py-0.2 text-[10px] opacity-75">
+                  {count}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Tier & Locked Controls */}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap gap-2">
           <button
@@ -258,8 +420,8 @@ export function CategoryMarkets({
       {visibleMarkets.length === 0 ? (
         <div className="mt-5 rounded-[24px] border border-dashed border-white/15 bg-white/[.03] p-8 text-center text-sm text-[#b9acc9]">
           {hideLocked
-            ? "No unlocked markets match this filter."
-            : "No markets match this filter."}
+            ? "No unlocked markets match this filter combination."
+            : "No celebrity markets match your selected category, country, and tier filters."}
         </div>
       ) : (
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -268,6 +430,7 @@ export function CategoryMarkets({
             const tier = getTier(market.price);
             const verified = market.snapshot?.refreshStatus === "verified";
             const isLocked = Boolean(market.access && !market.access.isUnlocked);
+            const countryInfo = getCountryInfo(market.nationality);
 
             return (
               <article
@@ -295,6 +458,13 @@ export function CategoryMarkets({
                   >
                     Tier {tier}
                   </span>
+
+                  {/* Country Flag Pill */}
+                  <span className="absolute left-3 bottom-3 inline-flex items-center gap-1 rounded-lg bg-black/60 px-2 py-1 text-xs font-bold text-white backdrop-blur-sm">
+                    <span>{countryInfo.flag}</span>
+                    <span>{countryInfo.label}</span>
+                  </span>
+
                   {isLocked && (
                     <div className="absolute right-3 top-3 flex items-center gap-1 rounded-lg bg-[#ff7282]/20 px-2 py-1 text-[10px] font-black text-[#ff9ca5] backdrop-blur-sm">
                       <Lock size={12} />
@@ -312,8 +482,10 @@ export function CategoryMarkets({
                       <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">
                         ${market.ticker} · {market.category}
                       </p>
-                      <p className="mt-1 text-xs text-[#c4b4d0]">
-                        {market.nationality} · {age} years old
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-[#c4b4d0]">
+                        <span>{countryInfo.flag} {market.nationality}</span>
+                        <span>·</span>
+                        <span>{age} years old</span>
                       </p>
                     </div>
                     <span

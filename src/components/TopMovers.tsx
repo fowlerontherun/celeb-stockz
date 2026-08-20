@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  Globe2,
   LoaderCircle,
   Lock,
   LockKeyholeOpen,
   TrendingUp,
 } from "lucide-react";
 import { PriceChart } from "@/components/PriceChart";
-import type { CategorizedCelebrity } from "@/components/CategoryMarkets";
+import { getCountryInfo, type CategorizedCelebrity } from "@/components/CategoryMarkets";
 import { showError } from "@/utils/toast";
 
 type Mover = CategorizedCelebrity & {
@@ -21,8 +22,11 @@ type TopMoversProps = {
   onTrade: (market: CategorizedCelebrity) => void;
 };
 
+const regions = ["All", "UK", "USA", "Europe", "Americas", "Asia & Oceania", "Africa"] as const;
+
 export function TopMovers({ markets, onTrade }: TopMoversProps) {
   const [view, setView] = useState<"winners" | "losers">("winners");
+  const [selectedRegion, setSelectedRegion] = useState<typeof regions[number]>("All");
   const [hideLocked, setHideLocked] = useState(false);
   const [snapshotMovers, setSnapshotMovers] = useState<Mover[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +58,10 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
         .filter((market) => {
           if (market.change === null) return false;
           if (hideLocked && market.access && !market.access.isUnlocked) return false;
+          if (selectedRegion !== "All") {
+            const info = getCountryInfo(market.nationality);
+            if (info.region !== selectedRegion) return false;
+          }
           return true;
         })
         .sort((first, second) =>
@@ -62,7 +70,7 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
             : (first.change ?? 0) - (second.change ?? 0),
         )
         .slice(0, 40),
-    [hideLocked, snapshotMovers, view],
+    [hideLocked, selectedRegion, snapshotMovers, view],
   );
 
   const isWinners = view === "winners";
@@ -135,6 +143,27 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
         </button>
       </div>
 
+      {/* Regional filter pills for top movers */}
+      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
+        <span className="flex items-center gap-1 text-xs font-bold text-[#c99bff]">
+          <Globe2 size={14} /> Region:
+        </span>
+        {regions.map((region) => (
+          <button
+            key={region}
+            type="button"
+            onClick={() => setSelectedRegion(region)}
+            className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+              selectedRegion === region
+                ? "bg-[#c99bff] text-[#1e0f35]"
+                : "border border-white/5 bg-white/[.03] text-[#b9acc9] hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {region === "All" ? "All Regions" : region}
+          </button>
+        ))}
+      </div>
+
       {isLoading ? (
         <div className="mt-5 grid min-h-56 place-items-center rounded-[24px] border border-white/10 bg-[#1e112f]">
           <LoaderCircle className="animate-spin text-[#c99bff]" />
@@ -143,7 +172,7 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
         <div className="mt-5 rounded-[24px] border border-dashed border-white/15 bg-white/[.03] p-8 text-center text-sm text-[#b9acc9]">
           {hideLocked
             ? "No unlocked market movers match this view."
-            : "Movers will appear after each market has enough saved history for a 24-hour comparison."}
+            : "No market movers found for this region selection."}
         </div>
       ) : (
         <section className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]">
@@ -154,6 +183,7 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
           {movers.map((market, index) => {
             const positive = (market.change ?? 0) >= 0;
             const isLocked = Boolean(market.access && !market.access.isUnlocked);
+            const countryInfo = getCountryInfo(market.nationality);
 
             return (
               <article key={market.ticker} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 px-4 py-3 last:border-0 sm:grid-cols-[3rem_minmax(0,1fr)_7rem_7rem_5.5rem]">
@@ -165,13 +195,14 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-black">{market.name}</p>
+                      <span className="text-xs" title={countryInfo.label}>{countryInfo.flag}</span>
                       {isLocked && (
                         <span className="inline-flex items-center gap-1 rounded bg-[#ff7282]/20 px-1.5 py-0.5 text-[9px] font-black text-[#ff9ca5]">
                           <Lock size={10} /> Locked
                         </span>
                       )}
                     </div>
-                    <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">${market.ticker} · {market.category}</p>
+                    <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">${market.ticker} · {market.category} · {countryInfo.label}</p>
                   </div>
                 </div>
                 <div className="hidden sm:block"><PriceChart price={market.price} change={market.change ?? 0} ticker={`mover-${market.ticker}`} /></div>
