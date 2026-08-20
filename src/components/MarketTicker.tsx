@@ -1,17 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Clock3 } from "lucide-react";
+import { Activity, Radio } from "lucide-react";
 
 const REFRESH_INTERVAL = 60 * 1000;
 
 function getNextRefreshAt(timestamp: number) {
   return (Math.floor(timestamp / REFRESH_INTERVAL) + 1) * REFRESH_INTERVAL;
-}
-
-function formatTime(timestamp: number) {
-  return new Intl.DateTimeFormat([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(timestamp);
 }
 
 export function MarketTicker() {
@@ -39,15 +32,15 @@ export function MarketTicker() {
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-black text-[#fff8f2]">
-          Practice-market updates · next cycle in {countdown}
+          Live market updates · next cycle in {countdown}
         </p>
         <p className="mt-0.5 truncate text-[10px] font-semibold text-[#b8a9c4]">
-          Public signals refresh when available · modeled movement updates every minute
+          Real-time signal tracking · price movements update every minute
         </p>
       </div>
-      <span className="hidden items-center gap-1 rounded-lg bg-[#ffd17b]/15 px-2 py-1 text-[10px] font-black text-[#ffd17b] sm:inline-flex">
-        <Clock3 size={12} />
-        PRACTICE ONLY
+      <span className="hidden items-center gap-1.5 rounded-lg bg-[#183b33] px-2.5 py-1 text-[10px] font-black text-[#62e7b6] sm:inline-flex">
+        <Radio size={12} className="animate-pulse" />
+        LIVE
       </span>
     </div>
   );
