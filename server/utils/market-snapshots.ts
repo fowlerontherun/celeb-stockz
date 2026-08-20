@@ -37,9 +37,10 @@ type EditActivityResult = {
   status: "verified" | "unavailable";
 };
 
-const DAILY_MOVE_CAP = 15;
-const REVIEW_MOVE_THRESHOLD = 30;
-const SOURCE_CACHE_MS = 30 * 60 * 1000;
+// Increased from 15% to 35% for authentic hype volatility
+const DAILY_MOVE_CAP = 35;
+const REVIEW_MOVE_THRESHOLD = 60;
+const SOURCE_CACHE_MS = 15 * 60 * 1000;
 const pageviewCache = new Map<
   string,
   { result: PageviewResult; expiresAt: number }
@@ -71,7 +72,7 @@ function describeEditActivity(recentEdits: number | null) {
     return "No recent article edits added to the score.";
   }
 
-  return `${recentEdits} recent public article edit${recentEdits === 1 ? "" : "s"} added a small capped activity signal.`;
+  return `${recentEdits} recent public article edit${recentEdits === 1 ? "" : "s"} added a dynamic activity signal.`;
 }
 
 function describeAdditionalSignals(signals: AdditionalPriceSignals) {
@@ -82,7 +83,7 @@ function describeAdditionalSignals(signals: AdditionalPriceSignals) {
   ].filter(Boolean);
 
   return active.length
-    ? `${active.join(", ")} supplied capped supplementary context.`
+    ? `${active.join(", ")} supplied dynamic supplementary context.`
     : "Optional news, search, and official channel signals were unavailable and did not affect the score.";
 }
 
@@ -95,7 +96,7 @@ function describeExternalSignals(signals: ExternalSourceSignals) {
   ].filter(Boolean);
 
   return active.length
-    ? `${active.join(", ")} supplied additional capped context.`
+    ? `${active.join(", ")} supplied additional market momentum.`
     : "Optional entertainment-source signals were unavailable and did not affect the score.";
 }
 
@@ -110,7 +111,7 @@ async function getWikipediaViews(article: string): Promise<PageviewResult> {
 
   try {
     const response = await fetch(url, {
-      headers: { "user-agent": "CelebStockz practice-market signal monitor" },
+      headers: { "user-agent": "CelebStockz/1.0 (https://celebstockz.app; contact@celebstockz.app)" },
     });
 
     if (!response.ok) return { views: null, status: "unavailable" };
@@ -151,13 +152,13 @@ async function getWikipediaEditActivity(
   url.searchParams.set("rvprop", "timestamp");
   url.searchParams.set("rvstart", new Date().toISOString());
   url.searchParams.set("rvend", since);
-  url.searchParams.set("rvlimit", "25");
+  url.searchParams.set("rvlimit", "35");
 
   try {
     const response = await fetch(url, {
       headers: {
         accept: "application/json",
-        "user-agent": "CelebStockz practice-market signal monitor",
+        "user-agent": "CelebStockz/1.0 (https://celebstockz.app; contact@celebstockz.app)",
       },
     });
 
@@ -197,11 +198,13 @@ function calculateTransparentScore(
   additionalSignals: AdditionalPriceSignals,
   externalSignals: ExternalSourceSignals,
 ) {
+  // Enhanced sensitivity: pageview surges now scale up to +32 STKZ
   const pageviewBoost = pageviews
-    ? Math.min(18, Math.log10(Math.max(pageviews, 1)) * 2.2)
+    ? Math.min(32, Math.log10(Math.max(pageviews, 1)) * 4.8)
     : 0;
+  // Recent edit bursts scale up to +8 STKZ
   const editActivityBoost = recentEdits
-    ? Math.min(4, Math.sqrt(Math.min(recentEdits, 25)) * 0.8)
+    ? Math.min(8, Math.sqrt(Math.min(recentEdits, 35)) * 1.4)
     : 0;
 
   return Number(
@@ -329,7 +332,7 @@ export async function refreshMarketSnapshots() {
       Math.min(DAILY_MOVE_CAP, rawMove),
     );
     const price = Number(
-      (previousPrice * (1 + dailyChange / 100)).toFixed(2),
+      Math.max(1, (previousPrice * (1 + dailyChange / 100))).toFixed(2),
     );
     verifiedCount += 1;
 
@@ -432,7 +435,7 @@ export async function getRecentSnapshotHistory(ticker: string) {
     FROM market_snapshots
     WHERE ticker = ${ticker} AND refresh_status = 'verified'
     ORDER BY captured_at DESC
-    LIMIT 14
+    LIMIT 20
   `;
 
   return rows.reverse().map((row) => ({

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  AlertTriangle,
   ArrowLeft,
   CheckCircle2,
   Database,
@@ -8,6 +9,7 @@ import {
   KeyRound,
   LoaderCircle,
   Play,
+  RefreshCw,
   Save,
   ShieldAlert,
 } from "lucide-react";
@@ -25,6 +27,14 @@ type ProviderStatus = {
 };
 
 type ProviderKey = "webz" | "tmdb" | "lastfm" | "sportsdb";
+
+type SuiteResult = {
+  name: string;
+  authRequired: boolean;
+  status: "ok" | "error" | "unconfigured";
+  message: string;
+  sampleData?: Record<string, unknown> | null;
+};
 
 const providers: Array<{
   key: ProviderKey;
@@ -84,6 +94,8 @@ export default function ProviderConfiguration() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [isRunningSuite, setIsRunningSuite] = useState(false);
+  const [suiteResults, setSuiteResults] = useState<Record<string, SuiteResult> | null>(null);
 
   useEffect(() => {
     void fetch("/api/internal/provider-settings", {
@@ -106,6 +118,30 @@ export default function ProviderConfiguration() {
       .catch((error: Error) => showError(error.message))
       .finally(() => setIsLoading(false));
   }, []);
+
+  const runFullSuiteCheck = async () => {
+    setIsRunningSuite(true);
+    try {
+      const response = await fetch("/api/internal/provider-test-all", {
+        credentials: "include",
+      });
+      const data = (await response.json()) as {
+        results?: Record<string, SuiteResult>;
+        statusMessage?: string;
+      };
+
+      if (!response.ok || !data.results) {
+        throw new Error(data.statusMessage ?? "Could not run provider diagnostic suite.");
+      }
+
+      setSuiteResults(data.results);
+      showSuccess("Full provider diagnostic complete.");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Failed to run provider diagnostic suite.");
+    } finally {
+      setIsRunningSuite(false);
+    }
+  };
 
   const save = async () => {
     if (!Object.values(keys).some(Boolean)) {
@@ -195,7 +231,7 @@ export default function ProviderConfiguration() {
           Back to operations
         </Link>
 
-        <header className="mt-8 rounded-[30px] border border-[#c99bff]/30 bg-[#211230] p-6 sm:p-8">
+        <header className="mt-8 flex flex-wrap items-start justify-between gap-4 rounded-[30px] border border-[#c99bff]/30 bg-[#211230] p-6 sm:p-8">
           <div className="flex items-start gap-4">
             <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#7c3aed] text-white">
               <Database size={23} />
@@ -205,14 +241,82 @@ export default function ProviderConfiguration() {
                 Restricted configuration
               </p>
               <h1 className="font-display mt-2 text-3xl font-black sm:text-4xl">
-                External data providers & API keys
+                External data providers & API feeds
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
-                All third-party data feeds, API credentials, and open datasets that contribute to the fame-signal calculation model.
+                All third-party data feeds, API credentials, and open datasets that contribute to the high-volatility fame signal engine.
               </p>
             </div>
           </div>
+
+          <button
+            type="button"
+            disabled={isRunningSuite}
+            onClick={() => void runFullSuiteCheck()}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#62e7b6] px-5 py-3 text-sm font-black text-[#112b24] shadow-lg transition hover:bg-[#83f4cb] disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={isRunningSuite ? "animate-spin" : ""} />
+            {isRunningSuite ? "Running check…" : "Verify all providers"}
+          </button>
         </header>
+
+        {/* Live Suite Diagnostic Results if run */}
+        {suiteResults && (
+          <section className="mt-6 rounded-[28px] border border-[#62e7b6]/30 bg-[#162725] p-5 sm:p-7">
+            <div className="flex items-center gap-2 text-[#62e7b6]">
+              <CheckCircle2 size={20} />
+              <h2 className="font-display text-2xl font-black">Live feed diagnostic inspection</h2>
+            </div>
+            <p className="mt-1 text-sm text-[#c5ded8]">
+              Live server-side tests verifying connectivity, authentication, and returned data payloads.
+            </p>
+
+            <div className="mt-5 space-y-3">
+              {Object.entries(suiteResults).map(([key, item]) => {
+                const isOk = item.status === "ok";
+                const isUnconfigured = item.status === "unconfigured";
+
+                return (
+                  <div
+                    key={key}
+                    className={`rounded-2xl border p-4 ${
+                      isOk
+                        ? "border-[#62e7b6]/30 bg-black/25"
+                        : isUnconfigured
+                        ? "border-white/10 bg-white/[.03]"
+                        : "border-[#ff7282]/30 bg-[#381a30]"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <span className="font-display text-base font-black text-white">{item.name}</span>
+                        <p className="mt-1 text-xs text-[#d7e6e2]">{item.message}</p>
+                      </div>
+                      <span
+                        className={`rounded-lg px-2.5 py-1 text-[10px] font-black uppercase ${
+                          isOk
+                            ? "bg-[#183b33] text-[#62e7b6]"
+                            : isUnconfigured
+                            ? "bg-white/10 text-[#a99ab7]"
+                            : "bg-[#482332] text-[#ff9ca5]"
+                        }`}
+                      >
+                        {item.status}
+                      </span>
+                    </div>
+
+                    {item.sampleData && (
+                      <div className="mt-3 rounded-xl bg-black/40 p-2.5 font-mono text-[11px] text-[#8ce0cb]">
+                        <span className="text-[#a99ab7]">Returned data: </span>
+                        {JSON.stringify(item.sampleData)}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Free / Open datasets section */}
         <section className="mt-6 rounded-[26px] border border-[#62e7b6]/30 bg-[#162925] p-5 sm:p-6">

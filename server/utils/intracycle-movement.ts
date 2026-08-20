@@ -8,8 +8,9 @@ type FreshSnapshot = {
 };
 
 const UPDATE_INTERVAL_MS = 60_000;
-const MAX_INTRACYLCE_MOVE_PERCENT = 0.85;
-const DAILY_MOVE_CAP = 15;
+// Increased from 0.85% to 3.8% max per minute cycle to create real market action
+const MAX_INTRACYLCE_MOVE_PERCENT = 3.8;
+const DAILY_MOVE_CAP = 35;
 
 function stableHash(value: string) {
   return [...value].reduce(
@@ -21,6 +22,7 @@ function stableHash(value: string) {
 function getPracticeMovePercent(ticker: string, timestamp: number) {
   const updateBucket = Math.floor(timestamp / UPDATE_INTERVAL_MS);
   const normalized = (stableHash(`${ticker}:${updateBucket}`) % 10_001) / 10_000;
+  // Creates dynamic swings between -3.8% and +3.8%
   return Number(
     ((normalized * 2 - 1) * MAX_INTRACYLCE_MOVE_PERCENT).toFixed(3),
   );
@@ -42,7 +44,7 @@ export async function applyIntracycleMovements(refreshStartedAt: string) {
       );
       const price = Number(snapshot.price_stkz);
       const updatedPrice = Number(
-        (price * (1 + movementPercent / 100)).toFixed(2),
+        Math.max(1, price * (1 + movementPercent / 100)).toFixed(2),
       );
       const dailyChange = Number(
         Math.max(
@@ -63,7 +65,7 @@ export async function applyIntracycleMovements(refreshStartedAt: string) {
             intracycleModel: {
               movementPercent,
               intervalMinutes: 1,
-              label: "Short-interval practice-market movement",
+              label: "High-volatility practice-market movement",
             },
           })}::jsonb
         WHERE id = ${snapshot.id}

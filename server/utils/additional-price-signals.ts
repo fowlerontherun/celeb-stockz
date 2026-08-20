@@ -41,9 +41,9 @@ type SearchCacheRow = {
   detail: string | null;
 };
 
-const CACHE_MS = 15 * 60 * 1000;
-const SEARCH_DAILY_MARKET_LIMIT = 12;
-const SEARCH_DAILY_REQUEST_CAP = 80;
+const CACHE_MS = 10 * 60 * 1000;
+const SEARCH_DAILY_MARKET_LIMIT = 15;
+const SEARCH_DAILY_REQUEST_CAP = 100;
 const cache = new Map<string, CacheEntry>();
 let tradePressureCache:
   | { values: Map<string, number>; expiresAt: number }
@@ -96,7 +96,7 @@ async function getNewsMentions(name: string) {
   try {
     const response = await fetch(url, {
       headers: {
-        "user-agent": "CelebStockz practice-market signal monitor",
+        "user-agent": "CelebStockz/1.0 (https://celebstockz.app; contact@celebstockz.app)",
       },
     });
 
@@ -383,8 +383,9 @@ async function getPracticeTradePressure(ticker: string) {
       }
 
       const imbalance = (buyVolume - sellVolume) / grossVolume;
-      const volumeStrength = Math.min(1, Math.log10(grossVolume + 1) / 4);
-      const pressure = Number((imbalance * volumeStrength * 2.5).toFixed(4));
+      const volumeStrength = Math.min(1, Math.log10(grossVolume + 1) / 3);
+      // Increased order pressure impact from 2.5 to 6.5 STKZ
+      const pressure = Number((imbalance * volumeStrength * 6.5).toFixed(4));
 
       return [row.ticker, pressure] as const;
     }),
@@ -444,22 +445,23 @@ export async function getAdditionalPriceSignals(
 }
 
 export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
+  // Enhanced boost weights for higher real-time market impact
   const newsBoost =
     signals.newsMentions === null
       ? 0
-      : Math.min(4, Math.log10(signals.newsMentions + 1) * 0.7);
+      : Math.min(9, Math.log10(signals.newsMentions + 1) * 1.5);
   const searchBoost =
     signals.searchResults === null
       ? 0
-      : Math.min(2, Math.log10(signals.searchResults + 1) * 0.2);
+      : Math.min(5, Math.log10(signals.searchResults + 1) * 0.45);
   const youtubeSubscriberBoost =
     signals.youtubeSubscribers === null
       ? 0
-      : Math.min(2, Math.log10(signals.youtubeSubscribers + 1) * 0.18);
+      : Math.min(4, Math.log10(signals.youtubeSubscribers + 1) * 0.35);
   const youtubeViewBoost =
     signals.youtubeViews === null
       ? 0
-      : Math.min(1, Math.log10(signals.youtubeViews + 1) * 0.06);
+      : Math.min(2.5, Math.log10(signals.youtubeViews + 1) * 0.12);
 
   return Number(
     (
