@@ -106,7 +106,7 @@ export function TradeControls({
       showSuccess(
         isMarketOrder
           ? `${side === "buy" ? "Bought" : "Sold"} ${data.quantity?.toFixed(2)} ${ticker} for ${data.totalStkz?.toFixed(2)} STKZ. 1% fee: ${data.feeStkz?.toFixed(2)} STKZ.`
-          : `${orderType.replaceAll("_", " ")} order placed for ${ticker}. A 1% fee applies when it fills.`,
+          : `${orderType.replace(/_/g, " ")} order placed for ${ticker}. A 1% fee applies when it fills.`,
       );
       await loadWallet();
       window.dispatchEvent(new Event("wallet:updated"));
@@ -191,7 +191,7 @@ export function TradeControls({
       <button type="button" onClick={() => void submitTrade()} disabled={isSubmitting || !wallet}
         className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-black disabled:opacity-50 ${side === "buy" ? "bg-[#3ed9a3] text-[#112b24]" : "bg-[#ff7282] text-[#401b2d]"}`}>
         {isSubmitting && <LoaderCircle size={17} className="animate-spin" />}
-        {orderType === "market" ? `${side === "buy" ? "Buy" : "Sell"} ${ticker}` : `Place ${orderType.replaceAll("_", " ")} order`}
+        {orderType === "market" ? `${side === "buy" ? "Buy" : "Sell"} ${ticker}` : `Place ${orderType.replace(/_/g, " ")} order`}
       </button>
     </div>
   );

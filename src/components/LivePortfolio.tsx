@@ -336,7 +336,7 @@ export function LivePortfolio({ markets, onTrade }: LivePortfolioProps) {
                       {isBuy ? "Buy" : "Sell"} {order.ticker}
                     </p>
                     <p className="mt-0.5 text-xs text-[#9f90ac]">
-                      {order.orderType.replaceAll("_", " ")} ·{" "}
+                      {order.orderType.replace(/_/g, " ")} ·{" "}
                       {order.amountStkz.toFixed(2)} STKZ
                     </p>
                     <p className="mt-1 text-xs font-bold text-[#c99bff]">

@@ -262,7 +262,7 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
       </p>
       <a
         href={`https://en.wikipedia.org/wiki/${encodeURIComponent(
-          market.name.replaceAll(" ", "_"),
+          market.name.replace(/ /g, "_"),
         )}`}
         target="_blank"
         rel="noreferrer"

@@ -13,7 +13,6 @@ export default function AuthPage() {
         <AuthView
           path={path}
           redirectTo="/"
-          credentials={{ forgotPassword: true }}
         />
       </section>
     </main>

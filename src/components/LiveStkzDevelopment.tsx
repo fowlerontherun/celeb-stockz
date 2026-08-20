@@ -189,7 +189,7 @@ export function LiveStkzDevelopment() {
           <div className="mt-4 space-y-2">
             {data.ledger.entries.map((entry) => (
               <div key={`${entry.reference}-${entry.createdAt}`} className="rounded-xl bg-white/[.05] p-3 text-xs">
-                <p className="font-black capitalize">{entry.type.replaceAll("_", " ")}</p>
+                <p className="font-black capitalize">{entry.type.replace(/_/g, " ")}</p>
                 <p className="mt-1 text-[#d9c9d9]">
                   £{entry.grossAmountGbp.toFixed(2)} · fee £{entry.feeAmountGbp.toFixed(2)}
                 </p>
