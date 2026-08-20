@@ -5,6 +5,7 @@ import {
   Landmark,
   Laugh,
   Lock,
+  LockKeyholeOpen,
   Music2,
   Search,
   Shirt,
@@ -114,20 +115,30 @@ export function CategoryMarkets({
   const [activeCategory, setActiveCategory] =
     useState<MarketCategory>("Music");
   const [activeTier, setActiveTier] = useState<"All" | Tier>("All");
+  const [hideLocked, setHideLocked] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const normalizedQuery = searchQuery.trim().toLowerCase();
 
+  const totalLockedCount = useMemo(
+    () => markets.filter((m) => m.access && !m.access.isUnlocked).length,
+    [markets],
+  );
+
   const visibleMarkets = useMemo(
     () =>
-      markets.filter(
-        (market) =>
+      markets.filter((market) => {
+        const isLocked = Boolean(market.access && !market.access.isUnlocked);
+        if (hideLocked && isLocked) return false;
+
+        return (
           market.category === activeCategory &&
           (activeTier === "All" || getTier(market.price) === activeTier) &&
           (!normalizedQuery ||
             market.name.toLowerCase().includes(normalizedQuery) ||
-            market.ticker.toLowerCase().includes(normalizedQuery)),
-      ),
-    [activeCategory, activeTier, markets, normalizedQuery],
+            market.ticker.toLowerCase().includes(normalizedQuery))
+        );
+      }),
+    [activeCategory, activeTier, hideLocked, markets, normalizedQuery],
   );
 
   return (
@@ -141,9 +152,11 @@ export function CategoryMarkets({
             Browse by culture.
           </h1>
         </div>
-        <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">
-          {markets.length} eligible markets
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">
+            {markets.length} eligible markets
+          </p>
+        </div>
       </div>
 
       <label className="relative mt-6 block">
@@ -192,37 +205,61 @@ export function CategoryMarkets({
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => setActiveTier("All")}
-          className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-            activeTier === "All"
-              ? "bg-white text-[#251433]"
-              : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
-          }`}
-        >
-          All tiers
-        </button>
-        {(Object.keys(tierDetails) as Tier[]).map((tier) => (
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
           <button
-            key={tier}
             type="button"
-            onClick={() => setActiveTier(tier)}
+            onClick={() => setActiveTier("All")}
             className={`rounded-xl px-3 py-2 text-xs font-black transition ${
-              activeTier === tier
-                ? tierDetails[tier].className
+              activeTier === "All"
+                ? "bg-white text-[#251433]"
                 : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
             }`}
           >
-            {tierDetails[tier].label}
+            All tiers
           </button>
-        ))}
+          {(Object.keys(tierDetails) as Tier[]).map((tier) => (
+            <button
+              key={tier}
+              type="button"
+              onClick={() => setActiveTier(tier)}
+              className={`rounded-xl px-3 py-2 text-xs font-black transition ${
+                activeTier === tier
+                  ? tierDetails[tier].className
+                  : "border border-white/10 bg-white/[.04] text-[#b9acc9]"
+              }`}
+            >
+              {tierDetails[tier].label}
+            </button>
+          ))}
+        </div>
+
+        {totalLockedCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setHideLocked(!hideLocked)}
+            aria-pressed={hideLocked}
+            className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black transition ${
+              hideLocked
+                ? "border border-[#ff7282]/40 bg-[#ff7282]/20 text-[#ffb2bc]"
+                : "border border-white/10 bg-white/[.04] text-[#c4b4d0] hover:bg-white/10 hover:text-white"
+            }`}
+          >
+            {hideLocked ? (
+              <LockKeyholeOpen size={14} className="text-[#ff9ca5]" />
+            ) : (
+              <Lock size={14} className="text-[#c99bff]" />
+            )}
+            {hideLocked ? "Hiding locked markets" : "Hide locked"}
+          </button>
+        )}
       </div>
 
       {visibleMarkets.length === 0 ? (
         <div className="mt-5 rounded-[24px] border border-dashed border-white/15 bg-white/[.03] p-8 text-center text-sm text-[#b9acc9]">
-          No markets match this filter.
+          {hideLocked
+            ? "No unlocked markets match this filter."
+            : "No markets match this filter."}
         </div>
       ) : (
         <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">

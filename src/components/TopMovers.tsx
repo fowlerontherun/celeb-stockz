@@ -3,6 +3,8 @@ import {
   ArrowDownRight,
   ArrowUpRight,
   LoaderCircle,
+  Lock,
+  LockKeyholeOpen,
   TrendingUp,
 } from "lucide-react";
 import { PriceChart } from "@/components/PriceChart";
@@ -21,6 +23,7 @@ type TopMoversProps = {
 
 export function TopMovers({ markets, onTrade }: TopMoversProps) {
   const [view, setView] = useState<"winners" | "losers">("winners");
+  const [hideLocked, setHideLocked] = useState(false);
   const [snapshotMovers, setSnapshotMovers] = useState<Mover[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -48,14 +51,18 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
   const movers = useMemo(
     () =>
       snapshotMovers
-        .filter((market) => market.change !== null)
+        .filter((market) => {
+          if (market.change === null) return false;
+          if (hideLocked && market.access && !market.access.isUnlocked) return false;
+          return true;
+        })
         .sort((first, second) =>
           view === "winners"
             ? (second.change ?? 0) - (first.change ?? 0)
             : (first.change ?? 0) - (second.change ?? 0),
         )
         .slice(0, 40),
-    [snapshotMovers, view],
+    [hideLocked, snapshotMovers, view],
   );
 
   const isWinners = view === "winners";
@@ -81,22 +88,50 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
         </p>
       </div>
 
-      <div className="mt-7 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[.04] p-1.5 sm:max-w-md">
+      <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[.04] p-1.5 sm:max-w-md">
+          <button
+            type="button"
+            onClick={() => setView("winners")}
+            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${
+              isWinners
+                ? "bg-[#3ed9a3] text-[#112b24]"
+                : "text-[#a99ab7] hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <ArrowUpRight size={17} />
+            Winners
+          </button>
+          <button
+            type="button"
+            onClick={() => setView("losers")}
+            className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${
+              !isWinners
+                ? "bg-[#ff7282] text-[#401b2d]"
+                : "text-[#a99ab7] hover:bg-white/5 hover:text-white"
+            }`}
+          >
+            <ArrowDownRight size={17} />
+            Losers
+          </button>
+        </div>
+
         <button
           type="button"
-          onClick={() => setView("winners")}
-          className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${isWinners ? "bg-[#3ed9a3] text-[#112b24]" : "text-[#a99ab7] hover:bg-white/5 hover:text-white"}`}
+          onClick={() => setHideLocked(!hideLocked)}
+          aria-pressed={hideLocked}
+          className={`inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-black transition ${
+            hideLocked
+              ? "border border-[#ff7282]/40 bg-[#ff7282]/20 text-[#ffb2bc]"
+              : "border border-white/10 bg-white/[.04] text-[#c4b4d0] hover:bg-white/10 hover:text-white"
+          }`}
         >
-          <ArrowUpRight size={17} />
-          Winners
-        </button>
-        <button
-          type="button"
-          onClick={() => setView("losers")}
-          className={`flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${!isWinners ? "bg-[#ff7282] text-[#401b2d]" : "text-[#a99ab7] hover:bg-white/5 hover:text-white"}`}
-        >
-          <ArrowDownRight size={17} />
-          Losers
+          {hideLocked ? (
+            <LockKeyholeOpen size={14} className="text-[#ff9ca5]" />
+          ) : (
+            <Lock size={14} className="text-[#c99bff]" />
+          )}
+          {hideLocked ? "Hiding locked movers" : "Hide locked"}
         </button>
       </div>
 
@@ -106,7 +141,9 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
         </div>
       ) : movers.length === 0 ? (
         <div className="mt-5 rounded-[24px] border border-dashed border-white/15 bg-white/[.03] p-8 text-center text-sm text-[#b9acc9]">
-          Movers will appear after each market has enough saved history for a 24-hour comparison.
+          {hideLocked
+            ? "No unlocked market movers match this view."
+            : "Movers will appear after each market has enough saved history for a 24-hour comparison."}
         </div>
       ) : (
         <section className="mt-5 overflow-hidden rounded-[24px] border border-white/10 bg-[#1e112f]">
@@ -116,6 +153,7 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
 
           {movers.map((market, index) => {
             const positive = (market.change ?? 0) >= 0;
+            const isLocked = Boolean(market.access && !market.access.isUnlocked);
 
             return (
               <article key={market.ticker} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 px-4 py-3 last:border-0 sm:grid-cols-[3rem_minmax(0,1fr)_7rem_7rem_5.5rem]">
@@ -125,7 +163,14 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
                     <img src={market.image} alt={market.name} className="h-full w-full object-contain" />
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-black">{market.name}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-black">{market.name}</p>
+                      {isLocked && (
+                        <span className="inline-flex items-center gap-1 rounded bg-[#ff7282]/20 px-1.5 py-0.5 text-[9px] font-black text-[#ff9ca5]">
+                          <Lock size={10} /> Locked
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-0.5 text-xs font-bold text-[#9f90ac]">${market.ticker} · {market.category}</p>
                   </div>
                 </div>
@@ -135,7 +180,9 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
                   <span className={`rounded-lg px-2 py-1.5 text-xs font-black ${positive ? "bg-[#183b33] text-[#62e7b6]" : "bg-[#482332] text-[#ff9ca5]"}`}>
                     {positive ? "+" : ""}{market.change?.toFixed(1)}%
                   </span>
-                  <button type="button" onClick={() => onTrade(market)} className="hidden rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-black transition hover:bg-white/10 sm:inline-flex">Trade</button>
+                  <button type="button" onClick={() => onTrade(market)} className="hidden rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs font-black transition hover:bg-white/10 sm:inline-flex">
+                    {isLocked ? "Unlock" : "Trade"}
+                  </button>
                 </div>
               </article>
             );
