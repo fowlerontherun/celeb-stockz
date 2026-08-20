@@ -1,7 +1,6 @@
 import { useEffect, useState, type ComponentType } from "react";
 import {
   Bell,
-  BookOpenText,
   ChartNoAxesCombined,
   Home,
   LayoutGrid,
@@ -22,7 +21,6 @@ import { TopMovers } from "@/components/TopMovers";
 import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { OnboardingRecap } from "@/components/OnboardingRecap";
-import { PracticeTools } from "@/components/PracticeTools";
 import { MarketDetailPanel } from "@/components/MarketDetailPanel";
 import { showError, showSuccess } from "@/utils/toast";
 
@@ -48,7 +46,7 @@ const fallbackMarkets: CelebrityMarket[] = [
   { name: "Daniel Kaluuya", ticker: "KALUUYA", category: "Film", price: 45.89, change: 4.1, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Daniel%20Kaluuya%20by%20Gage%20Skidmore.jpg?width=900", birthYear: 1989, nationality: "British", signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 1.7, trendScore: 74, monthlySearchesMillions: 2.4, newsStories: 260 } },
 ];
 
-type Page = "Home" | "Markets" | "Movers" | "Leagues" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs" | "Practice";
+type Page = "Home" | "Markets" | "Movers" | "Leagues" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs";
 
 const navItems: Array<{ page: Page; icon: ComponentType<{ size?: number; className?: string }> }> = [
   { page: "Home", icon: Home },
@@ -59,7 +57,6 @@ const navItems: Array<{ page: Page; icon: ComponentType<{ size?: number; classNa
   { page: "Portfolio", icon: Wallet },
   { page: "Rankings", icon: Trophy },
   { page: "Clubs", icon: Users },
-  { page: "Practice", icon: BookOpenText },
 ];
 
 export default function Index() {
@@ -148,8 +145,7 @@ export default function Index() {
     page === "Watchlist" ? <WatchlistPanel celebs={watchlist} onTrade={openTrade} onRemove={(ticker) => void removeFromWatchlist(ticker)} /> :
     page === "Portfolio" ? <LivePortfolio markets={markets} onTrade={openTrade} /> :
     page === "Rankings" ? <LiveRankings /> :
-    page === "Clubs" ? <ClubsPanel /> :
-    page === "Practice" ? <PracticeTools markets={markets} /> : (
+    page === "Clubs" ? <ClubsPanel /> : (
       <div className="animate-in fade-in duration-300">
         <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Signal-priced practice markets</p>
         <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
