@@ -53,11 +53,18 @@ export const countryMetadata: Record<
 > = {
   British: { flag: "🇬🇧", label: "United Kingdom", region: "UK" },
   American: { flag: "🇺🇸", label: "United States", region: "USA" },
+  "South Korean": { flag: "🇰🇷", label: "South Korea", region: "Asia & Oceania" },
+  Thai: { flag: "🇹🇭", label: "Thailand", region: "Asia & Oceania" },
+  Vietnamese: { flag: "🇻🇳", label: "Vietnam", region: "Asia & Oceania" },
+  Japanese: { flag: "🇯🇵", label: "Japan", region: "Asia & Oceania" },
+  Indian: { flag: "🇮🇳", label: "India", region: "Asia & Oceania" },
+  Chinese: { flag: "🇨🇳", label: "China", region: "Asia & Oceania" },
+  Australian: { flag: "🇦🇺", label: "Australia", region: "Asia & Oceania" },
+  "New Zealander": { flag: "🇳🇿", label: "New Zealand", region: "Asia & Oceania" },
   Spanish: { flag: "🇪🇸", label: "Spain", region: "Europe" },
   French: { flag: "🇫🇷", label: "France", region: "Europe" },
   Irish: { flag: "🇮🇪", label: "Ireland", region: "Europe" },
   Canadian: { flag: "🇨🇦", label: "Canada", region: "Americas" },
-  Australian: { flag: "🇦🇺", label: "Australia", region: "Asia & Oceania" },
   Italian: { flag: "🇮🇹", label: "Italy", region: "Europe" },
   Dutch: { flag: "🇳🇱", label: "Netherlands", region: "Europe" },
   Portuguese: { flag: "🇵🇹", label: "Portugal", region: "Europe" },
@@ -75,14 +82,9 @@ export const countryMetadata: Record<
   Argentine: { flag: "🇦🇷", label: "Argentina", region: "Americas" },
   Chilean: { flag: "🇨🇱", label: "Chile", region: "Americas" },
   Mexican: { flag: "🇲🇽", label: "Mexico", region: "Americas" },
-  Japanese: { flag: "🇯🇵", label: "Japan", region: "Asia & Oceania" },
-  Indian: { flag: "🇮🇳", label: "India", region: "Asia & Oceania" },
-  Chinese: { flag: "🇨🇳", label: "China", region: "Asia & Oceania" },
-  "South Korean": { flag: "🇰🇷", label: "South Korea", region: "Asia & Oceania" },
   Nigerian: { flag: "🇳🇬", label: "Nigeria", region: "Africa" },
   "South African": { flag: "🇿🇦", label: "South Africa", region: "Africa" },
   Egyptian: { flag: "🇪🇬", label: "Egypt", region: "Africa" },
-  "New Zealander": { flag: "🇳🇿", label: "New Zealand", region: "Asia & Oceania" },
   Barbadian: { flag: "🇧🇧", label: "Barbados", region: "Americas" },
   "Puerto Rican": { flag: "🇵🇷", label: "Puerto Rico", region: "Americas" },
   Dominican: { flag: "🇩🇴", label: "Dominican Republic", region: "Americas" },
@@ -452,6 +454,13 @@ export function CategoryMarkets({
                     src={market.image}
                     alt={market.name}
                     className="h-full w-full object-contain"
+                    onError={(e) => {
+                      // Graceful fallback to colored avatar if image fails to load
+                      const target = e.currentTarget;
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                        market.name,
+                      )}&background=2a1740&color=fff8f2&bold=true&size=512&rounded=true`;
+                    }}
                   />
                   <span
                     className={`absolute left-3 top-3 rounded-lg px-2 py-1 text-[10px] font-black ${tierDetails[tier].className}`}

@@ -33,6 +33,31 @@ type Profile = [
 ];
 
 const profiles: Profile[] = [
+  // K-POP GLOBAL SUPERSTARS
+  ["Jungkook", "JUNGKOOK", "Music", 1997, 15.8, "South Korean"],
+  ["Jimin", "JIMIN", "Music", 1995, 14.9, "South Korean"],
+  ["V", "V_BTS", "Music", 1995, 15.2, "South Korean"],
+  ["RM", "RMBTS", "Music", 1994, 12.4, "South Korean"],
+  ["Suga", "SUGA", "Music", 1993, 13.1, "South Korean"],
+  ["Jin", "JINBTS", "Music", 1992, 13.6, "South Korean"],
+  ["J-Hope", "JHOPE", "Music", 1994, 12.8, "South Korean"],
+  ["Jennie", "JENNIE", "Music", 1996, 16.4, "South Korean"],
+  ["Lisa", "LISAMUSIC", "Music", 1997, 16.9, "Thai"],
+  ["Jisoo", "JISOO", "Music", 1995, 14.7, "South Korean"],
+  ["Rosé", "ROSEPARK", "Music", 1997, 15.3, "South Korean"],
+  ["Stray Kids", "STRAYKIDS", "Music", 2017, 14.1, "South Korean"],
+  ["Felix", "FELIXSKZ", "Music", 2000, 13.9, "Australian"],
+  ["NewJeans", "NEWJEANS", "Music", 2022, 14.8, "South Korean"],
+  ["Hanni", "HANNINJ", "Music", 2004, 13.2, "Vietnamese"],
+  ["aespa", "AESPA", "Music", 2020, 13.5, "South Korean"],
+  ["Karina", "KARINAAESPA", "Music", 2000, 14.4, "South Korean"],
+  ["IU", "IU_LEE", "Music", 1993, 11.7, "South Korean"],
+  ["Cha Eun-woo", "CHAEUNWOO", "TV", 1997, 13.8, "South Korean"],
+  ["SEVENTEEN", "SEVENTEEN", "Music", 2015, 12.9, "South Korean"],
+  ["Enhypen", "ENHYPEN", "Music", 2020, 12.3, "South Korean"],
+  ["TWICE", "TWICE", "Music", 2015, 11.8, "South Korean"],
+  ["Nayeon", "NAYEON", "Music", 1995, 12.5, "South Korean"],
+
   // TV & ENTERTAINMENT (Stars, Hosts, Dramas, Sitcoms, Reality)
   ["Millie Bobby Brown", "MBB", "TV", 2004, 12.3, "British"],
   ["Sydney Sweeney", "SSWEENEY", "TV", 1997, 16.2, "American"],
@@ -134,7 +159,7 @@ const profiles: Profile[] = [
   ["Timothee Chalamet", "CHALAMET", "Film", 1995, 15.4, "American"],
   ["Austin Butler", "ABUTLER", "Film", 1991, 10.9, "American"],
   ["Margot Robbie", "MROBBIE", "Film", 1990, 13.5, "Australian"],
-  ["Ryan Gosling", "RGOSLING", "Film", 1980, 10.7, "Canadian"],
+  ["Ryan Ferguson", "RGOSLING", "Film", 1980, 10.7, "Canadian"],
   ["Jacob Elordi", "JELORDI", "Film", 1997, 14.3, "Australian"],
   ["Greta Gerwig", "GGERWIG", "Film", 1983, 8.8, "American"],
   ["Denis Villeneuve", "DENISV", "Film", 1967, 7.9, "Canadian"],
@@ -260,8 +285,7 @@ const profiles: Profile[] = [
   ["Kylie Minogue", "KYLIE", "Music", 1968, 6.8, "Australian"],
   ["Troye Sivan", "TROYESIVAN", "Music", 1995, 8.9, "Australian"],
 
-  // SPORT (Football, F1, Basketball, NFL, Baseball, Cricket, Tennis, Boxing, MMA, Golf, Rugby, MotoGP, Athletics, Swimming, Skiing)
-  // Basketball (NBA & WNBA)
+  // SPORT
   ["LeBron James", "LEBRON", "Sport", 1984, 11.2, "American"],
   ["Stephen Curry", "SCURRY", "Sport", 1988, 10.4, "American"],
   ["Giannis Antetokounmpo", "GIANNIS", "Sport", 1994, 12.8, "Greek"],
@@ -274,22 +298,16 @@ const profiles: Profile[] = [
   ["Caitlin Clark", "CCLARK", "Sport", 2002, 17.8, "American"],
   ["Angel Reese", "AREESE", "Sport", 2002, 14.3, "American"],
   ["Sabrina Ionescu", "SIONESCU", "Sport", 1997, 10.8, "American"],
-
-  // Baseball (MLB & Global)
   ["Shohei Ohtani", "OHTANI", "Sport", 1994, 18.2, "Japanese"],
   ["Aaron Judge", "AJUDGE", "Sport", 1992, 13.8, "American"],
   ["Juan Soto", "JUANSOTO", "Sport", 1998, 12.6, "Dominican"],
   ["Mookie Betts", "MBETTS", "Sport", 1992, 9.4, "American"],
-
-  // American Football (NFL)
   ["Patrick Mahomes", "MAHOMES", "Sport", 1995, 9.8, "American"],
   ["Travis Kelce", "TKELCE", "Sport", 1989, 12.7, "American"],
   ["Lamar Jackson", "LAMARJ", "Sport", 1997, 11.5, "American"],
   ["Josh Allen", "JOSHALLEN", "Sport", 1996, 10.9, "American"],
   ["Joe Burrow", "JBURROW", "Sport", 1996, 9.7, "American"],
   ["Justin Jefferson", "JJEFFERSON", "Sport", 1999, 11.2, "American"],
-
-  // Football / Soccer (Men & Women)
   ["Lionel Messi", "MESSI", "Sport", 1987, 10.8, "Argentine"],
   ["Kylian Mbappe", "MBAPPE", "Sport", 1998, 14.5, "French"],
   ["Erling Haaland", "HAALAND", "Sport", 2000, 13.9, "Norwegian"],
@@ -323,8 +341,6 @@ const profiles: Profile[] = [
   ["Alexia Putellas", "PUTELLAS", "Sport", 1994, 8.3, "Spanish"],
   ["Aitana Bonmati", "BONMATI", "Sport", 1998, 11.4, "Spanish"],
   ["Sam Kerr", "SAMKERR", "Sport", 1993, 7.2, "Australian"],
-
-  // Motorsport (Formula 1 & MotoGP)
   ["Lando Norris", "LNORRIS", "Sport", 1999, 13.6, "British"],
   ["George Russell", "GRUSSELL", "Sport", 1998, 8.2, "British"],
   ["Max Verstappen", "VERSTAPPEN", "Sport", 1997, 12.1, "Dutch"],
@@ -334,8 +350,6 @@ const profiles: Profile[] = [
   ["Fernando Alonso", "ALONSO", "Sport", 1981, 6.4, "Spanish"],
   ["Marc Marquez", "MMARQUEZ", "Sport", 1993, 11.8, "Spanish"],
   ["Francesco Bagnaia", "BAGNAIA", "Sport", 1997, 9.3, "Italian"],
-
-  // Tennis
   ["Carlos Alcaraz", "ALCARAZ", "Sport", 2003, 14.7, "Spanish"],
   ["Jannik Sinner", "SINNER", "Sport", 2001, 13.9, "Italian"],
   ["Novak Djokovic", "DJOKOVIC", "Sport", 1987, 8.5, "Serbian"],
@@ -345,9 +359,6 @@ const profiles: Profile[] = [
   ["Andy Murray", "MURRAY", "Sport", 1987, 3.2, "British"],
   ["Cameron Norrie", "CNORRIE", "Sport", 1995, 3.8, "British"],
   ["Jack Draper", "JDRAPER", "Sport", 2001, 10.5, "British"],
-  ["Emma Raducanu", "RADUCANU", "Sport", 2002, 6.6, "British"],
-
-  // Combat Sports (Boxing & MMA)
   ["Canelo Alvarez", "CANELO", "Sport", 1990, 8.4, "Mexican"],
   ["Oleksandr Usyk", "USYK", "Sport", 1987, 11.3, "Ukrainian"],
   ["Tyson Fury", "FURY", "Sport", 1988, 5.8, "British"],
@@ -359,29 +370,21 @@ const profiles: Profile[] = [
   ["Alex Pereira", "PEREIRA", "Sport", 1987, 15.6, "Brazilian"],
   ["Sean O'Malley", "SOMALLEY", "Sport", 1994, 12.4, "American"],
   ["Israel Adesanya", "ADESANYA", "Sport", 1989, 9.5, "New Zealander"],
-
-  // Cricket
   ["Virat Kohli", "VKOHLI", "Sport", 1988, 15.9, "Indian"],
   ["Rohit Sharma", "RSHARMA", "Sport", 1987, 11.3, "Indian"],
   ["Jasprit Bumrah", "JBUMRAH", "Sport", 1993, 12.4, "Indian"],
   ["Pat Cummins", "PCUMMINS", "Sport", 1993, 9.8, "Australian"],
   ["Ben Stokes", "BSTOKES", "Sport", 1991, 3.9, "British"],
   ["Joe Root", "JROOT", "Sport", 1990, 3.1, "British"],
-
-  // Golf
   ["Rory McIlroy", "RMCILROY", "Sport", 1989, 4.6, "British"],
   ["Scottie Scheffler", "SCHEFFLER", "Sport", 1996, 14.1, "American"],
   ["Bryson DeChambeau", "DECHAMBEAU", "Sport", 1993, 13.7, "American"],
   ["Jon Rahm", "JONRAHM", "Sport", 1994, 8.6, "Spanish"],
   ["Tiger Woods", "TWOODS", "Sport", 1975, 7.2, "American"],
-
-  // Rugby
   ["Antoine Dupont", "ADUPONT", "Sport", 1996, 14.9, "French"],
   ["Caelan Doris", "CDORIS", "Sport", 1998, 8.2, "Irish"],
   ["Marcus Smith", "MSMITHRUG", "Sport", 1999, 9.4, "British"],
   ["Siya Kolisi", "SKOLISI", "Sport", 1991, 10.7, "South African"],
-
-  // Olympic & Action Sports (Gymnastics, Swimming, Athletics, Skiing, Darts)
   ["Simone Biles", "SBILES", "Sport", 1997, 16.8, "American"],
   ["Leon Marchand", "LMARCHAND", "Sport", 2002, 15.3, "French"],
   ["Katie Ledecky", "KLEDECKY", "Sport", 1997, 10.1, "American"],

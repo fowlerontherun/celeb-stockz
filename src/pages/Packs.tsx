@@ -3,10 +3,13 @@ import { Link } from "react-router-dom";
 import {
   CheckCircle2,
   EyeOff,
+  LoaderCircle,
+  Lock,
   PackageOpen,
   Sparkles,
+  Zap,
 } from "lucide-react";
-import { showError } from "@/utils/toast";
+import { showError, showSuccess } from "@/utils/toast";
 
 type Pack = {
   id: number;
@@ -23,22 +26,52 @@ type Pack = {
 export default function Packs() {
   const [packs, setPacks] = useState<Pack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [unlockingId, setUnlockingId] = useState<number | null>(null);
+
+  const loadPacks = async () => {
+    try {
+      const response = await fetch("/api/packs", { credentials: "include" });
+      const data = (await response.json()) as {
+        packs?: Pack[];
+        statusMessage?: string;
+      };
+      if (!response.ok || !data.packs) {
+        throw new Error(data.statusMessage ?? "Could not load celebrity packs.");
+      }
+      setPacks(data.packs);
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not load packs.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    void fetch("/api/packs", { credentials: "include" })
-      .then(async (response) => {
-        const data = (await response.json()) as {
-          packs?: Pack[];
-          statusMessage?: string;
-        };
-        if (!response.ok || !data.packs) {
-          throw new Error(data.statusMessage ?? "Could not load celebrity packs.");
-        }
-        setPacks(data.packs);
-      })
-      .catch((error: Error) => showError(error.message))
-      .finally(() => setIsLoading(false));
+    void loadPacks();
   }, []);
+
+  const handleUnlock = async (pack: Pack) => {
+    setUnlockingId(pack.id);
+    try {
+      const response = await fetch(`/api/packs/${pack.id}/unlock`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await response.json()) as { statusMessage?: string };
+
+      if (!response.ok) {
+        throw new Error(data.statusMessage ?? "Could not unlock this pack.");
+      }
+
+      showSuccess(`Unlocked ${pack.name}! You can now trade its markets.`);
+      await loadPacks();
+      window.dispatchEvent(new Event("markets:updated"));
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not unlock pack.");
+    } finally {
+      setUnlockingId(null);
+    }
+  };
 
   const totalPacks = packs.length;
   const unlockedCount = packs.filter((p) => p.unlocked).length;
@@ -65,7 +98,7 @@ export default function Packs() {
                 Expand your trading universe.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-[#c9b8d4]">
-                Standard celebrities remain accessible to every player. Upcoming packs stay classified until officially announced and launched.
+                Unlock exclusive packs like <strong>K-Pop Global Superstars</strong> to access high-momentum specialty markets. Standard celebrities remain open to everyone.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs font-bold">
@@ -88,13 +121,14 @@ export default function Packs() {
 
         {isLoading ? (
           <div className="mt-8 grid min-h-48 place-items-center text-sm font-bold text-[#c99bff]">
-            Loading packs…
+            <LoaderCircle className="animate-spin" size={24} />
           </div>
         ) : (
           <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {packs.map((pack) => {
               const isClassified =
                 !pack.unlocked && !pack.isAvailable && !pack.isAnnounced;
+              const isUnlocking = unlockingId === pack.id;
 
               return (
                 <article
@@ -120,12 +154,11 @@ export default function Packs() {
                       >
                         {pack.unlocked ? (
                           <CheckCircle2 size={22} />
-                        ) : isClassified
-                          ? (
-                            <EyeOff size={20} />
-                          ) : (
-                            <PackageOpen size={21} />
-                          )}
+                        ) : isClassified ? (
+                          <EyeOff size={20} />
+                        ) : (
+                          <PackageOpen size={21} />
+                        )}
                       </div>
 
                       <span
@@ -150,7 +183,7 @@ export default function Packs() {
                     </div>
 
                     <p className="mt-5 text-xs font-extrabold uppercase tracking-[.13em] text-[#c99bff]">
-                      Pack {pack.id}
+                      Pack #{pack.id}
                     </p>
 
                     <h2 className="font-display mt-1 text-2xl font-black">
@@ -166,10 +199,36 @@ export default function Packs() {
                     <p className="mt-2 text-sm leading-5 text-[#bbaac6]">
                       {isClassified
                         ? "Theme and celebrity market roster will be unveiled upon announcement."
-                        : `${pack.memberCount} celebrity market${
-                          pack.memberCount === 1 ? "" : "s"
-                        }`}
+                        : `${pack.memberCount} exclusive celebrity market${
+                            pack.memberCount === 1 ? "" : "s"
+                          }`}
                     </p>
+                  </div>
+
+                  <div className="mt-6 border-t border-white/10 pt-4">
+                    {pack.unlocked ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-black text-[#62e7b6]">
+                        <CheckCircle2 size={15} /> Pack Unlocked & Tradeable
+                      </span>
+                    ) : pack.isAvailable ? (
+                      <button
+                        type="button"
+                        disabled={isUnlocking}
+                        onClick={() => void handleUnlock(pack)}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffd17b] py-3 text-xs font-black text-[#3d2a00] shadow-md transition hover:bg-[#ffe29c] disabled:opacity-50"
+                      >
+                        {isUnlocking ? (
+                          <LoaderCircle size={15} className="animate-spin" />
+                        ) : (
+                          <Zap size={15} />
+                        )}
+                        {isUnlocking ? "Unlocking…" : `Unlock Pack · £${pack.priceGbp.toFixed(2)}`}
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-xs text-[#8c7b9a]">
+                        <Lock size={14} /> Locked until launch
+                      </div>
+                    )}
                   </div>
                 </article>
               );
