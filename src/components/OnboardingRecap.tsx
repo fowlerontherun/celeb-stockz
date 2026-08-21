@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Bell, ChevronRight, Sparkles, Target, X } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Bell, ChevronRight, Flame, Sparkles, Target, X } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 type Preferences = {
@@ -141,6 +142,26 @@ export function OnboardingRecap({ onStartTrading }: { onStartTrading: () => void
           <div className="rounded-xl bg-white/[.05] p-2"><p className="text-lg font-black">{recap.weeklyTradeCount}</p><p className="text-[10px] font-bold text-[#a99ab7]">7d trades</p></div>
           <div className="rounded-xl bg-white/[.05] p-2"><p className="text-lg font-black">{recap.followCount}</p><p className="text-[10px] font-bold text-[#a99ab7]">following</p></div>
           <div className="rounded-xl bg-white/[.05] p-2"><p className="text-lg font-black">{recap.heldCategoryCount}</p><p className="text-[10px] font-bold text-[#a99ab7]">categories</p></div>
+        </div>
+      </article>
+
+      <article className="overflow-hidden rounded-[26px] border border-[#ff7282]/25 bg-gradient-to-r from-[#2c1431] via-[#27143a] to-[#1e112f] p-5 sm:p-6 xl:col-span-2">
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="max-w-2xl">
+            <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.17em] text-[#ff9ca5]">
+              <Flame size={15} fill="currentColor" /> Market Heat Radar
+            </p>
+            <h2 className="font-display mt-2 text-2xl font-black">Find volatility before it becomes a top mover.</h2>
+            <p className="mt-2 text-sm leading-6 text-[#cdbdd7]">
+              Track WARMING, HOT and VIRAL celebrities by real-world attention momentum. Heat does not predict direction — it highlights the markets where the game can become much more volatile.
+            </p>
+          </div>
+          <Link
+            to="/heat"
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#ff7282] px-4 py-3 text-sm font-black text-[#401b2d] transition hover:bg-[#ff8e9a]"
+          >
+            Open Heat Radar <ChevronRight size={16} />
+          </Link>
         </div>
       </article>
 
