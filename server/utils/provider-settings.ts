@@ -9,6 +9,16 @@ export type ProviderSettings = {
   updatedAt: string | null;
 };
 
+function resolveCredential(
+  databaseValue: unknown,
+  environmentVariable: string,
+) {
+  const stored = typeof databaseValue === "string" ? databaseValue.trim() : "";
+  if (stored) return stored;
+
+  return process.env[environmentVariable]?.trim() ?? "";
+}
+
 export async function getProviderSettings(): Promise<ProviderSettings> {
   const rows = await sql`
     SELECT
@@ -24,11 +34,11 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
   const settings = rows[0];
 
   return {
-    webzApiKey: settings?.webz_api_key ?? "",
-    tmdbApiKey: settings?.tmdb_api_key ?? "",
-    lastfmApiKey: settings?.lastfm_api_key ?? "",
-    sportsdbApiKey: settings?.sportsdb_api_key ?? "",
-    newsdataApiKey: settings?.newsdata_api_key ?? "pub_3109de01287e4cfaaab4d99da9082a91",
+    webzApiKey: resolveCredential(settings?.webz_api_key, "NITRO_WEBZ_API_KEY"),
+    tmdbApiKey: resolveCredential(settings?.tmdb_api_key, "NITRO_TMDB_API_KEY"),
+    lastfmApiKey: resolveCredential(settings?.lastfm_api_key, "NITRO_LASTFM_API_KEY"),
+    sportsdbApiKey: resolveCredential(settings?.sportsdb_api_key, "NITRO_SPORTSDB_API_KEY"),
+    newsdataApiKey: resolveCredential(settings?.newsdata_api_key, "NITRO_NEWSDATA_API_KEY"),
     updatedAt: settings?.updated_at ?? null,
   };
 }

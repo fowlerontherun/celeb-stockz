@@ -54,7 +54,7 @@ export default defineHandler(async (event) => {
       ${body?.tmdbApiKey?.trim() ?? ""},
       ${body?.lastfmApiKey?.trim() ?? ""},
       ${body?.sportsdbApiKey?.trim() ?? ""},
-      ${body?.newsdataApiKey?.trim() ?? "pub_3109de01287e4cfaaab4d99da9082a91"},
+      ${body?.newsdataApiKey?.trim() ?? ""},
       now()
     )
     ON CONFLICT (id) DO UPDATE
