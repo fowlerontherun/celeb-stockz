@@ -288,8 +288,16 @@ export async function applyLivePriceTick() {
       if (pressureActive) pressureDrivenCount += 1;
       if (gamePulseActive) buzzDrivenCount += 1;
 
+      const previousDailyChange = Number(row.daily_change);
       const dailyChange = Number(
-        (((price - sourcePrice) / sourcePrice) * 100).toFixed(3),
+        Math.max(
+          -dailyMoveCap,
+          Math.min(
+            dailyMoveCap,
+            (Number.isFinite(previousDailyChange) ? previousDailyChange : 0) +
+              actualMovementPercent,
+          ),
+        ).toFixed(3),
       );
 
       return {
