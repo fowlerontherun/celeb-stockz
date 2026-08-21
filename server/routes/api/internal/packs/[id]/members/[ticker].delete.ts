@@ -1,8 +1,12 @@
 import { defineHandler } from "nitro";
-import { createError, getRequestHeader, getRouterParam } from "nitro/h3";
-import { getSessionFromCookie } from "../../../../../utils/session";
-import { checkIsAdmin } from "../../../../../utils/system-settings";
-import { sql } from "../../../../../utils/db";
+import {
+  createError,
+  getRequestHeader,
+  getRouterParam,
+} from "nitro/h3";
+import { getSessionFromCookie } from "../../../../../../utils/session";
+import { checkIsAdmin } from "../../../../../../utils/system-settings";
+import { sql } from "../../../../../../utils/db";
 
 export default defineHandler(async (event) => {
   const session = await getSessionFromCookie(
@@ -10,14 +14,20 @@ export default defineHandler(async (event) => {
   );
 
   if (!session?.user || !(await checkIsAdmin(session.user.email))) {
-    throw createError({ statusCode: 403, statusMessage: "Administrator access is required." });
+    throw createError({
+      statusCode: 403,
+      statusMessage: "Administrator access is required.",
+    });
   }
 
   const packId = Number(getRouterParam(event, "id"));
   const ticker = getRouterParam(event, "ticker")?.trim().toUpperCase();
 
   if (!Number.isInteger(packId) || packId <= 0 || !ticker) {
-    throw createError({ statusCode: 400, statusMessage: "Invalid pack ID or ticker." });
+    throw createError({
+      statusCode: 400,
+      statusMessage: "Invalid pack ID or ticker.",
+    });
   }
 
   await sql`

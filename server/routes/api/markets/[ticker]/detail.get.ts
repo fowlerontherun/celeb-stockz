@@ -1,7 +1,10 @@
 import { defineHandler } from "nitro";
 import { createError, getRouterParam } from "nitro/h3";
-import { sql } from "../../../utils/db";
-import { celebrityMarkets, isMarketTicker } from "../../../utils/markets";
+import { sql } from "../../../../utils/db";
+import {
+  celebrityMarkets,
+  isMarketTicker,
+} from "../../../../utils/markets";
 
 type SnapshotPoint = {
   captured_at: string;

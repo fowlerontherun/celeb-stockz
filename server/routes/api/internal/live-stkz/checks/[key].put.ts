@@ -5,9 +5,9 @@ import {
   getRouterParam,
   readBody,
 } from "nitro/h3";
-import { sql } from "../../../../../utils/db";
-import { getSessionFromCookie } from "../../../../../utils/session";
-import { checkIsAdmin } from "../../../../../utils/system-settings";
+import { sql } from "../../../../../../utils/db";
+import { getSessionFromCookie } from "../../../../../../utils/session";
+import { checkIsAdmin } from "../../../../../../utils/system-settings";
 
 type CheckUpdate = {
   complete?: boolean;
@@ -45,7 +45,10 @@ export default defineHandler(async (event) => {
   `;
 
   if (!updated[0]) {
-    throw createError({ statusCode: 404, statusMessage: "Launch check not found." });
+    throw createError({
+      statusCode: 404,
+      statusMessage: "Launch check not found.",
+    });
   }
 
   return {
