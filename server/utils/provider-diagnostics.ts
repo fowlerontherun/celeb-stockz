@@ -1,3 +1,4 @@
+import { fetchSearchTrend } from "./dataforseo-trends";
 import { getProviderSettings } from "./provider-settings";
 import { getSystemSettings } from "./system-settings";
 
@@ -7,7 +8,7 @@ export const providerDiagnosticKeys = [
   "newsdata",
   "webz",
   "youtube",
-  "googleSearch",
+  "dataforseo",
   "tmdb",
   "lastfm",
   "sportsdb",
@@ -44,7 +45,9 @@ function sanitizeMessage(message: string, secrets: string[]) {
     );
 }
 
-async function readJson(response: Response): Promise<Record<string, unknown> | null> {
+async function readJson(
+  response: Response,
+): Promise<Record<string, unknown> | null> {
   try {
     const value = await response.json();
     return value && typeof value === "object"
@@ -111,7 +114,10 @@ async function testWikipedia(): Promise<ProviderDiagnosticResult> {
         name: "Wikimedia pageviews & revisions",
         authRequired: false,
         status: "error",
-        message: `Pricing pageview endpoint failed: ${providerError(pageviewsResponse, pageviewsPayload)}`,
+        message: `Pricing pageview endpoint failed: ${providerError(
+          pageviewsResponse,
+          pageviewsPayload,
+        )}`,
       };
     }
 
@@ -228,7 +234,9 @@ async function testNewsData(apiKey: string): Promise<ProviderDiagnosticResult> {
   url.searchParams.set("language", "en");
 
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
     const payload = await readJson(response);
     if (!response.ok || payload?.status !== "success") {
       return {
@@ -280,7 +288,9 @@ async function testWebz(apiKey: string): Promise<ProviderDiagnosticResult> {
   url.searchParams.set("q", '"Taylor Swift"');
 
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
     const payload = await readJson(response);
     if (!response.ok) {
       return {
@@ -374,62 +384,37 @@ async function testYoutube(apiKey: string): Promise<ProviderDiagnosticResult> {
   }
 }
 
-async function testGoogleSearch(
-  apiKey: string,
-  engineId: string,
+async function testDataForSeo(
+  login: string,
+  password: string,
 ): Promise<ProviderDiagnosticResult> {
-  if (!apiKey || !engineId) {
+  if (!login || !password) {
     return {
-      name: "Google Programmable Search (legacy)",
+      name: "DataForSEO Google Trends",
       authRequired: true,
       status: "unconfigured",
-      message: "Google Search API key or Search Engine ID is not configured.",
+      message:
+        "DataForSEO API login/password are not configured in server environment variables.",
     };
   }
 
-  const url = new URL("https://www.googleapis.com/customsearch/v1");
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("cx", engineId);
-  url.searchParams.set("q", "Taylor Swift");
-
-  try {
-    const response = await fetch(url);
-    const payload = await readJson(response);
-    if (!response.ok) {
-      return {
-        name: "Google Programmable Search (legacy)",
-        authRequired: true,
-        status: "error",
-        message: providerError(response, payload, [apiKey, engineId]),
-      };
-    }
-
-    const searchInformation =
-      payload?.searchInformation &&
-      typeof payload.searchInformation === "object"
-        ? (payload.searchInformation as Record<string, unknown>)
-        : null;
-
-    return {
-      name: "Google Programmable Search (legacy)",
-      authRequired: true,
-      status: "ok",
-      message: "Legacy search endpoint responded successfully; this source is scheduled for replacement.",
-      sampleData: {
-        totalResults: searchInformation?.totalResults ?? null,
-      },
-    };
-  } catch (error) {
-    return {
-      name: "Google Programmable Search (legacy)",
-      authRequired: true,
-      status: "error",
-      message: sanitizeMessage(
-        error instanceof Error ? error.message : "Connection failed",
-        [apiKey, engineId],
-      ),
-    };
-  }
+  const result = await fetchSearchTrend("Taylor Swift", login, password);
+  return {
+    name: "DataForSEO Google Trends",
+    authRequired: true,
+    status: result.status === "verified" ? "ok" : "error",
+    message: result.detail,
+    sampleData:
+      result.status === "verified"
+        ? {
+            latestInterest: result.latestInterest,
+            baselineInterest: result.baselineInterest,
+            momentumPercent: result.momentumPercent,
+            graphPoints: result.points,
+            taskCostUsd: result.costUsd,
+          }
+        : null,
+  };
 }
 
 async function testTmdb(apiKey: string): Promise<ProviderDiagnosticResult> {
@@ -447,7 +432,9 @@ async function testTmdb(apiKey: string): Promise<ProviderDiagnosticResult> {
   url.searchParams.set("query", "Cillian Murphy");
 
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
     const payload = await readJson(response);
     if (!response.ok) {
       return {
@@ -508,7 +495,9 @@ async function testLastFm(apiKey: string): Promise<ProviderDiagnosticResult> {
   url.searchParams.set("format", "json");
 
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
     const payload = await readJson(response);
     if (!response.ok || payload?.error) {
       return {
@@ -563,12 +552,16 @@ async function testSportsDb(apiKey: string): Promise<ProviderDiagnosticResult> {
   }
 
   const url = new URL(
-    `https://www.thesportsdb.com/api/v1/json/${encodeURIComponent(apiKey)}/searchplayers.php`,
+    `https://www.thesportsdb.com/api/v1/json/${encodeURIComponent(
+      apiKey,
+    )}/searchplayers.php`,
   );
   url.searchParams.set("p", "Jude Bellingham");
 
   try {
-    const response = await fetch(url, { headers: { accept: "application/json" } });
+    const response = await fetch(url, {
+      headers: { accept: "application/json" },
+    });
     const payload = await readJson(response);
     if (!response.ok) {
       return {
@@ -635,10 +628,10 @@ async function runWithContext(
       return testWebz(context.providerSettings.webzApiKey);
     case "youtube":
       return testYoutube(context.systemSettings.youtubeApiKey);
-    case "googleSearch":
-      return testGoogleSearch(
-        context.systemSettings.googleSearchApiKey,
-        context.systemSettings.googleSearchEngineId,
+    case "dataforseo":
+      return testDataForSeo(
+        context.providerSettings.dataforseoLogin,
+        context.providerSettings.dataforseoPassword,
       );
     case "tmdb":
       return testTmdb(context.providerSettings.tmdbApiKey);
@@ -657,10 +650,10 @@ export async function runProviderDiagnostic(provider: ProviderDiagnosticKey) {
 export async function runAllProviderDiagnostics() {
   const context = await loadDiagnosticContext();
   const entries = await Promise.all(
-    providerDiagnosticKeys.map(async (provider) => [
-      provider,
-      await runWithContext(provider, context),
-    ] as const),
+    providerDiagnosticKeys.map(
+      async (provider) =>
+        [provider, await runWithContext(provider, context)] as const,
+    ),
   );
 
   return Object.fromEntries(entries) as Record<
