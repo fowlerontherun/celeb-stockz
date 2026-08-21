@@ -14,33 +14,21 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid pack ID." });
   }
 
-  const packRows = await sql`
-    SELECT id, name, is_published, available_at
-    FROM celebrity_packs
-    WHERE id = ${packId}
+  const rows = await sql<{ unlocked: boolean }[]>`
+    SELECT EXISTS(
+      SELECT 1 FROM user_pack_unlocks
+      WHERE user_id = ${userId} AND pack_id = ${packId}
+    ) AS unlocked
   `;
 
-  const pack = packRows[0];
-  if (!pack) {
-    throw createError({ statusCode: 404, statusMessage: "Pack not found." });
+  if (rows[0]?.unlocked) {
+    return { ok: true, packId, alreadyUnlocked: true };
   }
 
-  const isAvailable =
-    pack.is_published &&
-    (!pack.available_at || new Date(pack.available_at).getTime() <= Date.now());
-
-  if (!isAvailable) {
-    throw createError({
-      statusCode: 400,
-      statusMessage: "This pack is not yet available for unlock.",
-    });
-  }
-
-  await sql`
-    INSERT INTO user_pack_unlocks (user_id, pack_id)
-    VALUES (${userId}, ${packId})
-    ON CONFLICT (user_id, pack_id) DO NOTHING
-  `;
-
-  return { ok: true, packId, name: pack.name };
+  throw createError({
+    statusCode: 402,
+    statusMessage:
+      "This is a paid celebrity pack. Open the CelebStockz Store to complete the £1.99 Stripe checkout.",
+    data: { storePath: "/store", packId },
+  });
 });

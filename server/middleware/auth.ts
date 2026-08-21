@@ -2,7 +2,12 @@ import { defineHandler } from "nitro";
 import { createError, getRequestHeader, getRequestURL } from "nitro/h3";
 import { getSessionFromCookie } from "../utils/session";
 
-const PUBLIC_PREFIXES = ["/api/auth/", "/auth/", "/api/internal/market-refresh"];
+const PUBLIC_PREFIXES = [
+  "/api/auth/",
+  "/auth/",
+  "/api/internal/market-refresh",
+  "/api/stripe/webhook",
+];
 
 export default defineHandler(async (event) => {
   const pathname = getRequestURL(event).pathname;

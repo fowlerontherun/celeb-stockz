@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  Coins,
   LogOut,
   Settings,
   ShieldCheck,
@@ -65,17 +66,27 @@ export function WalletBalance() {
 
   return (
     <div className="flex items-center gap-2">
-      {/* Desktop / Tablet Balance Pill */}
-      <div className="hidden items-center gap-2 rounded-xl border border-[#8a60db]/50 bg-[#291845] px-3 py-2 text-xs font-bold text-[#e6d8ff] sm:flex">
+      <button
+        type="button"
+        onClick={() => navigate("/store")}
+        className="hidden items-center gap-2 rounded-xl border border-[#8a60db]/50 bg-[#291845] px-3 py-2 text-xs font-bold text-[#e6d8ff] transition hover:border-[#ffd17b]/60 hover:bg-[#31204a] sm:flex"
+        title="Open CelebStockz Store"
+      >
         <Wallet size={15} className="text-[#ffd17b]" />
         {balance === null ? "Loading STKZ…" : `${balance.toLocaleString()} STKZ`}
-      </div>
+        <span className="rounded-md bg-[#ffd17b]/15 px-1.5 py-0.5 text-[9px] font-black text-[#ffd17b]">+</span>
+      </button>
 
-      {/* Mobile Compact Balance Badge */}
-      <div className="flex items-center gap-1.5 rounded-xl border border-[#8a60db]/40 bg-[#291845] px-2.5 py-1.5 text-xs font-black text-[#e6d8ff] sm:hidden">
+      <button
+        type="button"
+        onClick={() => navigate("/store")}
+        className="flex items-center gap-1.5 rounded-xl border border-[#8a60db]/40 bg-[#291845] px-2.5 py-1.5 text-xs font-black text-[#e6d8ff] sm:hidden"
+        aria-label="Open store and wallet"
+      >
         <Wallet size={13} className="text-[#ffd17b]" />
         <span>{balance === null ? "…" : `${formatCompactBalance(balance)} STKZ`}</span>
-      </div>
+        <span className="text-[#ffd17b]">+</span>
+      </button>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -88,6 +99,10 @@ export function WalletBalance() {
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2] shadow-2xl">
+          <DropdownMenuItem onSelect={() => navigate("/store")} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold text-[#ffd17b] focus:bg-[#ffd17b]/10 focus:text-[#ffe2a3]">
+            <Coins size={16} className="mr-2" />
+            Buy STKZ & packs
+          </DropdownMenuItem>
           <DropdownMenuItem onSelect={() => navigate("/profile")} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold focus:bg-white/10 focus:text-white">
             <Settings size={16} className="mr-2 text-[#c99bff]" />
             Profile & settings
