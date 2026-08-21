@@ -37,7 +37,6 @@ type EditActivityResult = {
   status: "verified" | "unavailable";
 };
 
-// Increased from 15% to 35% for authentic hype volatility
 const DAILY_MOVE_CAP = 35;
 const REVIEW_MOVE_THRESHOLD = 60;
 const SOURCE_CACHE_MS = 15 * 60 * 1000;
@@ -89,6 +88,7 @@ function describeAdditionalSignals(signals: AdditionalPriceSignals) {
 
 function describeExternalSignals(signals: ExternalSourceSignals) {
   const active = [
+    signals.statuses.newsdata === "verified" && "NewsData.io breaking coverage",
     signals.statuses.webz === "verified" && "Webz news",
     signals.statuses.tmdb === "verified" && "TMDB screen interest",
     signals.statuses.lastfm === "verified" && "Last.fm music reach",
@@ -198,11 +198,9 @@ function calculateTransparentScore(
   additionalSignals: AdditionalPriceSignals,
   externalSignals: ExternalSourceSignals,
 ) {
-  // Enhanced sensitivity: pageview surges now scale up to +32 STKZ
   const pageviewBoost = pageviews
     ? Math.min(32, Math.log10(Math.max(pageviews, 1)) * 4.8)
     : 0;
-  // Recent edit bursts scale up to +8 STKZ
   const editActivityBoost = recentEdits
     ? Math.min(8, Math.sqrt(Math.min(recentEdits, 35)) * 1.4)
     : 0;
@@ -372,7 +370,7 @@ export async function refreshMarketSnapshots() {
   `;
   await sql`
     INSERT INTO market_refresh_log (started_at, completed_at, status, refreshed_count, verified_count, unavailable_count, flagged_count, detail)
-    VALUES (${startedAt}, now(), ${status}, ${eligibleMarkets.length}, ${verifiedCount}, ${unavailableCount}, ${flaggedCount}, ${"Wikimedia, public news, entertainment sources, search, and official-channel refresh"})
+    VALUES (${startedAt}, now(), ${status}, ${eligibleMarkets.length}, ${verifiedCount}, ${unavailableCount}, ${flaggedCount}, ${"Wikimedia, NewsData.io, public news, entertainment sources, search, and official-channel refresh"})
   `;
 
   return {

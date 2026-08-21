@@ -37,6 +37,14 @@ type RequestType =
 
 const sources = [
   {
+    name: "NewsData.io Real-Time News (/latest)",
+    coverage: "Global real-time news articles, coverage volume, and publisher reach across entertainment and sports.",
+    delay: "Live API querying, cached per day during the scheduled STKZ refresh.",
+    limitation: "News frequency measures spotlight and cultural presence, not personal quality or character.",
+    href: "https://newsdata.io/docs",
+    status: "Live",
+  },
+  {
     name: "Wikimedia pageviews",
     coverage:
       "Eligible celebrity biography pages with available daily pageview reporting.",
@@ -57,31 +65,36 @@ const sources = [
     status: "Live",
   },
   {
-    name: "Licensed news volume",
-    coverage: "Not connected yet.",
-    delay: "Will be documented before release.",
-    limitation:
-      "A licensed provider and source-level weighting are required before use.",
-    href: null,
-    status: "Planned",
+    name: "GDELT 2.0 Global News",
+    coverage: "Worldwide media broadcast, web, and publication volume indexing.",
+    delay: "Captured during the scheduled STKZ refresh.",
+    limitation: "Aggregated open dataset measuring broadcast volume.",
+    href: "https://www.gdeltproject.org/",
+    status: "Live",
   },
   {
-    name: "Approved search trends",
-    coverage: "Not connected yet.",
-    delay: "Will be documented before release.",
-    limitation:
-      "Only approved, policy-compliant trend sources can be used.",
-    href: null,
-    status: "Planned",
+    name: "The Movie Database (TMDB)",
+    coverage: "Actor and director popularity metrics for Film and TV category markets.",
+    delay: "Updated during daily market cycle.",
+    limitation: "Only applied to screen categories.",
+    href: "https://www.themoviedb.org/documentation/api",
+    status: "Live",
   },
   {
-    name: "Official social and video statistics",
-    coverage: "Not connected yet.",
-    delay: "Will be documented before release.",
-    limitation:
-      "Only platform-permitted APIs and public account statistics may be included.",
-    href: null,
-    status: "Planned",
+    name: "Last.fm Music Reach",
+    coverage: "Global listener counts and scrobble momentum for recording artists.",
+    delay: "Updated during daily market cycle.",
+    limitation: "Only applied to Music category.",
+    href: "https://www.last.fm/api",
+    status: "Live",
+  },
+  {
+    name: "TheSportsDB",
+    coverage: "Professional athlete team validations and player verification.",
+    delay: "Updated during daily market cycle.",
+    limitation: "Only applied to Sport category.",
+    href: "https://www.thesportsdb.com/api.php",
+    status: "Live",
   },
 ];
 

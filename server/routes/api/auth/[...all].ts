@@ -28,6 +28,19 @@ export default defineHandler(async (event) => {
     if (value && forwardedRequestHeaders.has(name)) headers.set(name, value);
   }
 
+  // Rewrite origin and referer to match upstream auth base URL to prevent INVALID_ORIGIN on deployments
+  try {
+    const upstreamOrigin = new URL(authBaseUrl).origin;
+    if (headers.has("origin")) {
+      headers.set("origin", upstreamOrigin);
+    }
+    if (headers.has("referer")) {
+      headers.set("referer", `${upstreamOrigin}/`);
+    }
+  } catch {
+    // If URL parsing fails, retain incoming origin
+  }
+
   const cookie = headers.get("cookie");
   if (cookie) {
     headers.set("cookie", cookie.replaceAll("__Secure_", "__Secure-").replaceAll("__Host_", "__Host-"));

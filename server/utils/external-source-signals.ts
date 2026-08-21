@@ -2,7 +2,7 @@ import { sql } from "./db";
 import { celebrityMarkets, type CelebrityMarket } from "./markets";
 import { getProviderSettings } from "./provider-settings";
 
-type ProviderName = "webz" | "tmdb" | "lastfm" | "sportsdb";
+type ProviderName = "webz" | "tmdb" | "lastfm" | "sportsdb" | "newsdata";
 type SignalStatus = "verified" | "unavailable";
 
 export type ExternalSourceSignals = {
@@ -10,12 +10,13 @@ export type ExternalSourceSignals = {
   tmdbPopularity: number | null;
   lastfmListeners: number | null;
   sportsdbMatch: boolean | null;
+  newsdataArticles: number | null;
   statuses: Record<ProviderName, SignalStatus>;
 };
 
 type CacheRow = { value: string | null; status: SignalStatus };
 
-const DAILY_MARKET_LIMIT = 20;
+const DAILY_MARKET_LIMIT = 25;
 
 function currentDate() {
   return new Date().toISOString().slice(0, 10);
@@ -119,6 +120,24 @@ async function webzNews(name: string, apiKey: string) {
   return Number(((await response.json()) as { totalResults?: number }).totalResults);
 }
 
+async function newsdataLatest(name: string, apiKey: string) {
+  if (!apiKey) return null;
+  const url = new URL("https://newsdata.io/api/1/latest");
+  url.searchParams.set("apikey", apiKey);
+  url.searchParams.set("q", `"${name}"`);
+  url.searchParams.set("language", "en");
+
+  const response = await fetch(url, { headers: { accept: "application/json" } });
+  if (!response.ok) return null;
+  const data = (await response.json()) as { status?: string; totalResults?: number; results?: unknown[] };
+  if (data.status !== "success") return null;
+
+  if (typeof data.totalResults === "number") {
+    return data.totalResults;
+  }
+  return Array.isArray(data.results) ? data.results.length : 0;
+}
+
 async function tmdbPopularity(name: string, apiKey: string) {
   if (!apiKey) return null;
   const url = new URL("https://api.themoviedb.org/3/search/person");
@@ -155,11 +174,12 @@ async function sportsdbMatch(name: string, apiKey: string) {
 
 export async function getExternalSourceSignals(market: CelebrityMarket): Promise<ExternalSourceSignals> {
   const settings = await getProviderSettings();
-  const [webz, tmdb, lastfm, sportsdb] = await Promise.all([
+  const [webz, tmdb, lastfm, sportsdb, newsdata] = await Promise.all([
     loadNumber("webz", market, () => webzNews(market.name, settings.webzApiKey)),
     loadNumber("tmdb", market, () => tmdbPopularity(market.name, settings.tmdbApiKey)),
     loadNumber("lastfm", market, () => lastfmListeners(market.name, settings.lastfmApiKey)),
     loadNumber("sportsdb", market, () => sportsdbMatch(market.name, settings.sportsdbApiKey)),
+    loadNumber("newsdata", market, () => newsdataLatest(market.name, settings.newsdataApiKey)),
   ]);
 
   return {
@@ -167,14 +187,22 @@ export async function getExternalSourceSignals(market: CelebrityMarket): Promise
     tmdbPopularity: tmdb.value,
     lastfmListeners: lastfm.value,
     sportsdbMatch: sportsdb.value === null ? null : sportsdb.value > 0,
-    statuses: { webz: webz.status, tmdb: tmdb.status, lastfm: lastfm.status, sportsdb: sportsdb.status },
+    newsdataArticles: newsdata.value,
+    statuses: {
+      webz: webz.status,
+      tmdb: tmdb.status,
+      lastfm: lastfm.status,
+      sportsdb: sportsdb.status,
+      newsdata: newsdata.status,
+    },
   };
 }
 
 export function getExternalSignalBoost(signals: ExternalSourceSignals) {
-  const news = signals.webzNews === null ? 0 : Math.min(2.5, Math.log10(signals.webzNews + 1) * 0.5);
+  const webz = signals.webzNews === null ? 0 : Math.min(2.5, Math.log10(signals.webzNews + 1) * 0.5);
+  const newsdata = signals.newsdataArticles === null ? 0 : Math.min(3.0, Math.log10(signals.newsdataArticles + 1) * 0.6);
   const screen = signals.tmdbPopularity === null ? 0 : Math.min(1.5, Math.log10(signals.tmdbPopularity + 1) * 0.45);
   const music = signals.lastfmListeners === null ? 0 : Math.min(1.5, Math.log10(signals.lastfmListeners + 1) * 0.16);
   const sport = signals.sportsdbMatch ? 0.25 : 0;
-  return Number((news + screen + music + sport).toFixed(4));
+  return Number((webz + newsdata + screen + music + sport).toFixed(4));
 }

@@ -26,7 +26,50 @@ export default defineHandler(async (event) => {
     sampleData?: Record<string, unknown> | null;
   }> = {};
 
-  // 1. Wikimedia Foundation API
+  // 1. NewsData.io (Latest Endpoint)
+  const newsdataKey = providerSettings.newsdataApiKey;
+  if (!newsdataKey) {
+    results.newsdata = {
+      name: "NewsData.io (Latest News Feed)",
+      authRequired: true,
+      status: "unconfigured",
+      message: "NewsData API key is not configured.",
+    };
+  } else {
+    try {
+      const res = await fetch(`https://newsdata.io/api/1/latest?apikey=${newsdataKey}&q="Taylor Swift"&language=en`);
+      const data = await res.json();
+      if (res.ok && data.status === "success") {
+        results.newsdata = {
+          name: "NewsData.io (Latest News Feed)",
+          authRequired: true,
+          status: "ok",
+          message: "NewsData.io verified via /latest endpoint.",
+          sampleData: {
+            totalResults: data.totalResults ?? data.results?.length ?? 0,
+            latestHeadline: data.results?.[0]?.title ?? "N/A",
+            sourceId: data.results?.[0]?.source_id ?? "N/A",
+          },
+        };
+      } else {
+        results.newsdata = {
+          name: "NewsData.io (Latest News Feed)",
+          authRequired: true,
+          status: "error",
+          message: data.results?.message || data.message || `HTTP ${res.status}`,
+        };
+      }
+    } catch (e) {
+      results.newsdata = {
+        name: "NewsData.io (Latest News Feed)",
+        authRequired: true,
+        status: "error",
+        message: e instanceof Error ? e.message : "Connection failed",
+      };
+    }
+  }
+
+  // 2. Wikimedia Foundation API
   try {
     const res = await fetch("https://en.wikipedia.org/api/rest_v1/page/summary/Taylor_Swift", {
       headers: { "user-agent": "CelebStockz/1.0 (https://celebstockz.app; contact@celebstockz.app)" },
@@ -61,7 +104,7 @@ export default defineHandler(async (event) => {
     };
   }
 
-  // 2. GDELT Project 2.0
+  // 3. GDELT Project 2.0
   try {
     const url = "https://api.gdeltproject.org/api/v2/doc/doc?query=%22Taylor%20Swift%22&mode=timelinevolraw&format=json&maxrecords=5";
     const res = await fetch(url, {
@@ -91,41 +134,6 @@ export default defineHandler(async (event) => {
   } catch (e) {
     results.gdelt = {
       name: "GDELT 2.0 News API",
-      authRequired: false,
-      status: "error",
-      message: e instanceof Error ? e.message : "Connection failed",
-    };
-  }
-
-  // 3. Wikidata Knowledge Graph
-  try {
-    const searchUrl = "https://www.wikidata.org/w/api.php?action=wbsearchentities&format=json&language=en&limit=1&search=Taylor%20Swift";
-    const res = await fetch(searchUrl, {
-      headers: { accept: "application/json", "user-agent": "CelebStockz/1.0" },
-    });
-    if (res.ok) {
-      const data = await res.json();
-      results.wikidata = {
-        name: "Wikidata Entity Graph (Auto-fill)",
-        authRequired: false,
-        status: "ok",
-        message: "Successfully queried Wikidata entity graph for official links and creator IDs.",
-        sampleData: {
-          matchedId: data.search?.[0]?.id ?? null,
-          label: data.search?.[0]?.label ?? null,
-        },
-      };
-    } else {
-      results.wikidata = {
-        name: "Wikidata Knowledge Graph",
-        authRequired: false,
-        status: "error",
-        message: `HTTP ${res.status}`,
-      };
-    }
-  } catch (e) {
-    results.wikidata = {
-      name: "Wikidata Knowledge Graph",
       authRequired: false,
       status: "error",
       message: e instanceof Error ? e.message : "Connection failed",

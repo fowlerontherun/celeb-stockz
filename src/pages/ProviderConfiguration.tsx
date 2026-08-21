@@ -8,6 +8,7 @@ import {
   Globe,
   KeyRound,
   LoaderCircle,
+  Newspaper,
   Play,
   RefreshCw,
   Save,
@@ -16,6 +17,7 @@ import {
 import { showError, showSuccess } from "@/utils/toast";
 
 type ProviderStatus = {
+  newsdata: boolean;
   webz: boolean;
   tmdb: boolean;
   lastfm: boolean;
@@ -26,7 +28,7 @@ type ProviderStatus = {
   googleSearch: boolean;
 };
 
-type ProviderKey = "webz" | "tmdb" | "lastfm" | "sportsdb";
+type ProviderKey = "newsdata" | "webz" | "tmdb" | "lastfm" | "sportsdb";
 
 type SuiteResult = {
   name: string;
@@ -42,9 +44,18 @@ const providers: Array<{
   authType: string;
   description: string;
   placeholder: string;
-  inputName: "webzApiKey" | "tmdbApiKey" | "lastfmApiKey" | "sportsdbApiKey";
+  inputName: "newsdataApiKey" | "webzApiKey" | "tmdbApiKey" | "lastfmApiKey" | "sportsdbApiKey";
   color: string;
 }> = [
+  {
+    key: "newsdata",
+    label: "NewsData.io (/latest)",
+    authType: "API Key (v1 Latest)",
+    description: "Live real-time news articles, global breaking stories, and media frequency index.",
+    placeholder: "NewsData.io API key (e.g. pub_...)",
+    inputName: "newsdataApiKey",
+    color: "text-[#ffd17b]",
+  },
   {
     key: "webz",
     label: "Webz.io",
@@ -79,13 +90,14 @@ const providers: Array<{
     description: "Athlete recognition, team affiliations, and career validation.",
     placeholder: "TheSportsDB API key (e.g. 3 or premium key)",
     inputName: "sportsdbApiKey",
-    color: "text-[#ffd17b]",
+    color: "text-[#c99bff]",
   },
 ];
 
 export default function ProviderConfiguration() {
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [keys, setKeys] = useState({
+    newsdataApiKey: "",
     webzApiKey: "",
     tmdbApiKey: "",
     lastfmApiKey: "",
@@ -165,6 +177,7 @@ export default function ProviderConfiguration() {
       }
 
       setKeys({
+        newsdataApiKey: "",
         webzApiKey: "",
         tmdbApiKey: "",
         lastfmApiKey: "",
@@ -174,6 +187,7 @@ export default function ProviderConfiguration() {
         current
           ? {
               ...current,
+              newsdata: current.newsdata || Boolean(keys.newsdataApiKey),
               webz: current.webz || Boolean(keys.webzApiKey),
               tmdb: current.tmdb || Boolean(keys.tmdbApiKey),
               lastfm: current.lastfm || Boolean(keys.lastfmApiKey),

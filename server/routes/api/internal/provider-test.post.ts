@@ -5,7 +5,7 @@ import { checkIsAdmin, getSystemSettings } from "../../../utils/system-settings"
 import { getProviderSettings } from "../../../utils/provider-settings";
 
 type ProviderTestInput = {
-  provider: "wikipedia" | "gdelt" | "youtube" | "googleSearch" | "tmdb" | "lastfm" | "sportsdb" | "webz";
+  provider: "wikipedia" | "gdelt" | "youtube" | "googleSearch" | "tmdb" | "lastfm" | "sportsdb" | "webz" | "newsdata";
 };
 
 export default defineHandler(async (event) => {
@@ -24,6 +24,21 @@ export default defineHandler(async (event) => {
     getProviderSettings(),
     getSystemSettings(),
   ]);
+
+  if (provider === "newsdata") {
+    const key = providerSettings.newsdataApiKey;
+    if (!key) return { ok: false, message: "NewsData.io API Key is not configured." };
+    try {
+      const res = await fetch(`https://newsdata.io/api/1/latest?apikey=${key}&q="Taylor Swift"&language=en`);
+      const data = await res.json();
+      if (!res.ok || data.status !== "success") {
+        return { ok: false, message: data.results?.message || data.message || `HTTP ${res.status}` };
+      }
+      return { ok: true, message: `NewsData.io verified via /latest endpoint. Total results: ${data.totalResults ?? data.results?.length ?? 0}` };
+    } catch (e) {
+      return { ok: false, message: e instanceof Error ? e.message : "Connection failed" };
+    }
+  }
 
   if (provider === "wikipedia") {
     try {

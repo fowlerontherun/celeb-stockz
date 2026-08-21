@@ -9,6 +9,7 @@ type ProviderInput = {
   tmdbApiKey?: string;
   lastfmApiKey?: string;
   sportsdbApiKey?: string;
+  newsdataApiKey?: string;
 };
 
 export default defineHandler(async (event) => {
@@ -29,6 +30,7 @@ export default defineHandler(async (event) => {
     body?.tmdbApiKey,
     body?.lastfmApiKey,
     body?.sportsdbApiKey,
+    body?.newsdataApiKey,
   ];
 
   if (
@@ -44,7 +46,7 @@ export default defineHandler(async (event) => {
 
   const updated = await sql`
     INSERT INTO market_provider_settings (
-      id, webz_api_key, tmdb_api_key, lastfm_api_key, sportsdb_api_key, updated_at
+      id, webz_api_key, tmdb_api_key, lastfm_api_key, sportsdb_api_key, newsdata_api_key, updated_at
     )
     VALUES (
       true,
@@ -52,6 +54,7 @@ export default defineHandler(async (event) => {
       ${body?.tmdbApiKey?.trim() ?? ""},
       ${body?.lastfmApiKey?.trim() ?? ""},
       ${body?.sportsdbApiKey?.trim() ?? ""},
+      ${body?.newsdataApiKey?.trim() ?? "pub_3109de01287e4cfaaab4d99da9082a91"},
       now()
     )
     ON CONFLICT (id) DO UPDATE
@@ -71,6 +74,10 @@ export default defineHandler(async (event) => {
       sportsdb_api_key = CASE
         WHEN ${body?.sportsdbApiKey?.trim() ?? ""} = '' THEN market_provider_settings.sportsdb_api_key
         ELSE EXCLUDED.sportsdb_api_key
+      END,
+      newsdata_api_key = CASE
+        WHEN ${body?.newsdataApiKey?.trim() ?? ""} = '' THEN market_provider_settings.newsdata_api_key
+        ELSE EXCLUDED.newsdata_api_key
       END,
       updated_at = now()
   `;

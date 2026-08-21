@@ -5,6 +5,7 @@ export type ProviderSettings = {
   tmdbApiKey: string;
   lastfmApiKey: string;
   sportsdbApiKey: string;
+  newsdataApiKey: string;
   updatedAt: string | null;
 };
 
@@ -15,6 +16,7 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
       tmdb_api_key,
       lastfm_api_key,
       sportsdb_api_key,
+      newsdata_api_key,
       updated_at
     FROM market_provider_settings
     WHERE id = true
@@ -26,6 +28,7 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
     tmdbApiKey: settings?.tmdb_api_key ?? "",
     lastfmApiKey: settings?.lastfm_api_key ?? "",
     sportsdbApiKey: settings?.sportsdb_api_key ?? "",
+    newsdataApiKey: settings?.newsdata_api_key ?? "pub_3109de01287e4cfaaab4d99da9082a91",
     updatedAt: settings?.updated_at ?? null,
   };
 }

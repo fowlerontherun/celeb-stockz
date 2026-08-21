@@ -20,6 +20,7 @@ export default defineHandler(async (event) => {
 
   return {
     providers: {
+      newsdata: Boolean(settings.newsdataApiKey),
       webz: Boolean(settings.webzApiKey),
       tmdb: Boolean(settings.tmdbApiKey),
       lastfm: Boolean(settings.lastfmApiKey),
