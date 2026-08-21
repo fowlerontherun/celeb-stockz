@@ -16,8 +16,16 @@ export default defineHandler(async (event) => {
     });
   }
 
+  const results = await runAllProviderDiagnostics();
+  if (results.dataforseo) {
+    results.dataforseo = {
+      ...results.dataforseo,
+      name: "DataForSEO Trends",
+    };
+  }
+
   return {
-    results: await runAllProviderDiagnostics(),
+    results,
     timestamp: new Date().toISOString(),
   };
 });
