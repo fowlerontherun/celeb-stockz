@@ -15,14 +15,19 @@ type SignalStatus = "verified" | "unavailable";
 
 export type ExternalSourceSignals = {
   webzNews: number | null;
+  webzAnchor: number | null;
   webzMomentumPercent: number | null;
   tmdbPopularity: number | null;
+  tmdbAnchor: number | null;
   tmdbMomentumPercent: number | null;
   lastfmListeners: number | null;
   lastfmPlaycount: number | null;
+  lastfmListenerAnchor: number | null;
+  lastfmPlaycountAnchor: number | null;
   lastfmMomentumPercent: number | null;
   sportsdbMatch: boolean | null;
   newsdataArticles: number | null;
+  newsdataAnchor: number | null;
   newsdataMomentumPercent: number | null;
   statuses: Record<ProviderName, SignalStatus>;
 };
@@ -295,7 +300,8 @@ async function refreshProviderMarket(
           status: stats.playcount === null ? "unavailable" : "verified",
         }),
       ]);
-      return results.some(Boolean) && (stats.listeners !== null || stats.playcount !== null);
+      return results.some(Boolean) &&
+        (stats.listeners !== null || stats.playcount !== null);
     }
 
     const match = await sportsdbMatch(market.name, settings.sportsdbApiKey);
@@ -397,8 +403,11 @@ async function readStoredProviderSignal(
   if (!configured || !supportsProvider(provider, market)) {
     return {
       value: null,
+      anchorValue: null,
       momentumPercent: null,
       status: "unavailable" as const,
+      sampleCount: 0,
+      capturedAt: null,
     };
   }
   return getStoredMomentumSignal({
@@ -477,20 +486,26 @@ export async function getExternalSourceSignals(
 
   return {
     webzNews: webz.value,
+    webzAnchor: webz.anchorValue,
     webzMomentumPercent: webz.momentumPercent,
     tmdbPopularity: tmdb.value,
+    tmdbAnchor: tmdb.anchorValue,
     tmdbMomentumPercent: tmdb.momentumPercent,
     lastfmListeners: listeners.value,
     lastfmPlaycount: playcount.value,
+    lastfmListenerAnchor: listeners.anchorValue,
+    lastfmPlaycountAnchor: playcount.anchorValue,
     lastfmMomentumPercent,
     sportsdbMatch: sportsValid ? true : null,
     newsdataArticles: newsdata.value,
+    newsdataAnchor: newsdata.anchorValue,
     newsdataMomentumPercent: newsdata.momentumPercent,
     statuses: {
       webz: webz.status,
       tmdb: tmdb.status,
       lastfm: lastfmStatus,
-      sportsdb: sportsValid ? "verified" : "unavailable",
+      // The current SportsDB signal is identity validation, not price-quality data.
+      sportsdb: "unavailable",
       newsdata: newsdata.status,
     },
   };
@@ -507,6 +522,23 @@ function boundedMomentumBoost(
 }
 
 export function getExternalSignalBoost(signals: ExternalSourceSignals) {
+  const webzAnchor =
+    signals.webzAnchor === null
+      ? 0
+      : Math.min(2.5, Math.log10(signals.webzAnchor + 1) * 0.5);
+  const newsdataAnchor =
+    signals.newsdataAnchor === null
+      ? 0
+      : Math.min(3, Math.log10(signals.newsdataAnchor + 1) * 0.6);
+  const tmdbAnchor =
+    signals.tmdbAnchor === null
+      ? 0
+      : Math.min(1.5, Math.log10(signals.tmdbAnchor + 1) * 0.45);
+  const lastfmAnchor =
+    signals.lastfmListenerAnchor === null
+      ? 0
+      : Math.min(1.5, Math.log10(signals.lastfmListenerAnchor + 1) * 0.16);
+
   const newsMomentum = combineMomentum([
     { value: signals.newsdataMomentumPercent },
     { value: signals.webzMomentumPercent },
@@ -525,7 +557,18 @@ export function getExternalSignalBoost(signals: ExternalSourceSignals) {
     2.5,
   );
 
-  // TheSportsDB currently validates identity/team matching only. It is stored for
-  // diagnostics and future sports adapters but deliberately contributes no price.
-  return Number((news + screen + music).toFixed(4));
+  // Anchors freeze the provider's first observed popularity level. They do not
+  // drift with later raw counts; subsequent movement comes from momentum only.
+  // SportsDB identity matching deliberately contributes nothing to price.
+  return Number(
+    (
+      webzAnchor +
+      newsdataAnchor +
+      tmdbAnchor +
+      lastfmAnchor +
+      news +
+      screen +
+      music
+    ).toFixed(4),
+  );
 }
