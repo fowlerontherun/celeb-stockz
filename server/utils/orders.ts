@@ -1,6 +1,7 @@
 import { sql } from "./db";
 import { isTradeableCelebrityMarket } from "./market-eligibility";
 import { getLivePriceMap } from "./live-prices";
+import { ensureStoreSchema } from "./store";
 
 type OpenOrder = {
   id: number;
@@ -30,7 +31,16 @@ async function fillOrder(order: OpenOrder, price: number) {
       ? await sql`
           WITH wallet AS (
             UPDATE user_wallets
-            SET balance_stkz = balance_stkz - ${walletAmount}, updated_at = now()
+            SET
+              purchased_stkz_balance = GREATEST(
+                0,
+                purchased_stkz_balance - GREATEST(
+                  0,
+                  ${walletAmount} - GREATEST(balance_stkz - purchased_stkz_balance, 0)
+                )
+              ),
+              balance_stkz = balance_stkz - ${walletAmount},
+              updated_at = now()
             WHERE user_id = ${order.user_id} AND balance_stkz >= ${walletAmount}
             RETURNING balance_stkz
           ),
@@ -86,6 +96,7 @@ async function fillOrder(order: OpenOrder, price: number) {
 }
 
 export async function processOpenOrders() {
+  await ensureStoreSchema();
   const [orders, livePrices, snapshots] = await Promise.all([
     sql<OpenOrder[]>`
       SELECT id, user_id, ticker, side, order_type, amount_stkz, limit_price, stop_price, triggered_at
