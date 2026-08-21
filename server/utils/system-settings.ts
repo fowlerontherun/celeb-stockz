@@ -8,6 +8,10 @@ export type SystemSettings = {
   googleSearchEngineId: string;
   marketRefreshSecret: string;
   adminEmails: string[];
+  packSaleActive: boolean;
+  packSaleDiscountPercent: number;
+  packSaleBannerText: string;
+  packSaleEndsAt: string | null;
   updatedAt: string | null;
 };
 
@@ -21,6 +25,10 @@ export async function getSystemSettings(): Promise<SystemSettings> {
       google_search_engine_id,
       market_refresh_secret,
       admin_emails,
+      pack_sale_active,
+      pack_sale_discount_percent,
+      pack_sale_banner_text,
+      pack_sale_ends_at,
       updated_at
     FROM market_system_settings
     WHERE id = true
@@ -66,6 +74,10 @@ export async function getSystemSettings(): Promise<SystemSettings> {
     googleSearchEngineId: db?.google_search_engine_id || process.env.NITRO_GOOGLE_SEARCH_ENGINE_ID || "",
     marketRefreshSecret: db?.market_refresh_secret || process.env.NITRO_MARKET_REFRESH_SECRET || "",
     adminEmails: adminEmailsList,
+    packSaleActive: Boolean(db?.pack_sale_active),
+    packSaleDiscountPercent: Number(db?.pack_sale_discount_percent ?? 0),
+    packSaleBannerText: db?.pack_sale_banner_text || "🔥 FLASH SALE: Celebrity Packs discounted for a limited time!",
+    packSaleEndsAt: db?.pack_sale_ends_at ?? null,
     updatedAt: db?.updated_at ?? null,
   };
 }

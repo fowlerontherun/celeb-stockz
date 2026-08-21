@@ -4,6 +4,7 @@ import {
   ChartNoAxesCombined,
   Home,
   LayoutGrid,
+  PackageOpen,
   Shield,
   Star,
   Trophy,
@@ -22,6 +23,7 @@ import { TradeControls } from "@/components/TradeControls";
 import { WalletBalance } from "@/components/WalletBalance";
 import { OnboardingRecap } from "@/components/OnboardingRecap";
 import { MarketDetailPanel } from "@/components/MarketDetailPanel";
+import { PackCarousels } from "@/components/PackCarousels";
 import { showError, showSuccess } from "@/utils/toast";
 
 type CelebrityMarket = CategorizedCelebrity & {
@@ -155,6 +157,10 @@ export default function Index() {
           <button type="button" onClick={() => setPage("Leagues")} className="rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-5 py-3 text-sm font-black text-[#ffe2a3] hover:bg-[#ffd17b]/20">Player Leagues</button>
           <button type="button" onClick={() => setPage("Movers")} className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-[#e6d8ff] hover:bg-white/10">View top movers</button>
         </div>
+
+        {/* On-screen Presence: Featured & Upcoming Packs Carousels */}
+        <PackCarousels />
+
         <OnboardingRecap onStartTrading={() => setPage("Markets")} />
       </div>
     );
@@ -165,13 +171,37 @@ export default function Index() {
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-white/10 bg-[#170d29] px-5 py-7 lg:flex">
           <div className="flex items-center gap-2 px-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={20} /></div><span className="font-display text-xl font-black">Celeb<span className="text-[#ff7282]">Stockz</span></span></div>
           <div className="mt-11 space-y-2">{navItems.map(({ page: itemPage, icon: Icon }) => <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${page === itemPage ? "bg-[#7c3aed] text-white shadow-lg" : "text-[#b9acc9] hover:bg-white/5 hover:text-white"}`}><Icon size={18} />{itemPage}</button>)}</div>
-          <p className="mt-auto px-2 text-[10px] leading-4 text-[#7c6d8e]">Live celebrity assets for entertainment only. Not investment advice.</p>
+          <div className="mt-auto space-y-3 px-2">
+            <Link
+              to="/packs"
+              className="flex items-center justify-between rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 p-3 text-xs font-black text-[#ffe2a4] hover:bg-[#ffd17b]/20"
+            >
+              <span className="flex items-center gap-2">
+                <PackageOpen size={16} />
+                52 Weekly Packs
+              </span>
+              <span className="rounded bg-[#ffd17b] px-1.5 py-0.5 text-[10px] font-black text-[#382600]">
+                £1.99
+              </span>
+            </Link>
+            <p className="text-[10px] leading-4 text-[#7c6d8e]">Live celebrity assets for entertainment only. Not investment advice.</p>
+          </div>
         </aside>
 
         <section className="w-full overflow-hidden">
           <header className="flex items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
             <div className="flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={19} /></div><span className="font-display text-lg font-black lg:hidden">Celeb<span className="text-[#ff7282]">Stockz</span></span></div>
-            <div className="flex items-center gap-3"><button type="button" aria-label="Market alerts" className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5"><Bell size={18} /><i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff7282]" /></button><WalletBalance /></div>
+            <div className="flex items-center gap-3">
+              <Link
+                to="/packs"
+                className="hidden items-center gap-1.5 rounded-xl border border-[#ffd17b]/40 bg-[#ffd17b]/15 px-3 py-2 text-xs font-black text-[#ffd17b] hover:bg-[#ffd17b]/25 sm:inline-flex"
+              >
+                <PackageOpen size={14} />
+                <span>Celebrity Packs · £1.99</span>
+              </Link>
+              <button type="button" aria-label="Market alerts" className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5"><Bell size={18} /><i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff7282]" /></button>
+              <WalletBalance />
+            </div>
           </header>
           <div className="px-5 pb-28 sm:px-8 lg:px-10">{content}</div>
         </section>

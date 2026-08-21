@@ -6,15 +6,19 @@ import {
   CheckCircle2,
   Eye,
   EyeOff,
+  Flame,
   LoaderCircle,
   PackageOpen,
+  Percent,
   Plus,
   Save,
   Search,
   Sparkles,
+  Tag,
   Trash2,
   Users,
   X,
+  Zap,
 } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
@@ -41,6 +45,13 @@ type MarketListing = {
   category: string;
 };
 
+type SaleConfig = {
+  active: boolean;
+  discountPercent: number;
+  bannerText: string;
+  endsAt: string | null;
+};
+
 function toLocalDateTime(value: string | null) {
   if (!value) return "";
   const date = new Date(value);
@@ -59,19 +70,28 @@ export default function PackManagement() {
   const [removingTicker, setRemovingTicker] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Global Sale State
+  const [saleActive, setSaleActive] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(30);
+  const [bannerText, setBannerText] = useState(
+    "🔥 FLASH SALE: All Celebrity Packs are 30% OFF! Unlock 25+ exclusive markets for just £1.39.",
+  );
+  const [isSavingSale, setIsSavingSale] = useState(false);
+
   // New Pack Dialog State
   const [isCreatingPack, setIsCreatingPack] = useState(false);
   const [newPackName, setNewPackName] = useState("");
-  const [newPackPrice, setNewPackPrice] = useState("4.99");
+  const [newPackPrice, setNewPackPrice] = useState("1.99");
   const [newPackDate, setNewPackDate] = useState("");
   const [newPackAnnounced, setNewPackAnnounced] = useState(true);
   const [newPackPublished, setNewPackPublished] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
-      const [packsRes, marketsRes] = await Promise.all([
+      const [packsRes, marketsRes, saleRes] = await Promise.all([
         fetch("/api/internal/packs", { credentials: "include" }),
         fetch("/api/markets", { credentials: "include" }),
+        fetch("/api/packs/sale", { credentials: "include" }),
       ]);
 
       const packsData = (await packsRes.json()) as {
@@ -81,6 +101,7 @@ export default function PackManagement() {
       const marketsData = (await marketsRes.json()) as {
         markets?: MarketListing[];
       };
+      const saleData = (await saleRes.json()) as SaleConfig;
 
       if (!packsRes.ok || !packsData.packs) {
         throw new Error(packsData.statusMessage ?? "Could not load celebrity packs.");
@@ -99,6 +120,12 @@ export default function PackManagement() {
 
       if (marketsData?.markets) {
         setAvailableMarkets(marketsData.markets);
+      }
+
+      if (saleData) {
+        setSaleActive(saleData.active);
+        setDiscountPercent(saleData.discountPercent || 30);
+        if (saleData.bannerText) setBannerText(saleData.bannerText);
       }
     } catch (error) {
       showError(error instanceof Error ? error.message : "Could not load packs.");
@@ -169,6 +196,38 @@ export default function PackManagement() {
     }
   };
 
+  const saveSaleConfig = async () => {
+    setIsSavingSale(true);
+    try {
+      const response = await fetch("/api/internal/packs/sale", {
+        method: "PUT",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          active: saleActive,
+          discountPercent,
+          bannerText,
+        }),
+      });
+
+      const data = (await response.json()) as { statusMessage?: string };
+      if (!response.ok) {
+        throw new Error(data.statusMessage ?? "Could not update sale configuration.");
+      }
+
+      showSuccess(
+        saleActive
+          ? `Pack Sale activated with ${discountPercent}% discount and global banner!`
+          : "Pack Sale deactivated.",
+      );
+      window.dispatchEvent(new Event("packs:sale_updated"));
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not save sale configuration.");
+    } finally {
+      setIsSavingSale(false);
+    }
+  };
+
   const handleCreatePack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newPackName.trim()) {
@@ -184,7 +243,7 @@ export default function PackManagement() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: newPackName.trim(),
-          priceGbp: Number(newPackPrice) || 0,
+          priceGbp: Number(newPackPrice) || 1.99,
           availableAt: newPackDate ? new Date(newPackDate).toISOString() : null,
           isPublished: newPackPublished,
           isAnnounced: newPackAnnounced,
@@ -200,7 +259,7 @@ export default function PackManagement() {
       showSuccess(`Pack "${newPackName}" created successfully!`);
       setIsCreatingPack(false);
       setNewPackName("");
-      setNewPackPrice("4.99");
+      setNewPackPrice("1.99");
       setNewPackDate("");
       if (data.id) setSelectedPackId(data.id);
       await loadData();
@@ -304,7 +363,7 @@ export default function PackManagement() {
                 Celebrity packs manager ({packs.length} total)
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
-                Configure tiered access packs, assign exclusive celebrity markets, control weekly launch countdown dates, and reveal mystery packs.
+                Standard price: <strong>£1.99</strong> per pack. Configure weekly launch dates, run store-wide discount sales with live promotional banners, and manage member rosters.
               </p>
             </div>
           </div>
@@ -318,6 +377,117 @@ export default function PackManagement() {
             Create new pack
           </button>
         </header>
+
+        {/* Global Pack Sale & Promotional Banner Manager */}
+        <section className="mt-7 rounded-[28px] border border-[#ff4b2b]/40 bg-gradient-to-r from-[#291228] to-[#1c0e2a] p-6 sm:p-7 shadow-xl">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-[#ff4b2b] text-white">
+                <Flame size={24} />
+              </div>
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#ff8e7b]">
+                  Storewide Promotion
+                </p>
+                <h2 className="font-display mt-0.5 text-2xl font-black text-white">
+                  Pack Sale & Discount Banner
+                </h2>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSaleActive(!saleActive)}
+              className={`rounded-xl px-5 py-2.5 text-xs font-black transition ${
+                saleActive
+                  ? "bg-[#62e7b6] text-[#112b24] shadow-lg shadow-[#62e7b6]/20"
+                  : "bg-white/10 text-[#c4b4d0] hover:bg-white/15"
+              }`}
+            >
+              {saleActive ? "SALE ACTIVE (Broadcast On)" : "SALE OFF"}
+            </button>
+          </div>
+
+          <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_2fr]">
+            {/* Discount percentage input and presets */}
+            <div className="rounded-2xl border border-white/10 bg-[#140a20] p-4">
+              <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                Discount Percentage
+              </label>
+
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="number"
+                  min="5"
+                  max="90"
+                  value={discountPercent}
+                  onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
+                  className="w-24 rounded-xl border border-white/10 bg-[#211230] px-3 py-2.5 font-display text-xl font-black text-[#ffd17b] outline-none focus:border-[#ffd17b]"
+                />
+                <span className="font-display text-xl font-black text-[#ffd17b]">% OFF</span>
+              </div>
+
+              {/* Presets */}
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {[15, 25, 30, 50, 70].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => {
+                      setDiscountPercent(pct);
+                      setBannerText(
+                        `🔥 FLASH SALE: All Celebrity Packs are ${pct}% OFF! Unlock 25+ exclusive markets for just £${(1.99 * (1 - pct / 100)).toFixed(2)}.`,
+                      );
+                    }}
+                    className={`rounded-lg px-2.5 py-1 text-xs font-black ${
+                      discountPercent === pct
+                        ? "bg-[#ffd17b] text-[#382600]"
+                        : "bg-white/5 text-[#c4b4d0] hover:bg-white/10"
+                    }`}
+                  >
+                    {pct}% OFF
+                  </button>
+                ))}
+              </div>
+
+              <p className="mt-3 text-[11px] text-[#a99ab7]">
+                Effective discounted price: <strong className="text-[#62e7b6]">£{(1.99 * (1 - discountPercent / 100)).toFixed(2)}</strong> (Original £1.99)
+              </p>
+            </div>
+
+            {/* Banner headline text */}
+            <div className="rounded-2xl border border-white/10 bg-[#140a20] p-4">
+              <label className="block text-xs font-bold uppercase tracking-[.12em] text-[#b9a9c5]">
+                Global Promotional Banner Headline
+              </label>
+
+              <textarea
+                rows={2}
+                value={bannerText}
+                maxLength={200}
+                onChange={(e) => setBannerText(e.target.value)}
+                placeholder="🔥 FLASH SALE: All Celebrity Packs are discounted for a limited time!"
+                className="mt-2 w-full rounded-xl border border-white/10 bg-[#211230] p-3 text-xs font-bold text-white outline-none focus:border-[#ffd17b]"
+              />
+
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-[10px] text-[#a99ab7]">
+                  Appears at the top of all pages when active.
+                </span>
+
+                <button
+                  type="button"
+                  disabled={isSavingSale}
+                  onClick={() => void saveSaleConfig()}
+                  className="inline-flex items-center gap-1.5 rounded-xl bg-[#ff4b2b] px-5 py-2 text-xs font-black text-white hover:bg-[#ff6347] disabled:opacity-50"
+                >
+                  {isSavingSale ? <LoaderCircle size={14} className="animate-spin" /> : <Save size={14} />}
+                  Save & Apply Sale
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Modal for Creating New Pack */}
         {isCreatingPack && (

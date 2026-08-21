@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccountGate } from "@/components/AccountGate";
 import { AuthProvider } from "@/components/AuthProvider";
 import { OperationsShell } from "@/components/OperationsShell";
+import { PackSaleBanner } from "@/components/PackSaleBanner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Index from "./pages/Index";
@@ -27,6 +28,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <PackSaleBanner />
           <Routes>
             <Route path="/" element={<AccountGate><Index /></AccountGate>} />
             <Route path="/packs" element={<AccountGate><Packs /></AccountGate>} />
