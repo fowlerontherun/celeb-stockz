@@ -4,9 +4,9 @@ import {
   getRequestHeader,
   getRouterParam,
 } from "nitro/h3";
-import { getSessionFromCookie } from "../../../../../../utils/session";
-import { checkIsAdmin } from "../../../../../../utils/system-settings";
-import { sql } from "../../../../../../utils/db";
+import { getSessionFromCookie } from "../../../../../../../utils/session";
+import { checkIsAdmin } from "../../../../../../../utils/system-settings";
+import { sql } from "../../../../../../../utils/db";
 
 export default defineHandler(async (event) => {
   const session = await getSessionFromCookie(
