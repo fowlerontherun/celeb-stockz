@@ -1,4 +1,5 @@
 import {
+  getOldestVerifiedSignalObservation,
   getRecentVerifiedSignalObservations,
   type SignalObservation,
 } from "./signal-observations";
@@ -8,6 +9,7 @@ export type MomentumStatus = "verified" | "unavailable";
 
 export type StoredMomentumSignal = {
   value: number | null;
+  anchorValue: number | null;
   momentumPercent: number | null;
   status: MomentumStatus;
   sampleCount: number;
@@ -74,13 +76,24 @@ export async function getStoredMomentumSignal(input: {
   maxAgeMs: number;
   mode: MomentumMode;
 }): Promise<StoredMomentumSignal> {
-  const observations = await getRecentVerifiedSignalObservations(
-    input.ticker,
-    input.provider,
-    input.metric,
-    6,
-  );
+  const [observations, oldest] = await Promise.all([
+    getRecentVerifiedSignalObservations(
+      input.ticker,
+      input.provider,
+      input.metric,
+      6,
+    ),
+    getOldestVerifiedSignalObservation(
+      input.ticker,
+      input.provider,
+      input.metric,
+    ),
+  ]);
   const latest = observations[0];
+  const anchorValue =
+    oldest?.value !== null && oldest?.value !== undefined
+      ? oldest.value
+      : latest?.value ?? null;
 
   if (
     !latest ||
@@ -89,6 +102,7 @@ export async function getStoredMomentumSignal(input: {
   ) {
     return {
       value: null,
+      anchorValue,
       momentumPercent: null,
       status: "unavailable",
       sampleCount: observations.length,
@@ -103,6 +117,7 @@ export async function getStoredMomentumSignal(input: {
 
   return {
     value: latest.value,
+    anchorValue,
     momentumPercent,
     status: "verified",
     sampleCount: observations.length,
