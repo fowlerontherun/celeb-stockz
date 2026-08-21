@@ -240,9 +240,9 @@ export default defineHandler(async (event) => {
         status: additional.statuses.news,
       },
       search: {
-        provider: "DataForSEO Google Trends",
+        provider: "DataForSEO Trends",
         // Compatibility field for the existing admin card. It now represents
-        // normalized Google Trends interest (0-100), not a web result count.
+        // normalized trend interest (0-100), not a web result count.
         resultsCount: searchDiagnostic.latestInterest,
         latestInterest: searchDiagnostic.latestInterest,
         baselineInterest: searchDiagnostic.baselineInterest,
