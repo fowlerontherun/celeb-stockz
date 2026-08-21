@@ -25,10 +25,14 @@ export default defineHandler(async (event) => {
       tmdb: Boolean(settings.tmdbApiKey),
       lastfm: Boolean(settings.lastfmApiKey),
       sportsdb: Boolean(settings.sportsdbApiKey),
+      dataforseo: Boolean(settings.dataforseoLogin && settings.dataforseoPassword),
       gdelt: true,
       wikipedia: true,
       youtube: Boolean(systemSettings.youtubeApiKey),
-      googleSearch: Boolean(systemSettings.googleSearchApiKey && systemSettings.googleSearchEngineId),
+      // Retained for the existing admin UI while legacy configuration is phased out.
+      googleSearch: Boolean(
+        systemSettings.googleSearchApiKey && systemSettings.googleSearchEngineId,
+      ),
     },
     updatedAt: settings.updatedAt,
   };
