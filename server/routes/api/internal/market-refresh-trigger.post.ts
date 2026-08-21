@@ -2,7 +2,7 @@ import { defineHandler } from "nitro";
 import { createError, getRequestHeader } from "nitro/h3";
 import { getSessionFromCookie } from "../../../utils/session";
 import { checkIsAdmin } from "../../../utils/system-settings";
-import { runMarketRefresh } from "../../../utils/run-market-refresh";
+import { runMarketCycle } from "../../../utils/market-cycle";
 import { clearMarketResponseCache } from "../../../utils/market-response-cache";
 
 export default defineHandler(async (event) => {
@@ -18,6 +18,7 @@ export default defineHandler(async (event) => {
     });
   }
 
+  const result = await runMarketCycle("collect");
   clearMarketResponseCache();
-  return runMarketRefresh();
+  return result;
 });

@@ -12,11 +12,14 @@ import {
   combineMomentum,
   getStoredMomentumSignal,
 } from "./signal-momentum";
+import { getStoredGdeltSignal } from "./core-public-observations";
 
 type SignalStatus = "verified" | "unavailable";
 
 export type AdditionalPriceSignals = {
   newsMentions: number | null;
+  newsAnchor: number | null;
+  newsMomentumPercent: number | null;
   /** @deprecated Compatibility alias. This is normalized search interest (0-100), not a result count. */
   searchResults: number | null;
   searchInterest: number | null;
@@ -158,51 +161,6 @@ function fromStoredSearchObservation(
     momentumPercent: metadataNumber(observation.metadata, "momentumPercent"),
     status: "verified",
   };
-}
-
-async function getNewsMentions(name: string) {
-  const url = new URL("https://api.gdeltproject.org/api/v2/doc/doc");
-  url.searchParams.set("query", `"${name}"`);
-  url.searchParams.set("mode", "timelinevolraw");
-  url.searchParams.set("format", "json");
-  url.searchParams.set("maxrecords", "250");
-  url.searchParams.set(
-    "startdatetime",
-    new Date(Date.now() - 7 * 86400000)
-      .toISOString()
-      .replaceAll(/[-:.TZ]/g, "")
-      .slice(0, 14),
-  );
-
-  try {
-    const response = await fetch(url, {
-      headers: {
-        "user-agent":
-          "CelebStockz/1.0 (https://celebstockz.app; contact@celebstockz.app)",
-      },
-    });
-
-    if (!response.ok) {
-      return { value: null, status: "unavailable" as const };
-    }
-
-    const data = (await response.json()) as {
-      timeline?: Array<{ value?: number }>;
-    };
-    const value = data.timeline?.reduce(
-      (total, point) => total + (Number(point.value) || 0),
-      0,
-    );
-
-    return {
-      value: Number.isFinite(value) ? (value ?? 0) : null,
-      status: Number.isFinite(value)
-        ? ("verified" as const)
-        : ("unavailable" as const),
-    };
-  } catch {
-    return { value: null, status: "unavailable" as const };
-  }
 }
 
 async function getSearchMomentum(
@@ -527,9 +485,9 @@ async function getStoredYoutubeSignal(ticker: string, configured: boolean) {
   };
 }
 
-async function getPracticeTradePressure(ticker: string) {
+export async function getPracticeTradePressureMap() {
   if (tradePressureCache && tradePressureCache.expiresAt > Date.now()) {
-    return tradePressureCache.values.get(ticker) ?? 0;
+    return tradePressureCache.values;
   }
 
   const rows = await sql<TradePressureRow[]>`
@@ -565,6 +523,11 @@ async function getPracticeTradePressure(ticker: string) {
     expiresAt: Date.now() + CACHE_MS,
   };
 
+  return values;
+}
+
+async function getPracticeTradePressure(ticker: string) {
+  const values = await getPracticeTradePressureMap();
   return values.get(ticker) ?? 0;
 }
 
@@ -590,7 +553,7 @@ export async function getAdditionalPriceSignals(
   );
 
   const [news, search, youtube, practiceTradePressure] = await Promise.all([
-    getNewsMentions(market.name),
+    getStoredGdeltSignal(market),
     getSearchMomentum(market.ticker, searchConfigured),
     getStoredYoutubeSignal(market.ticker, youtubeConfigured),
     getPracticeTradePressure(market.ticker),
@@ -598,6 +561,8 @@ export async function getAdditionalPriceSignals(
 
   const value: AdditionalPriceSignals = {
     newsMentions: news.value,
+    newsAnchor: news.anchorValue,
+    newsMomentumPercent: news.momentumPercent,
     searchResults: search.interest,
     searchInterest: search.interest,
     searchMomentumPercent: search.momentumPercent,
@@ -622,10 +587,14 @@ export async function getAdditionalPriceSignals(
 }
 
 export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
-  const newsBoost =
-    signals.newsMentions === null
+  const newsAnchorBoost =
+    signals.newsAnchor === null
       ? 0
-      : Math.min(9, Math.log10(signals.newsMentions + 1) * 1.5);
+      : Math.min(9, Math.log10(signals.newsAnchor + 1) * 1.5);
+  const newsMomentumBoost =
+    signals.newsMomentumPercent === null
+      ? 0
+      : Math.max(-3, Math.min(4, signals.newsMomentumPercent / 30));
 
   const searchBoost =
     signals.searchMomentumPercent === null
@@ -647,7 +616,8 @@ export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
 
   return Number(
     (
-      newsBoost +
+      newsAnchorBoost +
+      newsMomentumBoost +
       searchBoost +
       youtubeSubscriberAnchorBoost +
       youtubeViewAnchorBoost +

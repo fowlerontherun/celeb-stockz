@@ -1,5 +1,6 @@
 import { sql } from "./db";
 import { isTradeableCelebrityMarket } from "./market-eligibility";
+import { getLivePriceMap } from "./live-prices";
 
 type OpenOrder = {
   id: number;
@@ -14,6 +15,7 @@ type OpenOrder = {
 };
 
 const TRANSACTION_FEE_RATE = 0.01;
+const FRESH_PRICE_MS = 10 * 60 * 1000;
 
 async function fillOrder(order: OpenOrder, price: number) {
   const amount = Number(order.amount_stkz);
@@ -84,15 +86,16 @@ async function fillOrder(order: OpenOrder, price: number) {
 }
 
 export async function processOpenOrders() {
-  const [orders, snapshots] = await Promise.all([
+  const [orders, livePrices, snapshots] = await Promise.all([
     sql<OpenOrder[]>`
       SELECT id, user_id, ticker, side, order_type, amount_stkz, limit_price, stop_price, triggered_at
       FROM trade_orders
       WHERE status = 'open'
       ORDER BY created_at ASC
     `,
-    sql<{ ticker: string; price_stkz: string }[]>`
-      SELECT DISTINCT ON (ticker) ticker, price_stkz
+    getLivePriceMap(),
+    sql<{ ticker: string; price_stkz: string; captured_at: string }[]>`
+      SELECT DISTINCT ON (ticker) ticker, price_stkz, captured_at
       FROM market_snapshots
       WHERE refresh_status = 'verified'
         AND captured_at >= now() - interval '10 minutes'
@@ -100,9 +103,25 @@ export async function processOpenOrders() {
     `,
   ]);
 
-  const freshPrices = new Map(
-    snapshots.map((snapshot) => [snapshot.ticker, Number(snapshot.price_stkz)]),
-  );
+  const now = Date.now();
+  const freshPrices = new Map<string, number>();
+  for (const [ticker, live] of livePrices) {
+    const updatedAt = new Date(live.updatedAt).getTime();
+    if (
+      Number.isFinite(updatedAt) &&
+      now - updatedAt <= FRESH_PRICE_MS &&
+      Number.isFinite(live.price) &&
+      live.price > 0
+    ) {
+      freshPrices.set(ticker, live.price);
+    }
+  }
+
+  for (const snapshot of snapshots) {
+    if (!freshPrices.has(snapshot.ticker)) {
+      freshPrices.set(snapshot.ticker, Number(snapshot.price_stkz));
+    }
+  }
 
   for (const order of orders) {
     if (!isTradeableCelebrityMarket(order.ticker)) continue;

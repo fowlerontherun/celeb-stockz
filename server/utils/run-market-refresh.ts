@@ -13,6 +13,11 @@ import {
   refreshExternalProviderObservations,
   type ExternalProviderRefreshSummary,
 } from "./external-source-signals";
+import {
+  refreshCorePublicObservations,
+  type CorePublicRefreshSummary,
+} from "./core-public-observations";
+import { syncLivePricesFromSnapshots } from "./live-prices";
 
 const minimumRefreshIntervalMs = 60_000;
 let lastRefreshStartedAt = 0;
@@ -44,6 +49,15 @@ function emptyExternalSummary(): ExternalProviderRefreshSummary {
   };
 }
 
+function emptyCoreSummary(): CorePublicRefreshSummary {
+  const empty = { requestedCount: 0, verifiedCount: 0, unavailableCount: 0 };
+  return {
+    pageviews: { ...empty },
+    revisions: { ...empty },
+    gdelt: { ...empty },
+  };
+}
+
 export async function runMarketRefresh() {
   if (Date.now() - lastRefreshStartedAt < minimumRefreshIntervalMs) {
     throw createError({
@@ -59,6 +73,7 @@ export async function runMarketRefresh() {
   try {
     await syncMarketRegistry();
 
+    let corePublicRefresh = emptyCoreSummary();
     let searchMomentumRefresh: SearchMomentumRefreshSummary = {
       configured: false,
       selectedCount: 0,
@@ -68,6 +83,17 @@ export async function runMarketRefresh() {
     };
     let youtubeObservationRefresh = emptyYoutubeSummary();
     let externalProviderRefresh = emptyExternalSummary();
+
+    try {
+      corePublicRefresh = await refreshCorePublicObservations();
+    } catch (error) {
+      const errorKind =
+        error instanceof Error && error.name ? error.name : "UnknownError";
+      console.warn(
+        "Wikimedia/GDELT observation collection failed; pricing will use stored observations",
+        { errorKind },
+      );
+    }
 
     try {
       searchMomentumRefresh = await refreshSearchMomentumObservations();
@@ -103,6 +129,7 @@ export async function runMarketRefresh() {
     }
 
     const refresh = await refreshMarketSnapshots();
+    await syncLivePricesFromSnapshots();
 
     if (refresh.verifiedCount > 0) {
       await processOpenOrders();
@@ -110,14 +137,12 @@ export async function runMarketRefresh() {
 
     return {
       ...refresh,
+      corePublicRefresh,
       searchMomentumRefresh,
       youtubeObservationRefresh,
       externalProviderRefresh,
-      // Compatibility field retained for older admin clients. Synthetic
-      // intracycle movement has been removed; prices move only on verified
-      // signal snapshots and completed trading activity.
       intracycleUpdated: 0,
-      priceMovementModel: "observation-momentum-v2",
+      priceMovementModel: "stored-observation-plus-live-tick-v3",
     };
   } catch (error) {
     const errorKind =
