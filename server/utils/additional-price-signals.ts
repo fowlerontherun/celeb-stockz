@@ -23,6 +23,8 @@ export type AdditionalPriceSignals = {
   searchMomentumPercent: number | null;
   youtubeSubscribers: number | null;
   youtubeViews: number | null;
+  youtubeSubscriberAnchor: number | null;
+  youtubeViewAnchor: number | null;
   youtubeSubscriberMomentumPercent: number | null;
   youtubeViewMomentumPercent: number | null;
   youtubeMomentumPercent: number | null;
@@ -478,6 +480,8 @@ async function getStoredYoutubeSignal(ticker: string, configured: boolean) {
     return {
       subscribers: null,
       views: null,
+      subscriberAnchor: null,
+      viewAnchor: null,
       subscriberMomentumPercent: null,
       viewMomentumPercent: null,
       momentumPercent: null,
@@ -514,6 +518,8 @@ async function getStoredYoutubeSignal(ticker: string, configured: boolean) {
   return {
     subscribers: subscribers.value,
     views: views.value,
+    subscriberAnchor: subscribers.anchorValue,
+    viewAnchor: views.anchorValue,
     subscriberMomentumPercent: subscribers.momentumPercent,
     viewMomentumPercent: views.momentumPercent,
     momentumPercent,
@@ -597,6 +603,8 @@ export async function getAdditionalPriceSignals(
     searchMomentumPercent: search.momentumPercent,
     youtubeSubscribers: youtube.subscribers,
     youtubeViews: youtube.views,
+    youtubeSubscriberAnchor: youtube.subscriberAnchor,
+    youtubeViewAnchor: youtube.viewAnchor,
     youtubeSubscriberMomentumPercent: youtube.subscriberMomentumPercent,
     youtubeViewMomentumPercent: youtube.viewMomentumPercent,
     youtubeMomentumPercent: youtube.momentumPercent,
@@ -624,7 +632,15 @@ export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
       ? 0
       : Math.max(-4, Math.min(6, signals.searchMomentumPercent / 25));
 
-  const youtubeBoost =
+  const youtubeSubscriberAnchorBoost =
+    signals.youtubeSubscriberAnchor === null
+      ? 0
+      : Math.min(4, Math.log10(signals.youtubeSubscriberAnchor + 1) * 0.35);
+  const youtubeViewAnchorBoost =
+    signals.youtubeViewAnchor === null
+      ? 0
+      : Math.min(2.5, Math.log10(signals.youtubeViewAnchor + 1) * 0.12);
+  const youtubeMomentumBoost =
     signals.youtubeMomentumPercent === null
       ? 0
       : Math.max(-2.5, Math.min(4, signals.youtubeMomentumPercent / 25));
@@ -633,7 +649,9 @@ export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
     (
       newsBoost +
       searchBoost +
-      youtubeBoost +
+      youtubeSubscriberAnchorBoost +
+      youtubeViewAnchorBoost +
+      youtubeMomentumBoost +
       signals.practiceTradePressure
     ).toFixed(4),
   );
