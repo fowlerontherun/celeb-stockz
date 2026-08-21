@@ -2,7 +2,7 @@ import { sql } from "./db";
 import { celebrityMarkets, type CelebrityMarket } from "./markets";
 import { getSystemSettings } from "./system-settings";
 import { getProviderSettings } from "./provider-settings";
-import { fetchSearchTrend } from "./dataforseo-trends";
+import { fetchSearchTrends } from "./dataforseo-trends";
 import {
   getLatestSignalObservation,
   recordSignalObservation,
@@ -44,15 +44,23 @@ type SearchMomentumResult = {
   baselineInterest: number | null;
   momentumPercent: number | null;
   status: SignalStatus;
-  detail: string;
-  source: "live" | "stored" | "unavailable";
+};
+
+export type SearchMomentumRefreshSummary = {
+  configured: boolean;
+  selectedCount: number;
+  requestedCount: number;
+  verifiedCount: number;
+  unavailableCount: number;
 };
 
 const CACHE_MS = 10 * 60 * 1000;
-const SEARCH_PROVIDER = "dataforseo-google-trends";
+const SEARCH_PROVIDER = "dataforseo-trends";
 const SEARCH_METRIC = "web-interest-30d";
 const SEARCH_FRESH_MS = 20 * 60 * 60 * 1000;
 const SEARCH_MAX_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+const SEARCH_BATCH_SIZE = 5;
+const SEARCH_REQUEST_CONCURRENCY = 20;
 const cache = new Map<string, CacheEntry>();
 let tradePressureCache:
   | { values: Map<string, number>; expiresAt: number }
@@ -75,12 +83,14 @@ function stableHash(value: string) {
 }
 
 function getDailyTrendMarketLimit() {
-  const configured = Number(process.env.NITRO_DATAFORSEO_DAILY_MARKET_LIMIT ?? 50);
-  if (!Number.isSafeInteger(configured) || configured < 1) return 50;
-  return Math.min(300, configured);
+  const configured = Number(
+    process.env.NITRO_DATAFORSEO_DAILY_MARKET_LIMIT ?? 300,
+  );
+  if (!Number.isSafeInteger(configured) || configured < 1) return 300;
+  return Math.min(1000, configured);
 }
 
-function isSelectedForDailyTrend(ticker: string) {
+function getSelectedDailyTrendMarkets() {
   const date = currentUtcDate();
   return [...celebrityMarkets]
     .sort(
@@ -88,13 +98,22 @@ function isSelectedForDailyTrend(ticker: string) {
         stableHash(`${date}:${first.ticker}`) -
         stableHash(`${date}:${second.ticker}`),
     )
-    .slice(0, getDailyTrendMarketLimit())
-    .some((market) => market.ticker === ticker);
+    .slice(0, getDailyTrendMarketLimit());
+}
+
+function chunk<T>(values: T[], size: number) {
+  const chunks: T[][] = [];
+  for (let index = 0; index < values.length; index += size) {
+    chunks.push(values.slice(index, index + size));
+  }
+  return chunks;
 }
 
 function observationAgeMs(observation: SignalObservation) {
   const timestamp = new Date(observation.capturedAt).getTime();
-  return Number.isFinite(timestamp) ? Date.now() - timestamp : Number.POSITIVE_INFINITY;
+  return Number.isFinite(timestamp)
+    ? Date.now() - timestamp
+    : Number.POSITIVE_INFINITY;
 }
 
 function metadataNumber(
@@ -115,8 +134,6 @@ function fromStoredSearchObservation(
     baselineInterest: metadataNumber(observation.metadata, "baselineInterest"),
     momentumPercent: metadataNumber(observation.metadata, "momentumPercent"),
     status: "verified",
-    detail: "Using the latest stored DataForSEO Google Trends observation.",
-    source: "stored",
   };
 }
 
@@ -166,19 +183,15 @@ async function getNewsMentions(name: string) {
 }
 
 async function getSearchMomentum(
-  name: string,
   ticker: string,
-  login: string,
-  password: string,
+  configured: boolean,
 ): Promise<SearchMomentumResult> {
-  if (!login || !password) {
+  if (!configured) {
     return {
       interest: null,
       baselineInterest: null,
       momentumPercent: null,
       status: "unavailable",
-      detail: "DataForSEO search momentum is not configured.",
-      source: "unavailable",
     };
   }
 
@@ -187,75 +200,116 @@ async function getSearchMomentum(
     SEARCH_PROVIDER,
     SEARCH_METRIC,
   );
-  const stored = latestObservation
-    ? fromStoredSearchObservation(latestObservation)
-    : null;
-  const ageMs = latestObservation
-    ? observationAgeMs(latestObservation)
-    : Number.POSITIVE_INFINITY;
-
-  if (stored && ageMs <= SEARCH_FRESH_MS) {
-    return stored;
-  }
-
-  if (!isSelectedForDailyTrend(ticker)) {
-    if (stored && ageMs <= SEARCH_MAX_STALE_MS) return stored;
-
+  if (!latestObservation || observationAgeMs(latestObservation) > SEARCH_MAX_STALE_MS) {
     return {
       interest: null,
       baselineInterest: null,
       momentumPercent: null,
       status: "unavailable",
-      detail: "Not selected for today's cost-controlled search-momentum refresh.",
-      source: "unavailable",
     };
   }
 
-  const live = await fetchSearchTrend(name, login, password);
-  if (
-    live.status === "verified" &&
-    live.latestInterest !== null &&
-    live.momentumPercent !== null
-  ) {
-    await recordSignalObservation({
-      ticker,
-      provider: SEARCH_PROVIDER,
-      metric: SEARCH_METRIC,
-      value: live.latestInterest,
-      status: "verified",
-      metadata: {
-        baselineInterest: live.baselineInterest,
-        momentumPercent: live.momentumPercent,
-        points: live.points,
-        costUsd: live.costUsd,
-        detail: live.detail,
-      },
-    });
+  return (
+    fromStoredSearchObservation(latestObservation) ?? {
+      interest: null,
+      baselineInterest: null,
+      momentumPercent: null,
+      status: "unavailable",
+    }
+  );
+}
 
+export async function refreshSearchMomentumObservations(): Promise<SearchMomentumRefreshSummary> {
+  const settings = await getProviderSettings();
+  const configured = Boolean(
+    settings.dataforseoLogin && settings.dataforseoPassword,
+  );
+  const selected = getSelectedDailyTrendMarkets();
+
+  if (!configured) {
     return {
-      interest: live.latestInterest,
-      baselineInterest: live.baselineInterest,
-      momentumPercent: live.momentumPercent,
-      status: "verified",
-      detail: live.detail,
-      source: "live",
+      configured: false,
+      selectedCount: selected.length,
+      requestedCount: 0,
+      verifiedCount: 0,
+      unavailableCount: selected.length,
     };
   }
 
-  if (stored && ageMs <= SEARCH_MAX_STALE_MS) {
-    return {
-      ...stored,
-      detail: `${live.detail} Using the last stored verified search observation instead.`,
-    };
+  const freshness = await Promise.all(
+    selected.map(async (market) => ({
+      market,
+      observation: await getLatestSignalObservation(
+        market.ticker,
+        SEARCH_PROVIDER,
+        SEARCH_METRIC,
+      ),
+    })),
+  );
+  const staleMarkets = freshness
+    .filter(
+      ({ observation }) =>
+        !observation || observationAgeMs(observation) > SEARCH_FRESH_MS,
+    )
+    .map(({ market }) => market);
+
+  let verifiedCount = 0;
+  let unavailableCount = 0;
+  const batches = chunk(staleMarkets, SEARCH_BATCH_SIZE);
+  const waves = chunk(batches, SEARCH_REQUEST_CONCURRENCY);
+
+  for (const wave of waves) {
+    await Promise.all(
+      wave.map(async (batch) => {
+        const results = await fetchSearchTrends(
+          batch.map((market) => market.name),
+          settings.dataforseoLogin,
+          settings.dataforseoPassword,
+        );
+
+        await Promise.all(
+          batch.map(async (market) => {
+            const result = results.get(market.name);
+            if (
+              !result ||
+              result.status !== "verified" ||
+              result.latestInterest === null ||
+              result.momentumPercent === null
+            ) {
+              unavailableCount += 1;
+              return;
+            }
+
+            const persisted = await recordSignalObservation({
+              ticker: market.ticker,
+              provider: SEARCH_PROVIDER,
+              metric: SEARCH_METRIC,
+              value: result.latestInterest,
+              status: "verified",
+              metadata: {
+                baselineInterest: result.baselineInterest,
+                momentumPercent: result.momentumPercent,
+                points: result.points,
+                costUsd: result.costUsd,
+              },
+            });
+
+            if (persisted) verifiedCount += 1;
+            else unavailableCount += 1;
+          }),
+        );
+      }),
+    );
   }
+
+  if (verifiedCount > 0) cache.clear();
 
   return {
-    interest: null,
-    baselineInterest: null,
-    momentumPercent: null,
-    status: "unavailable",
-    detail: live.detail,
-    source: "unavailable",
+    configured: true,
+    selectedCount: selected.length,
+    requestedCount: staleMarkets.length,
+    verifiedCount,
+    unavailableCount,
   };
 }
 
@@ -371,15 +425,13 @@ export async function getAdditionalPriceSignals(
     getSystemSettings(),
     getProviderSettings(),
   ]);
+  const searchConfigured = Boolean(
+    providerSettings.dataforseoLogin && providerSettings.dataforseoPassword,
+  );
 
   const [news, search, youtube, practiceTradePressure] = await Promise.all([
     getNewsMentions(market.name),
-    getSearchMomentum(
-      market.name,
-      market.ticker,
-      providerSettings.dataforseoLogin,
-      providerSettings.dataforseoPassword,
-    ),
+    getSearchMomentum(market.ticker, searchConfigured),
     getYoutubeStatistics(
       market.ticker,
       systemSettings.youtubeApiKey,
