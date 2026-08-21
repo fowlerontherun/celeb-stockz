@@ -2,11 +2,18 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CheckCircle2,
+  Dumbbell,
   EyeOff,
+  Flame,
+  Gamepad2,
+  Globe2,
   LoaderCircle,
   Lock,
+  Music2,
   PackageOpen,
   Sparkles,
+  Trophy,
+  Tv,
   Zap,
 } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
@@ -21,6 +28,20 @@ type Pack = {
   memberCount: number;
   unlocked: boolean;
   isAvailable: boolean;
+};
+
+const packIcons: Record<number, typeof Trophy> = {
+  1: Music2,
+  2: Tv,
+  3: Trophy,
+  4: Sparkles,
+  5: Gamepad2,
+  6: Flame,
+  7: Trophy,
+  8: Zap,
+  9: Dumbbell,
+  10: Globe2,
+  11: Trophy,
 };
 
 export default function Packs() {
@@ -76,11 +97,11 @@ export default function Packs() {
   const totalPacks = packs.length;
   const unlockedCount = packs.filter((p) => p.unlocked).length;
   const announcedCount = packs.filter((p) => p.isAnnounced || p.isPublished || p.unlocked).length;
-  const classifiedCount = totalPacks - announcedCount;
+  const sportsPacksCount = packs.filter((p) => [3, 7, 8, 9, 10, 11].includes(p.id)).length;
 
   return (
     <main className="min-h-screen bg-[#120b20] px-5 py-8 text-[#fff8f2] sm:px-8 lg:px-12">
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-6xl">
         <Link
           to="/"
           className="inline-flex items-center gap-1.5 text-sm font-bold text-[#c99bff] hover:text-white"
@@ -92,26 +113,24 @@ export default function Packs() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
-                <Sparkles size={15} /> Celebrity packs
+                <Sparkles size={15} /> Celebrity packs marketplace
               </p>
               <h1 className="font-display mt-3 text-3xl font-black sm:text-5xl">
                 Expand your trading universe.
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-6 text-[#c9b8d4]">
-                Unlock exclusive packs like <strong>K-Pop Global Superstars</strong> to access high-momentum specialty markets. Standard celebrities remain open to everyone.
+                Unlock specialty collections including <strong>6 dedicated Sports Packs</strong> covering NBA, F1, Combat, Tennis & Golf, NFL/MLB, and European Football, plus K-Pop, British Music, Creators, and Screen Stars.
               </p>
             </div>
             <div className="flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[#e6d8ff]">
-                {announcedCount} revealed
+                {announcedCount} packs available
               </span>
-              {classifiedCount > 0 && (
-                <span className="rounded-xl border border-white/10 bg-[#2f183d] px-3 py-2 text-[#e8b5ff]">
-                  {classifiedCount} classified
-                </span>
-              )}
+              <span className="rounded-xl border border-[#62e7b6]/30 bg-[#162725] px-3 py-2 text-[#62e7b6]">
+                {sportsPacksCount} sports collections
+              </span>
               {unlockedCount > 0 && (
-                <span className="rounded-xl bg-[#183b33] px-3 py-2 text-[#62e7b6]">
+                <span className="rounded-xl bg-[#7c3aed] px-3 py-2 text-white">
                   {unlockedCount} unlocked
                 </span>
               )}
@@ -129,6 +148,8 @@ export default function Packs() {
               const isClassified =
                 !pack.unlocked && !pack.isAvailable && !pack.isAnnounced;
               const isUnlocking = unlockingId === pack.id;
+              const Icon = packIcons[pack.id] ?? PackageOpen;
+              const isSportsPack = [3, 7, 8, 9, 10, 11].includes(pack.id);
 
               return (
                 <article
@@ -149,6 +170,8 @@ export default function Packs() {
                             ? "bg-[#62e7b6] text-[#112b24]"
                             : isClassified
                             ? "bg-white/5 text-[#9a89a8]"
+                            : isSportsPack
+                            ? "bg-[#62e7b6]/20 text-[#62e7b6]"
                             : "bg-[#7c3aed] text-white"
                         }`}
                       >
@@ -157,29 +180,36 @@ export default function Packs() {
                         ) : isClassified ? (
                           <EyeOff size={20} />
                         ) : (
-                          <PackageOpen size={21} />
+                          <Icon size={21} />
                         )}
                       </div>
 
-                      <span
-                        className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${
-                          pack.unlocked
-                            ? "bg-[#62e7b6]/20 text-[#62e7b6]"
+                      <div className="flex items-center gap-1.5">
+                        {isSportsPack && (
+                          <span className="rounded-lg bg-[#62e7b6]/15 px-2 py-0.5 text-[9px] font-black text-[#62e7b6]">
+                            SPORTS
+                          </span>
+                        )}
+                        <span
+                          className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${
+                            pack.unlocked
+                              ? "bg-[#62e7b6]/20 text-[#62e7b6]"
+                              : pack.isAvailable
+                              ? "bg-[#ffd17b]/15 text-[#ffd17b]"
+                              : isClassified
+                              ? "bg-white/5 text-[#8f809e]"
+                              : "bg-[#c99bff]/15 text-[#c99bff]"
+                          }`}
+                        >
+                          {pack.unlocked
+                            ? "UNLOCKED"
                             : pack.isAvailable
-                            ? "bg-[#ffd17b]/15 text-[#ffd17b]"
+                            ? "AVAILABLE"
                             : isClassified
-                            ? "bg-white/5 text-[#8f809e]"
-                            : "bg-[#c99bff]/15 text-[#c99bff]"
-                        }`}
-                      >
-                        {pack.unlocked
-                          ? "UNLOCKED"
-                          : pack.isAvailable
-                          ? "AVAILABLE"
-                          : isClassified
-                          ? "CLASSIFIED"
-                          : "UPCOMING"}
-                      </span>
+                            ? "CLASSIFIED"
+                            : "UPCOMING"}
+                        </span>
+                      </div>
                     </div>
 
                     <p className="mt-5 text-xs font-extrabold uppercase tracking-[.13em] text-[#c99bff]">
