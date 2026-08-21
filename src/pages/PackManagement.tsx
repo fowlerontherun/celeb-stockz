@@ -10,6 +10,7 @@ import {
   PackageOpen,
   Plus,
   Save,
+  Search,
   Sparkles,
   Trash2,
   Users,
@@ -56,6 +57,7 @@ export default function PackManagement() {
   const [selectedTickerToAdd, setSelectedTickerToAdd] = useState("");
   const [isAddingMember, setIsAddingMember] = useState(false);
   const [removingTicker, setRemovingTicker] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // New Pack Dialog State
   const [isCreatingPack, setIsCreatingPack] = useState(false);
@@ -63,7 +65,7 @@ export default function PackManagement() {
   const [newPackPrice, setNewPackPrice] = useState("4.99");
   const [newPackDate, setNewPackDate] = useState("");
   const [newPackAnnounced, setNewPackAnnounced] = useState(true);
-  const [newPackPublished, setNewPackPublished] = useState(false);
+  const [newPackPublished, setNewPackPublished] = useState(true);
 
   const loadData = useCallback(async () => {
     try {
@@ -258,6 +260,12 @@ export default function PackManagement() {
     }
   };
 
+  const filteredPacks = packs.filter((p) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return p.name.toLowerCase().includes(q) || String(p.id).includes(q);
+  });
+
   const selectedPack = packs.find((p) => p.id === selectedPackId) ?? packs[0];
 
   const candidateMarkets = availableMarkets.filter(
@@ -290,13 +298,13 @@ export default function PackManagement() {
             </div>
             <div>
               <p className="text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
-                Content & Access Management
+                52-Week Annual Pack Schedule
               </p>
               <h1 className="font-display mt-2 text-3xl font-black sm:text-4xl">
-                Celebrity packs
+                Celebrity packs manager ({packs.length} total)
               </h1>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-[#c4b4d0]">
-                Configure tiered access packs, assign exclusive celebrity markets, control embargo countdown timers, and manage mystery classified releases.
+                Configure tiered access packs, assign exclusive celebrity markets, control weekly launch countdown dates, and reveal mystery packs.
               </p>
             </div>
           </div>
@@ -417,12 +425,25 @@ export default function PackManagement() {
         <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.3fr]">
           {/* Left Column: All Packs List & Settings */}
           <div className="space-y-4">
-            <h2 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
-              <PackageOpen size={16} /> All packs ({packs.length})
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
+                <PackageOpen size={16} /> All packs ({packs.length})
+              </h2>
 
-            <div className="space-y-3">
-              {packs.map((pack) => {
+              <div className="relative w-48">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-[#c99bff]" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Filter packs…"
+                  className="w-full rounded-lg border border-white/10 bg-[#160c25] py-1.5 pl-7 pr-2 text-xs font-bold text-white outline-none focus:border-[#ffd17b]"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-[750px] space-y-3 overflow-y-auto pr-1">
+              {filteredPacks.map((pack) => {
                 const isSelected = selectedPack?.id === pack.id;
                 const isSaving = savingId === pack.id;
                 const isLive =
@@ -604,7 +625,7 @@ export default function PackManagement() {
                 </div>
 
                 {/* Member items */}
-                <div className="mt-6 space-y-2">
+                <div className="mt-6 max-h-[500px] space-y-2 overflow-y-auto pr-1">
                   {selectedPack.members && selectedPack.members.length > 0 ? (
                     selectedPack.members.map((member) => (
                       <div

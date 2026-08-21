@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
+  Clock,
   Dumbbell,
   EyeOff,
   Flame,
@@ -12,6 +14,7 @@ import {
   Lock,
   Music2,
   PackageOpen,
+  Search,
   Sparkles,
   Trophy,
   Tv,
@@ -51,15 +54,62 @@ const packIcons: Record<number, typeof Trophy> = {
   9: Dumbbell,
   10: Globe2,
   11: Trophy,
+  12: Tv,
+  13: Flame,
+  14: Tv,
+  15: Music2,
+  16: Music2,
+  17: Sparkles,
+  18: Trophy,
+  19: Trophy,
+  20: Sparkles,
+  21: Music2,
+  22: Music2,
+  23: Gamepad2,
+  24: Tv,
+  25: Music2,
+  26: Tv,
+  27: Trophy,
+  28: Trophy,
+  29: Trophy,
+  30: Trophy,
+  31: Sparkles,
+  32: Sparkles,
+  33: Gamepad2,
+  34: Gamepad2,
+  35: Gamepad2,
+  36: Music2,
+  37: Music2,
+  38: Music2,
+  39: Music2,
+  40: Music2,
+  41: Globe2,
+  42: Globe2,
+  43: Tv,
+  44: Tv,
+  45: Globe2,
+  46: Tv,
+  47: Tv,
+  48: Sparkles,
+  49: Tv,
+  50: Sparkles,
+  51: Flame,
+  52: Trophy,
 };
 
-type PackFilter = "All" | "Sports" | "Music & Entertainment" | "Digital & Creators";
+type PackFilter =
+  | "All"
+  | "Sports"
+  | "UK Culture & TV"
+  | "Music & Hip Hop"
+  | "Digital & Creators";
 
 export default function Packs() {
   const [packs, setPacks] = useState<Pack[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [unlockingId, setUnlockingId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<PackFilter>("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [inspectingPack, setInspectingPack] = useState<Pack | null>(null);
 
   const loadPacks = async () => {
@@ -111,15 +161,41 @@ export default function Packs() {
   };
 
   const unlockedCount = packs.filter((p) => p.unlocked).length;
-  const announcedCount = packs.filter((p) => p.isAnnounced || p.isPublished || p.unlocked).length;
-  const sportsPacksCount = packs.filter((p) => [3, 7, 8, 9, 10, 11].includes(p.id)).length;
+  const sportsPacksCount = packs.filter((p) => [3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30].includes(p.id)).length;
+  const ukCultureCount = packs.filter((p) => [1, 2, 4, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(p.id)).length;
 
-  const filteredPacks = packs.filter((pack) => {
-    if (activeFilter === "Sports") return [3, 7, 8, 9, 10, 11].includes(pack.id);
-    if (activeFilter === "Music & Entertainment") return [1, 2, 4, 6].includes(pack.id);
-    if (activeFilter === "Digital & Creators") return [5].includes(pack.id);
-    return true;
-  });
+  const filteredPacks = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+
+    return packs.filter((pack) => {
+      if (activeFilter === "Sports" && ![3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30].includes(pack.id)) return false;
+      if (activeFilter === "UK Culture & TV" && ![1, 2, 4, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(pack.id)) return false;
+      if (activeFilter === "Music & Hip Hop" && ![1, 6, 15, 16, 21, 22, 25, 36, 37, 38, 39, 40].includes(pack.id)) return false;
+      if (activeFilter === "Digital & Creators" && ![5, 23, 33, 34, 35].includes(pack.id)) return false;
+
+      if (query) {
+        const matchesName = pack.name.toLowerCase().includes(query);
+        const matchesMember = pack.members?.some(
+          (m) =>
+            m.name.toLowerCase().includes(query) ||
+            m.ticker.toLowerCase().includes(query),
+        );
+        return matchesName || matchesMember;
+      }
+
+      return true;
+    });
+  }, [activeFilter, packs, searchQuery]);
+
+  function formatAvailableDate(dateStr: string | null) {
+    if (!dateStr) return "Available Now";
+    const d = new Date(dateStr);
+    return new Intl.DateTimeFormat([], {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(d);
+  }
 
   return (
     <main className="min-h-screen bg-[#120b20] px-5 py-8 text-[#fff8f2] sm:px-8 lg:px-12">
@@ -134,53 +210,85 @@ export default function Packs() {
         <header className="mt-8 rounded-[30px] border border-[#c99bff]/30 bg-[#211230] p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
-                <Sparkles size={15} /> Celebrity packs marketplace
+              <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
+                <CalendarDays size={15} /> 52-Week Annual Release Schedule (Starting Sept 2025)
               </p>
               <h1 className="font-display mt-3 text-3xl font-black sm:text-5xl">
-                Expand your trading universe.
+                52 Weekly Celebrity Packs
               </h1>
-              <p className="mt-4 max-w-2xl text-sm leading-6 text-[#c9b8d4]">
-                Unlock specialty collections including <strong>6 dedicated Sports Packs</strong> (NBA, F1, Combat, Tennis & Golf, NFL/MLB, and European Football), plus K-Pop, British Music, Creators, and Screen Stars.
+              <p className="mt-4 max-w-3xl text-sm leading-6 text-[#c9b8d4]">
+                A brand new curated collection of <strong>25+ unique celebrity markets</strong> scheduled to launch every single week throughout the year. Featuring deep rosters in UK Soaps & Reality, Premier League, NBA, F1, Combat, Grime, Indie Rock, Darts, Chefs, and Global Icons.
               </p>
             </div>
+
             <div className="flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[#e6d8ff]">
-                {announcedCount} packs available
+                52 Weekly Packs
               </span>
               <span className="rounded-xl border border-[#62e7b6]/30 bg-[#162725] px-3 py-2 text-[#62e7b6]">
-                {sportsPacksCount} sports collections
+                {sportsPacksCount} Sports Collections
+              </span>
+              <span className="rounded-xl border border-[#ffd17b]/30 bg-[#291e30] px-3 py-2 text-[#ffd17b]">
+                {ukCultureCount} UK Culture Sets
               </span>
               {unlockedCount > 0 && (
                 <span className="rounded-xl bg-[#7c3aed] px-3 py-2 text-white">
-                  {unlockedCount} unlocked
+                  {unlockedCount} Unlocked
                 </span>
               )}
             </div>
           </div>
 
-          {/* Filter Tabs */}
-          <div className="mt-7 flex flex-wrap gap-2 border-t border-white/10 pt-5">
-            {(["All", "Sports", "Music & Entertainment", "Digital & Creators"] as PackFilter[]).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveFilter(tab)}
-                className={`rounded-xl px-4 py-2.5 text-xs font-black transition ${
-                  activeFilter === tab
-                    ? "bg-[#7c3aed] text-white shadow-lg"
-                    : "border border-white/10 bg-white/5 text-[#c4b4d0] hover:bg-white/10 hover:text-white"
-                }`}
-              >
-                {tab === "Sports" ? `⚽ Sports Collections (${sportsPacksCount})` : tab}
-              </button>
-            ))}
+          {/* Search and Category Filter Bar */}
+          <div className="mt-7 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  "All",
+                  "Sports",
+                  "UK Culture & TV",
+                  "Music & Hip Hop",
+                  "Digital & Creators",
+                ] as PackFilter[]
+              ).map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveFilter(tab)}
+                  className={`rounded-xl px-3.5 py-2 text-xs font-black transition ${
+                    activeFilter === tab
+                      ? "bg-[#7c3aed] text-white shadow-lg"
+                      : "border border-white/10 bg-white/5 text-[#c4b4d0] hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  {tab === "Sports" ? `⚽ Sports (${sportsPacksCount})` : tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative min-w-[220px]">
+              <Search
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#c99bff]"
+              />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search packs or celebs…"
+                className="w-full rounded-xl border border-white/10 bg-[#160c25] py-2 pl-9 pr-3 text-xs font-bold text-white outline-none focus:border-[#ffd17b]"
+              />
+            </div>
           </div>
         </header>
 
         {isLoading ? (
           <div className="mt-8 grid min-h-48 place-items-center text-sm font-bold text-[#c99bff]">
             <LoaderCircle className="animate-spin" size={24} />
+          </div>
+        ) : filteredPacks.length === 0 ? (
+          <div className="mt-8 rounded-[28px] border border-dashed border-white/10 bg-white/[.02] p-10 text-center text-sm text-[#a99ab7]">
+            No packs found matching your search criteria.
           </div>
         ) : (
           <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -189,7 +297,7 @@ export default function Packs() {
                 !pack.unlocked && !pack.isAvailable && !pack.isAnnounced;
               const isUnlocking = unlockingId === pack.id;
               const Icon = packIcons[pack.id] ?? PackageOpen;
-              const isSportsPack = [3, 7, 8, 9, 10, 11].includes(pack.id);
+              const isSportsPack = [3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30].includes(pack.id);
 
               return (
                 <article
@@ -224,39 +332,43 @@ export default function Packs() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {isSportsPack && (
-                          <span className="rounded-lg bg-[#62e7b6]/15 px-2 py-0.5 text-[9px] font-black text-[#62e7b6]">
-                            SPORTS
+                      <div className="flex flex-col items-end gap-1">
+                        <div className="flex items-center gap-1">
+                          {isSportsPack && (
+                            <span className="rounded-lg bg-[#62e7b6]/15 px-2 py-0.5 text-[9px] font-black text-[#62e7b6]">
+                              SPORTS
+                            </span>
+                          )}
+                          <span
+                            className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${
+                              pack.unlocked
+                                ? "bg-[#62e7b6]/20 text-[#62e7b6]"
+                                : pack.isAvailable
+                                ? "bg-[#ffd17b]/15 text-[#ffd17b]"
+                                : "bg-[#c99bff]/15 text-[#c99bff]"
+                            }`}
+                          >
+                            {pack.unlocked
+                              ? "UNLOCKED"
+                              : pack.isAvailable
+                              ? "AVAILABLE"
+                              : "WEEKLY DROP"}
+                          </span>
+                        </div>
+                        {pack.availableAt && (
+                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#b9a9c5]">
+                            <Clock size={10} className="text-[#ffd17b]" />
+                            {formatAvailableDate(pack.availableAt)}
                           </span>
                         )}
-                        <span
-                          className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${
-                            pack.unlocked
-                              ? "bg-[#62e7b6]/20 text-[#62e7b6]"
-                              : pack.isAvailable
-                              ? "bg-[#ffd17b]/15 text-[#ffd17b]"
-                              : isClassified
-                              ? "bg-white/5 text-[#8f809e]"
-                              : "bg-[#c99bff]/15 text-[#c99bff]"
-                          }`}
-                        >
-                          {pack.unlocked
-                            ? "UNLOCKED"
-                            : pack.isAvailable
-                            ? "AVAILABLE"
-                            : isClassified
-                            ? "CLASSIFIED"
-                            : "UPCOMING"}
-                        </span>
                       </div>
                     </div>
 
-                    <p className="mt-5 text-xs font-extrabold uppercase tracking-[.13em] text-[#c99bff]">
-                      Pack #{pack.id}
+                    <p className="mt-4 text-xs font-extrabold uppercase tracking-[.13em] text-[#c99bff]">
+                      Week {pack.id} Release
                     </p>
 
-                    <h2 className="font-display mt-1 text-2xl font-black">
+                    <h2 className="font-display mt-1 text-xl font-black sm:text-2xl">
                       {isClassified ? (
                         <span className="tracking-wide text-[#b5a2c4]">
                           Classified Pack #{pack.id}
@@ -269,9 +381,7 @@ export default function Packs() {
                     <p className="mt-2 text-sm leading-5 text-[#bbaac6]">
                       {isClassified
                         ? "Theme and celebrity market roster will be unveiled upon announcement."
-                        : `${pack.memberCount} exclusive celebrity market${
-                            pack.memberCount === 1 ? "" : "s"
-                          }`}
+                        : `${pack.memberCount} exclusive celebrity markets`}
                     </p>
 
                     {/* Preview Roster Button */}
@@ -279,9 +389,9 @@ export default function Packs() {
                       <button
                         type="button"
                         onClick={() => setInspectingPack(pack)}
-                        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#c99bff] hover:text-white"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#ffd17b] hover:underline"
                       >
-                        <Users size={13} /> View {pack.members.length} members <ChevronRight size={13} />
+                        <Users size={13} /> View {pack.members.length} member roster <ChevronRight size={13} />
                       </button>
                     )}
                   </div>
@@ -300,24 +410,27 @@ export default function Packs() {
                         </Link>
                       </div>
                     ) : pack.isAvailable ? (
-                      <div className="space-y-2">
-                        <button
-                          type="button"
-                          disabled={isUnlocking}
-                          onClick={() => void handleUnlock(pack)}
-                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffd17b] py-3 text-xs font-black text-[#3d2a00] shadow-md transition hover:bg-[#ffe29c] disabled:opacity-50"
-                        >
-                          {isUnlocking ? (
-                            <LoaderCircle size={15} className="animate-spin" />
-                          ) : (
-                            <Zap size={15} />
-                          )}
-                          {isUnlocking ? "Unlocking…" : `Unlock Pack · £${pack.priceGbp.toFixed(2)}`}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        disabled={isUnlocking}
+                        onClick={() => void handleUnlock(pack)}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffd17b] py-3 text-xs font-black text-[#3d2a00] shadow-md transition hover:bg-[#ffe29c] disabled:opacity-50"
+                      >
+                        {isUnlocking ? (
+                          <LoaderCircle size={15} className="animate-spin" />
+                        ) : (
+                          <Zap size={15} />
+                        )}
+                        {isUnlocking ? "Unlocking…" : `Unlock Pack · £${pack.priceGbp.toFixed(2)}`}
+                      </button>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-xs text-[#8c7b9a]">
-                        <Lock size={14} /> Locked until launch
+                      <div className="flex items-center justify-between rounded-xl bg-white/[.03] p-2.5 text-xs">
+                        <span className="flex items-center gap-1.5 text-[#8c7b9a]">
+                          <Lock size={13} /> Release on schedule
+                        </span>
+                        <span className="font-mono text-[11px] font-bold text-[#c99bff]">
+                          {formatAvailableDate(pack.availableAt)}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -330,12 +443,19 @@ export default function Packs() {
         {/* Member Roster Inspection Modal */}
         {inspectingPack && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[85vh] w-full max-w-lg flex-col rounded-[28px] border border-[#c99bff]/30 bg-[#211230] p-6 shadow-2xl">
+            <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-[28px] border border-[#c99bff]/30 bg-[#211230] p-6 shadow-2xl">
               <div className="flex items-start justify-between border-b border-white/10 pb-4">
                 <div>
-                  <span className="text-xs font-extrabold uppercase tracking-[.14em] text-[#c99bff]">
-                    Pack #{inspectingPack.id} · {inspectingPack.members.length} Celebrities
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold uppercase tracking-[.14em] text-[#c99bff]">
+                      Week {inspectingPack.id} Pack · {inspectingPack.members.length} Celebrity Markets
+                    </span>
+                    {inspectingPack.availableAt && (
+                      <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold text-[#ffd17b]">
+                        {formatAvailableDate(inspectingPack.availableAt)}
+                      </span>
+                    )}
+                  </div>
                   <h2 className="font-display mt-1 text-2xl font-black text-white">
                     {inspectingPack.name}
                   </h2>
@@ -351,7 +471,7 @@ export default function Packs() {
 
               <div className="mt-4 flex-1 overflow-y-auto pr-1">
                 <p className="text-xs text-[#a99ab7]">
-                  Unlocking this pack grants full practice trading access to all {inspectingPack.members.length} celebrity markets below:
+                  All {inspectingPack.members.length} celebrity markets in this collection:
                 </p>
 
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
