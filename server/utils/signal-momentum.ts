@@ -1,5 +1,4 @@
 import {
-  getOldestVerifiedSignalObservation,
   getRecentVerifiedSignalObservations,
   type SignalObservation,
 } from "./signal-observations";
@@ -90,6 +89,16 @@ function counterVelocityMomentum(observations: SignalObservation[]) {
   return clampMomentum(((currentRate - previousRate) / denominator) * 100);
 }
 
+function readAnchorValue(observations: SignalObservation[]) {
+  const latestAnchor = Number(observations[0]?.metadata?.anchorValue);
+  if (Number.isFinite(latestAnchor)) return latestAnchor;
+
+  const fallback = observations[observations.length - 1]?.value;
+  return fallback !== null && fallback !== undefined && Number.isFinite(fallback)
+    ? fallback
+    : null;
+}
+
 export async function getStoredMomentumSignal(input: {
   ticker: string;
   provider: string;
@@ -97,24 +106,14 @@ export async function getStoredMomentumSignal(input: {
   maxAgeMs: number;
   mode: MomentumMode;
 }): Promise<StoredMomentumSignal> {
-  const [observations, oldest] = await Promise.all([
-    getRecentVerifiedSignalObservations(
-      input.ticker,
-      input.provider,
-      input.metric,
-      6,
-    ),
-    getOldestVerifiedSignalObservation(
-      input.ticker,
-      input.provider,
-      input.metric,
-    ),
-  ]);
+  const observations = await getRecentVerifiedSignalObservations(
+    input.ticker,
+    input.provider,
+    input.metric,
+    6,
+  );
   const latest = observations[0];
-  const anchorValue =
-    oldest?.value !== null && oldest?.value !== undefined
-      ? oldest.value
-      : latest?.value ?? null;
+  const anchorValue = readAnchorValue(observations);
 
   if (
     !latest ||
