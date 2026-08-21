@@ -52,6 +52,8 @@ export default defineHandler(async (event) => {
     `${market.name.replaceAll(" ", "_")}_(singer)`,
     `${market.name.replaceAll(" ", "_")}_(actor)`,
     `${market.name.replaceAll(" ", "_")}_(musician)`,
+    `${market.name.replaceAll(" ", "_")}_(rapper)`,
+    `${market.name.replaceAll(" ", "_")}_(entertainer)`,
   ];
 
   for (const title of titlesToTry) {

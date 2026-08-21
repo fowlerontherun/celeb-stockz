@@ -37,8 +37,9 @@ export default defineHandler(async (event) => {
   }
 
   const inserted = await sql`
-    INSERT INTO celebrity_packs (name, price_gbp, available_at, is_published, is_announced, updated_at)
+    INSERT INTO celebrity_packs (id, name, price_gbp, available_at, is_published, is_announced, updated_at)
     VALUES (
+      COALESCE((SELECT MAX(id) FROM celebrity_packs), 0) + 1,
       ${name},
       ${priceGbp},
       ${availableAt ? availableAt.toISOString() : null},
