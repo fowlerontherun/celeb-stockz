@@ -17,6 +17,7 @@ import Packs from "./pages/Packs";
 import PackManagement from "./pages/PackManagement";
 import Profile from "./pages/Profile";
 import ProviderConfiguration from "./pages/ProviderConfiguration";
+import Store from "./pages/Store";
 import YoutubeDiagnostics from "./pages/YoutubeDiagnostics";
 import AuthPage from "./pages/auth/AuthPage";
 
@@ -33,6 +34,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<AccountGate><Index /></AccountGate>} />
             <Route path="/heat" element={<AccountGate><MarketHeat /></AccountGate>} />
+            <Route path="/store" element={<AccountGate><Store /></AccountGate>} />
             <Route path="/packs" element={<AccountGate><Packs /></AccountGate>} />
             <Route path="/profile" element={<AccountGate><Profile /></AccountGate>} />
             <Route path="/operations" element={<AccountGate><OperationsShell><MarketOperations /></OperationsShell></AccountGate>} />
