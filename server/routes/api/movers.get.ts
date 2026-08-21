@@ -2,25 +2,20 @@ import { defineHandler } from "nitro";
 import { sql } from "../../utils/db";
 import { getSnapshotMarkets } from "../../utils/market-snapshots";
 
-type SnapshotPair = {
+type SnapshotBaseline = {
   ticker: string;
-  latest_price: string;
   baseline_price: string | null;
 };
 
 export default defineHandler(async () => {
   const [markets, snapshots, publishedPackMembers] = await Promise.all([
     getSnapshotMarkets(),
-    sql<SnapshotPair[]>`
+    sql<SnapshotBaseline[]>`
       WITH ranked_snapshots AS (
         SELECT
           ticker,
           price_stkz,
           captured_at,
-          row_number() OVER (
-            PARTITION BY ticker
-            ORDER BY captured_at DESC
-          ) AS newest_rank,
           row_number() OVER (
             PARTITION BY ticker
             ORDER BY
@@ -33,7 +28,6 @@ export default defineHandler(async () => {
       )
       SELECT
         ticker,
-        MAX(price_stkz) FILTER (WHERE newest_rank = 1) AS latest_price,
         MAX(price_stkz) FILTER (WHERE day_baseline_rank = 1) AS baseline_price
       FROM ranked_snapshots
       GROUP BY ticker
@@ -59,7 +53,7 @@ export default defineHandler(async () => {
       .filter((market) => visibleTickers.has(market.ticker))
       .map((market) => {
         const snapshot = pricesByTicker.get(market.ticker);
-        const latestPrice = Number(snapshot?.latest_price ?? market.price);
+        const latestPrice = market.price;
         const baselinePrice = snapshot?.baseline_price
           ? Number(snapshot.baseline_price)
           : null;
