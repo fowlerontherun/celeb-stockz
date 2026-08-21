@@ -6,6 +6,20 @@ type PackRow = {
 };
 
 export async function getLockedPacksForMarket(userId: string, ticker: string) {
+  const standardAccess = await sql`
+    SELECT 1
+    FROM celebrity_pack_members AS members
+    JOIN celebrity_packs AS packs ON packs.id = members.pack_id
+    WHERE members.ticker = ${ticker}
+      AND packs.is_standard = true
+      AND packs.is_published = true
+    LIMIT 1
+  `;
+
+  if (standardAccess[0]) {
+    return [];
+  }
+
   const rows = await sql<PackRow[]>`
     SELECT
       members.pack_id,

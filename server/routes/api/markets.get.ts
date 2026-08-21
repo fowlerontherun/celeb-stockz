@@ -81,15 +81,16 @@ export default defineHandler(async (event) => {
         !capturedAt ||
         Date.now() - new Date(capturedAt).getTime() > STALE_AFTER_MS;
       const packs = membershipsByTicker.get(market.ticker) ?? [];
-      const lockedPacks = packs.filter(
-        (pack) => !pack.isStandard && !pack.unlocked,
-      );
+      const hasStandardAccess = packs.some((pack) => pack.isStandard);
+      const lockedPacks = hasStandardAccess
+        ? []
+        : packs.filter((pack) => !pack.isStandard && !pack.unlocked);
 
       return {
         ...market,
         access: {
-          isStandard: packs.some((pack) => pack.isStandard),
-          isUnlocked: lockedPacks.length === 0,
+          isStandard: hasStandardAccess,
+          isUnlocked: hasStandardAccess || lockedPacks.length === 0,
           requiredPacks: lockedPacks.map(({ id, name }) => ({ id, name })),
         },
         snapshot: {
