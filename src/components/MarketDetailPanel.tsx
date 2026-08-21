@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   AlertCircle,
   CheckCircle2,
   Clock3,
   ExternalLink,
   LoaderCircle,
+  Lock,
+  PackageOpen,
+  Zap,
 } from "lucide-react";
 import {
   Area,
@@ -12,6 +16,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
+import { showError, showSuccess } from "@/utils/toast";
 
 type HistoryPoint = {
   capturedAt: string;
@@ -35,6 +40,11 @@ type MarketDetail = {
     trendScore: number;
     monthlySearchesMillions: number;
     newsStories: number;
+  };
+  access?: {
+    isStandard: boolean;
+    isUnlocked: boolean;
+    requiredPacks: Array<{ id: number; name: string }>;
   };
   snapshot?: {
     capturedAt: string | null;
@@ -64,6 +74,7 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
   const [range, setRange] = useState<Range>("1D");
   const [detail, setDetail] = useState<DetailResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -90,6 +101,28 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
       active = false;
     };
   }, [market.ticker]);
+
+  const handleQuickPackUnlock = async (packId: number, packName: string) => {
+    setIsUnlocking(true);
+    try {
+      const response = await fetch(`/api/packs/${packId}/unlock`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = (await response.json()) as { statusMessage?: string };
+
+      if (!response.ok) {
+        throw new Error(data.statusMessage ?? "Could not unlock pack.");
+      }
+
+      showSuccess(`🎉 Unlocked ${packName}! You can now trade ${market.name} and all other pack markets.`);
+      window.dispatchEvent(new Event("markets:updated"));
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Could not unlock pack.");
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
 
   const selectedRange = ranges.find((item) => item.label === range)!;
   const points = useMemo(() => {
@@ -132,8 +165,68 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
       }).format(new Date(market.snapshot.capturedAt))
     : "Awaiting first verified refresh";
 
+  const requiredPacks = market.access?.requiredPacks ?? [];
+  const isLocked = Boolean(market.access && !market.access.isUnlocked);
+  const isPackExclusive = requiredPacks.length > 0;
+
   return (
     <section className="mt-5 rounded-2xl border border-white/10 bg-white/[.04] p-4">
+      {/* Pack Affiliation Banner */}
+      {isPackExclusive && (
+        <div
+          className={`mb-4 rounded-xl border p-3.5 ${
+            isLocked
+              ? "border-[#ff7282]/30 bg-[#2d1428]"
+              : "border-[#62e7b6]/30 bg-[#162925]"
+          }`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div
+                className={`grid h-8 w-8 place-items-center rounded-lg ${
+                  isLocked ? "bg-[#ff7282]/20 text-[#ff9ca5]" : "bg-[#62e7b6]/20 text-[#62e7b6]"
+                }`}
+              >
+                {isLocked ? <Lock size={15} /> : <CheckCircle2 size={15} />}
+              </div>
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#c99bff]">
+                  Celebrity Pack Affiliation
+                </p>
+                <p className="text-xs font-bold text-white">
+                  {requiredPacks.map((p) => p.name).join(", ")}
+                </p>
+              </div>
+            </div>
+
+            {isLocked ? (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isUnlocking}
+                  onClick={() => void handleQuickPackUnlock(requiredPacks[0].id, requiredPacks[0].name)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-[#ffd17b] px-3 py-1.5 text-xs font-black text-[#3d2a00] hover:bg-[#ffe29c] disabled:opacity-50"
+                >
+                  {isUnlocking ? <LoaderCircle size={13} className="animate-spin" /> : <Zap size={13} />}
+                  Unlock (£1.99)
+                </button>
+                <Link
+                  to="/packs"
+                  className="rounded-lg border border-white/10 bg-white/5 px-2.5 py-1.5 text-xs font-bold text-[#c99bff] hover:bg-white/10 hover:text-white"
+                >
+                  <PackageOpen size={13} className="inline mr-1" />
+                  View All
+                </Link>
+              </div>
+            ) : (
+              <span className="rounded-lg bg-[#62e7b6]/20 px-2.5 py-1 text-[10px] font-black text-[#62e7b6]">
+                ✓ PACK UNLOCKED
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="flex items-start gap-3">
         <div className={verified ? "text-[#62e7b6]" : "text-[#ffd17b]"}>
           {verified ? <CheckCircle2 size={19} /> : <AlertCircle size={19} />}

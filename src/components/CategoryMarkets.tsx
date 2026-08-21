@@ -8,6 +8,7 @@ import {
   Lock,
   LockKeyholeOpen,
   Music2,
+  PackageOpen,
   Search,
   Shirt,
   Trophy,
@@ -433,6 +434,7 @@ export function CategoryMarkets({
             const verified = market.snapshot?.refreshStatus === "verified";
             const isLocked = Boolean(market.access && !market.access.isUnlocked);
             const countryInfo = getCountryInfo(market.nationality);
+            const packName = market.access?.requiredPacks?.[0]?.name;
 
             return (
               <article
@@ -455,7 +457,6 @@ export function CategoryMarkets({
                     alt={market.name}
                     className="h-full w-full object-contain"
                     onError={(e) => {
-                      // Graceful fallback to colored avatar if image fails to load
                       const target = e.currentTarget;
                       target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
                         market.name,
@@ -508,6 +509,13 @@ export function CategoryMarkets({
                       {market.change.toFixed(1)}%
                     </span>
                   </div>
+
+                  {packName && (
+                    <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#ffd17b]">
+                      <PackageOpen size={13} className="shrink-0" />
+                      <span className="truncate">{packName}</span>
+                    </div>
+                  )}
 
                   <div className="mt-3">
                     <MarketHistoryChart
