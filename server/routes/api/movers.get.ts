@@ -1,6 +1,7 @@
 import { defineHandler } from "nitro";
 import { sql } from "../../utils/db";
 import { getSnapshotMarkets } from "../../utils/market-snapshots";
+import { getLivePriceMap } from "../../utils/live-prices";
 
 type SnapshotBaseline = {
   ticker: string;
@@ -8,7 +9,7 @@ type SnapshotBaseline = {
 };
 
 export default defineHandler(async () => {
-  const [markets, snapshots, publishedPackMembers] = await Promise.all([
+  const [markets, snapshots, publishedPackMembers, livePrices] = await Promise.all([
     getSnapshotMarkets(),
     sql<SnapshotBaseline[]>`
       WITH ranked_snapshots AS (
@@ -39,6 +40,7 @@ export default defineHandler(async () => {
         ON packs.id = members.pack_id
       WHERE packs.is_published = true
     `,
+    getLivePriceMap(),
   ]);
 
   const visibleTickers = new Set(
@@ -65,12 +67,28 @@ export default defineHandler(async () => {
                 ),
               )
             : null;
+        const live = livePrices.get(market.ticker);
 
         return {
           ...market,
           price: latestPrice,
           change,
           hasDayComparison: change !== null,
+          marketState: live
+            ? {
+                state: live.heatState,
+                heatScore: live.heatScore,
+                volatilityMultiplier: live.volatilityMultiplier,
+                reason: live.heatReason,
+                expiresAt: live.heatExpiresAt,
+              }
+            : {
+                state: "normal" as const,
+                heatScore: 0,
+                volatilityMultiplier: 1,
+                reason: "Real-world attention is within its normal range.",
+                expiresAt: null,
+              },
         };
       }),
   };

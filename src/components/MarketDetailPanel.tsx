@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock3,
   ExternalLink,
+  Flame,
   LoaderCircle,
   Lock,
   PackageOpen,
@@ -45,6 +46,13 @@ type MarketDetail = {
     isStandard: boolean;
     isUnlocked: boolean;
     requiredPacks: Array<{ id: number; name: string }>;
+  };
+  marketState?: {
+    state: "normal" | "hot" | "viral";
+    heatScore: number;
+    volatilityMultiplier: number;
+    reason: string;
+    expiresAt: string | null;
   };
   snapshot?: {
     capturedAt: string | null;
@@ -168,10 +176,11 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
   const requiredPacks = market.access?.requiredPacks ?? [];
   const isLocked = Boolean(market.access && !market.access.isUnlocked);
   const isPackExclusive = requiredPacks.length > 0;
+  const heatState = market.marketState?.state ?? "normal";
+  const heatActive = heatState === "hot" || heatState === "viral";
 
   return (
     <section className="mt-5 rounded-2xl border border-white/10 bg-white/[.04] p-4">
-      {/* Pack Affiliation Banner */}
       {isPackExclusive && (
         <div
           className={`mb-4 rounded-xl border p-3.5 ${
@@ -223,6 +232,47 @@ export function MarketDetailPanel({ market }: { market: MarketDetail }) {
                 ✓ PACK UNLOCKED
               </span>
             )}
+          </div>
+        </div>
+      )}
+
+      {heatActive && (
+        <div
+          className={`mb-4 rounded-xl border p-3.5 ${
+            heatState === "viral"
+              ? "border-[#ffd17b]/40 bg-[#3a2b13]"
+              : "border-[#ff7a32]/35 bg-[#341d18]"
+          }`}
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex min-w-0 items-start gap-2.5">
+              <div
+                className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${
+                  heatState === "viral"
+                    ? "bg-[#ffd17b]/20 text-[#ffd17b]"
+                    : "bg-[#ff7a32]/20 text-[#ff9a5c]"
+                }`}
+              >
+                {heatState === "viral" ? <Zap size={18} /> : <Flame size={18} />}
+              </div>
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#ffcb8c]">
+                  {heatState === "viral" ? "Viral market" : "Hot market"}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-[#f4dfcf]">
+                  {market.marketState?.reason}
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <p className="font-display text-xl font-black text-white">
+                {Math.round(market.marketState?.heatScore ?? 0)}
+                <span className="ml-1 text-[10px] text-[#cdb9aa]">/100</span>
+              </p>
+              <p className="text-[10px] font-black text-[#ffcb8c]">
+                {(market.marketState?.volatilityMultiplier ?? 1).toFixed(1)}× game volatility
+              </p>
+            </div>
           </div>
         </div>
       )}
