@@ -1,3 +1,5 @@
+import { Buffer } from "node:buffer";
+
 export type SearchTrendStatus = "verified" | "unavailable";
 
 export type SearchTrendResult = {
@@ -12,11 +14,16 @@ export type SearchTrendResult = {
 
 const ENDPOINT =
   "https://api.dataforseo.com/v3/keywords_data/google_trends/explore/live";
+const FORBIDDEN_KEYWORD_CHARACTERS = '<>|"-+=~!:*()[]{}';
 
 function safeKeyword(value: string) {
-  return value
-    .replace(/[<>|"\-+=~!:*()[\]{}]/g, " ")
-    .replaceAll(",", " ")
+  return [...value]
+    .map((character) =>
+      character === "," || FORBIDDEN_KEYWORD_CHARACTERS.includes(character)
+        ? " "
+        : character,
+    )
+    .join("")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 100);
@@ -54,7 +61,9 @@ export async function fetchSearchTrend(
     return unavailable("DataForSEO API login/password are not configured.");
   }
   if (cleanName.length < 2) {
-    return unavailable("Celebrity name could not be converted into a valid trends keyword.");
+    return unavailable(
+      "Celebrity name could not be converted into a valid trends keyword.",
+    );
   }
 
   try {
@@ -88,7 +97,11 @@ export async function fetchSearchTrend(
         (typeof task?.status_message === "string" && task.status_message) ||
         (typeof root?.status_message === "string" && root.status_message) ||
         `DataForSEO returned HTTP ${response.status}.`;
-      return unavailable(message.replaceAll(login, "[redacted]").replaceAll(password, "[redacted]"));
+      return unavailable(
+        message
+          .replaceAll(login, "[redacted]")
+          .replaceAll(password, "[redacted]"),
+      );
     }
 
     const results = Array.isArray(task?.result) ? task.result : [];
@@ -108,10 +121,12 @@ export async function fetchSearchTrend(
       .filter((value) => Number.isFinite(value) && value >= 0 && value <= 100);
 
     if (!values.length) {
-      return unavailable("DataForSEO responded successfully but returned no usable Google Trends graph values.");
+      return unavailable(
+        "DataForSEO responded successfully but returned no usable Google Trends graph values.",
+      );
     }
 
-    const latestInterest = values.at(-1) ?? 0;
+    const latestInterest = values[values.length - 1] ?? 0;
     const prior = values.slice(Math.max(0, values.length - 15), -1);
     const baselineInterest = prior.length
       ? prior.reduce((sum, value) => sum + value, 0) / prior.length
@@ -130,12 +145,15 @@ export async function fetchSearchTrend(
       momentumPercent,
       points: values.length,
       costUsd: Number.isFinite(cost) ? cost : null,
-      detail: "DataForSEO Google Trends returned a 30-day interest series successfully.",
+      detail:
+        "DataForSEO Google Trends returned a 30-day interest series successfully.",
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : "Connection failed";
     return unavailable(
-      message.replaceAll(login, "[redacted]").replaceAll(password, "[redacted]"),
+      message
+        .replaceAll(login, "[redacted]")
+        .replaceAll(password, "[redacted]"),
     );
   }
 }
