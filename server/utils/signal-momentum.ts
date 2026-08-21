@@ -16,11 +16,21 @@ export type StoredMomentumSignal = {
   capturedAt: string | null;
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 function observationAgeMs(observation: SignalObservation) {
   const timestamp = new Date(observation.capturedAt).getTime();
   return Number.isFinite(timestamp)
     ? Date.now() - timestamp
     : Number.POSITIVE_INFINITY;
+}
+
+function elapsedDays(newer: SignalObservation, older: SignalObservation) {
+  const newerTime = new Date(newer.capturedAt).getTime();
+  const olderTime = new Date(older.capturedAt).getTime();
+  if (!Number.isFinite(newerTime) || !Number.isFinite(olderTime)) return null;
+  const elapsed = (newerTime - olderTime) / DAY_MS;
+  return elapsed > 0 ? Math.max(1 / 24, elapsed) : null;
 }
 
 function clampMomentum(value: number) {
@@ -45,10 +55,16 @@ function levelMomentum(observations: SignalObservation[]) {
 function counterVelocityMomentum(observations: SignalObservation[]) {
   if (observations.length < 3) return null;
 
-  const latest = observations[0]?.value;
-  const previous = observations[1]?.value;
-  const beforePrevious = observations[2]?.value;
+  const latestObservation = observations[0];
+  const previousObservation = observations[1];
+  const beforePreviousObservation = observations[2];
+  const latest = latestObservation?.value;
+  const previous = previousObservation?.value;
+  const beforePrevious = beforePreviousObservation?.value;
   if (
+    !latestObservation ||
+    !previousObservation ||
+    !beforePreviousObservation ||
     latest === null ||
     latest === undefined ||
     previous === null ||
@@ -59,14 +75,19 @@ function counterVelocityMomentum(observations: SignalObservation[]) {
     return null;
   }
 
-  const currentDelta = latest - previous;
-  const previousDelta = previous - beforePrevious;
-  const noiseFloor = Math.max(1, Math.abs(previous) * 0.0001);
-  const denominator = Math.max(Math.abs(previousDelta), noiseFloor);
-
-  return clampMomentum(
-    ((currentDelta - previousDelta) / denominator) * 100,
+  const currentDays = elapsedDays(latestObservation, previousObservation);
+  const previousDays = elapsedDays(
+    previousObservation,
+    beforePreviousObservation,
   );
+  if (currentDays === null || previousDays === null) return null;
+
+  const currentRate = (latest - previous) / currentDays;
+  const previousRate = (previous - beforePrevious) / previousDays;
+  const noiseFloor = Math.max(1, Math.abs(previous) * 0.0001);
+  const denominator = Math.max(Math.abs(previousRate), noiseFloor);
+
+  return clampMomentum(((currentRate - previousRate) / denominator) * 100);
 }
 
 export async function getStoredMomentumSignal(input: {
