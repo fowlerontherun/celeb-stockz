@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { LoaderCircle, Lock, PackageOpen } from "lucide-react";
+import { LoaderCircle, Lock, PackageOpen, Zap } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 type WalletData = {
@@ -152,17 +152,17 @@ export function TradeControls({
         <div className="rounded-2xl border border-[#ff7282]/35 bg-[#31162b] p-4 text-center">
           <Lock size={20} className="mx-auto text-[#ff9ca5]" />
           <p className="mt-2 font-display text-base font-black text-[#ffb2bc]">
-            Pack Unlock Required
+            Celebrity Pack Unlock Required
           </p>
           <p className="mt-1 text-xs text-[#ddcad8]">
-            This market is exclusive to {access?.requiredPacks.map((p) => p.name).join(" or ")}.
+            This market is exclusive to <strong>{access?.requiredPacks.map((p) => p.name).join(" or ")}</strong>.
           </p>
           <Link
             to="/packs"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[#ff7282] px-4 py-2 text-xs font-black text-[#401b2d] hover:bg-[#ff8e9a]"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-[#ffd17b] px-4 py-2 text-xs font-black text-[#3d2a00] hover:bg-[#ffe29c]"
           >
             <PackageOpen size={14} />
-            Go to Celebrity Packs
+            Unlock Pack (£1.99)
           </Link>
         </div>
       )}

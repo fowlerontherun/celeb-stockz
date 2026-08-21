@@ -16,6 +16,7 @@ import {
   PackageOpen,
   Search,
   Sparkles,
+  Tag,
   Trophy,
   Tv,
   Users,
@@ -33,6 +34,9 @@ type Pack = {
   id: number;
   name: string;
   priceGbp: number;
+  originalPriceGbp: number;
+  isDiscounted: boolean;
+  discountPercent: number;
   availableAt: string | null;
   isPublished: boolean;
   isAnnounced: boolean;
@@ -40,6 +44,13 @@ type Pack = {
   unlocked: boolean;
   isAvailable: boolean;
   members: PackMember[];
+};
+
+type SaleInfo = {
+  active: boolean;
+  discountPercent: number;
+  bannerText: string;
+  endsAt: string | null;
 };
 
 const packIcons: Record<number, typeof Trophy> = {
@@ -106,6 +117,7 @@ type PackFilter =
 
 export default function Packs() {
   const [packs, setPacks] = useState<Pack[]>([]);
+  const [sale, setSale] = useState<SaleInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [unlockingId, setUnlockingId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<PackFilter>("All");
@@ -117,12 +129,16 @@ export default function Packs() {
       const response = await fetch("/api/packs", { credentials: "include" });
       const data = (await response.json()) as {
         packs?: Pack[];
+        sale?: SaleInfo;
         statusMessage?: string;
       };
       if (!response.ok || !data.packs) {
         throw new Error(data.statusMessage ?? "Could not load celebrity packs.");
       }
       setPacks(data.packs);
+      if (data.sale) {
+        setSale(data.sale);
+      }
     } catch (error) {
       showError(error instanceof Error ? error.message : "Could not load packs.");
     } finally {
@@ -132,6 +148,8 @@ export default function Packs() {
 
   useEffect(() => {
     void loadPacks();
+    window.addEventListener("packs:sale_updated", loadPacks);
+    return () => window.removeEventListener("packs:sale_updated", loadPacks);
   }, []);
 
   const handleUnlock = async (pack: Pack) => {
@@ -210,14 +228,22 @@ export default function Packs() {
         <header className="mt-8 rounded-[30px] border border-[#c99bff]/30 bg-[#211230] p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
-                <CalendarDays size={15} /> 52-Week Annual Release Schedule (Starting Sept 2025)
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
+                  <CalendarDays size={15} /> 52-Week Annual Release Schedule (Starting Sept 2025)
+                </p>
+                {sale?.active && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#ff4b2b] px-2.5 py-0.5 text-[10px] font-black uppercase text-white animate-pulse">
+                    <Flame size={12} /> {sale.discountPercent}% OFF SALE
+                  </span>
+                )}
+              </div>
               <h1 className="font-display mt-3 text-3xl font-black sm:text-5xl">
                 52 Weekly Celebrity Packs
               </h1>
               <p className="mt-4 max-w-3xl text-sm leading-6 text-[#c9b8d4]">
-                A brand new curated collection of <strong>25+ unique celebrity markets</strong> scheduled to launch every single week throughout the year. Featuring deep rosters in UK Soaps & Reality, Premier League, NBA, F1, Combat, Grime, Indie Rock, Darts, Chefs, and Global Icons.
+                A brand new curated collection of <strong>25+ unique celebrity markets</strong> scheduled to launch every single week throughout the year. Standard pack price is <strong>£1.99</strong>
+                {sale?.active ? ` (currently discounted to £${(1.99 * (1 - sale.discountPercent / 100)).toFixed(2)})` : ""}.
               </p>
             </div>
 
@@ -410,26 +436,45 @@ export default function Packs() {
                         </Link>
                       </div>
                     ) : pack.isAvailable ? (
-                      <button
-                        type="button"
-                        disabled={isUnlocking}
-                        onClick={() => void handleUnlock(pack)}
-                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#ffd17b] py-3 text-xs font-black text-[#3d2a00] shadow-md transition hover:bg-[#ffe29c] disabled:opacity-50"
-                      >
-                        {isUnlocking ? (
-                          <LoaderCircle size={15} className="animate-spin" />
-                        ) : (
-                          <Zap size={15} />
-                        )}
-                        {isUnlocking ? "Unlocking…" : `Unlock Pack · £${pack.priceGbp.toFixed(2)}`}
-                      </button>
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          {pack.isDiscounted ? (
+                            <div className="flex items-baseline gap-1.5">
+                              <span className="font-display text-lg font-black text-[#ffd17b]">
+                                £{pack.priceGbp.toFixed(2)}
+                              </span>
+                              <span className="text-xs font-bold text-[#8f7e9f] line-through">
+                                £{pack.originalPriceGbp.toFixed(2)}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="font-display text-lg font-black text-[#ffd17b]">
+                              £{pack.priceGbp.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isUnlocking}
+                          onClick={() => void handleUnlock(pack)}
+                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#ffd17b] px-4 py-2.5 text-xs font-black text-[#3d2a00] shadow-md transition hover:bg-[#ffe29c] disabled:opacity-50"
+                        >
+                          {isUnlocking ? (
+                            <LoaderCircle size={14} className="animate-spin" />
+                          ) : (
+                            <Zap size={14} />
+                          )}
+                          {isUnlocking ? "Unlocking…" : "Unlock Now"}
+                        </button>
+                      </div>
                     ) : (
                       <div className="flex items-center justify-between rounded-xl bg-white/[.03] p-2.5 text-xs">
                         <span className="flex items-center gap-1.5 text-[#8c7b9a]">
-                          <Lock size={13} /> Release on schedule
+                          <Lock size={13} /> Drops {formatAvailableDate(pack.availableAt)}
                         </span>
-                        <span className="font-mono text-[11px] font-bold text-[#c99bff]">
-                          {formatAvailableDate(pack.availableAt)}
+                        <span className="font-display font-black text-[#ffd17b]">
+                          £1.99
                         </span>
                       </div>
                     )}
@@ -508,9 +553,22 @@ export default function Packs() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-between gap-3">
-                    <span className="font-display text-lg font-black text-[#ffd17b]">
-                      £{inspectingPack.priceGbp.toFixed(2)}
-                    </span>
+                    <div className="flex items-baseline gap-2">
+                      {inspectingPack.isDiscounted ? (
+                        <>
+                          <span className="font-display text-xl font-black text-[#ffd17b]">
+                            £{inspectingPack.priceGbp.toFixed(2)}
+                          </span>
+                          <span className="text-xs font-bold text-[#8f7e9f] line-through">
+                            £{inspectingPack.originalPriceGbp.toFixed(2)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-display text-xl font-black text-[#ffd17b]">
+                          £{inspectingPack.priceGbp.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       disabled={unlockingId === inspectingPack.id}
