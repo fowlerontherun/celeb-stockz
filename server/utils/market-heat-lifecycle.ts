@@ -43,7 +43,7 @@ export async function stabilizeMarketHeatLifecycles() {
     )
     SELECT
       ticker,
-      CASE WHEN isfinite(heat_score) THEN heat_score ELSE 0 END,
+      heat_score,
       CASE
         WHEN heat_state IN ('hot', 'viral') THEN heat_state
         ELSE 'normal'
