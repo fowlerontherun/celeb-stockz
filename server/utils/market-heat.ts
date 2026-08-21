@@ -41,80 +41,19 @@ function positiveMomentumScore(value: number, scale: number) {
   return Math.min(100, (1 - Math.exp(-value / scale)) * 100);
 }
 
-function validMomentum(value: number | null) {
-  return value !== null && Number.isFinite(value) ? value : null;
+function validMomentum(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : null;
 }
 
-export function getHeatVolatilityMultiplier(state: MarketHeatState) {
-  return stateConfig[state].volatilityMultiplier;
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
-export function getHeatTradePressureMultiplier(state: MarketHeatState) {
-  return stateConfig[state].tradePressureMultiplier;
-}
-
-export function calculateMarketHeat({
-  wikipedia,
-  additionalSignals,
-  externalSignals,
-}: HeatInput): MarketHeat {
-  const signals: HeatSignal[] = [
-    {
-      label: "search",
-      momentumPercent: validMomentum(additionalSignals.searchMomentumPercent),
-      weight: 0.22,
-      scale: 45,
-    },
-    {
-      label: "GDELT news",
-      momentumPercent: validMomentum(additionalSignals.newsMomentumPercent),
-      weight: 0.18,
-      scale: 70,
-    },
-    {
-      label: "YouTube",
-      momentumPercent: validMomentum(additionalSignals.youtubeMomentumPercent),
-      weight: 0.16,
-      scale: 22,
-    },
-    {
-      label: "Wikipedia views",
-      momentumPercent: validMomentum(wikipedia.pageviews.momentumPercent),
-      weight: 0.14,
-      scale: 35,
-    },
-    {
-      label: "NewsData",
-      momentumPercent: validMomentum(externalSignals.newsdataMomentumPercent),
-      weight: 0.08,
-      scale: 70,
-    },
-    {
-      label: "Webz",
-      momentumPercent: validMomentum(externalSignals.webzMomentumPercent),
-      weight: 0.06,
-      scale: 70,
-    },
-    {
-      label: "TMDB",
-      momentumPercent: validMomentum(externalSignals.tmdbMomentumPercent),
-      weight: 0.05,
-      scale: 35,
-    },
-    {
-      label: "Last.fm",
-      momentumPercent: validMomentum(externalSignals.lastfmMomentumPercent),
-      weight: 0.06,
-      scale: 20,
-    },
-    {
-      label: "Wikipedia edits",
-      momentumPercent: validMomentum(wikipedia.revisions.momentumPercent),
-      weight: 0.05,
-      scale: 90,
-    },
-  ];
-
+function scoreSignals(signals: HeatSignal[]): MarketHeat {
   const active = signals.filter((signal) => signal.momentumPercent !== null);
   const totalWeight = active.reduce((total, signal) => total + signal.weight, 0);
   const weightedScore = totalWeight
@@ -171,4 +110,144 @@ export function calculateMarketHeat({
     spikingSignalCount: spiking.length,
     reason,
   };
+}
+
+export function getHeatVolatilityMultiplier(state: MarketHeatState) {
+  return stateConfig[state].volatilityMultiplier;
+}
+
+export function getHeatTradePressureMultiplier(state: MarketHeatState) {
+  return stateConfig[state].tradePressureMultiplier;
+}
+
+export function normalizeHeatState(value: unknown): MarketHeatState {
+  return value === "hot" || value === "viral" ? value : "normal";
+}
+
+export function calculateMarketHeat({
+  wikipedia,
+  additionalSignals,
+  externalSignals,
+}: HeatInput): MarketHeat {
+  return scoreSignals([
+    {
+      label: "search",
+      momentumPercent: validMomentum(additionalSignals.searchMomentumPercent),
+      weight: 0.22,
+      scale: 45,
+    },
+    {
+      label: "GDELT news",
+      momentumPercent: validMomentum(additionalSignals.newsMomentumPercent),
+      weight: 0.18,
+      scale: 70,
+    },
+    {
+      label: "YouTube",
+      momentumPercent: validMomentum(additionalSignals.youtubeMomentumPercent),
+      weight: 0.16,
+      scale: 22,
+    },
+    {
+      label: "Wikipedia views",
+      momentumPercent: validMomentum(wikipedia.pageviews.momentumPercent),
+      weight: 0.14,
+      scale: 35,
+    },
+    {
+      label: "NewsData",
+      momentumPercent: validMomentum(externalSignals.newsdataMomentumPercent),
+      weight: 0.08,
+      scale: 70,
+    },
+    {
+      label: "Webz",
+      momentumPercent: validMomentum(externalSignals.webzMomentumPercent),
+      weight: 0.06,
+      scale: 70,
+    },
+    {
+      label: "TMDB",
+      momentumPercent: validMomentum(externalSignals.tmdbMomentumPercent),
+      weight: 0.05,
+      scale: 35,
+    },
+    {
+      label: "Last.fm",
+      momentumPercent: validMomentum(externalSignals.lastfmMomentumPercent),
+      weight: 0.06,
+      scale: 20,
+    },
+    {
+      label: "Wikipedia edits",
+      momentumPercent: validMomentum(wikipedia.revisions.momentumPercent),
+      weight: 0.05,
+      scale: 90,
+    },
+  ]);
+}
+
+export function calculateMarketHeatFromMeasurements(
+  measurements: Record<string, unknown> | null | undefined,
+): MarketHeat {
+  const wikipedia = asRecord(measurements?.wikipedia);
+  const additional = asRecord(measurements?.additionalSignals);
+  const external = asRecord(measurements?.externalSignals);
+
+  return scoreSignals([
+    {
+      label: "search",
+      momentumPercent: validMomentum(additional?.searchMomentumPercent),
+      weight: 0.22,
+      scale: 45,
+    },
+    {
+      label: "GDELT news",
+      momentumPercent: validMomentum(additional?.newsMomentumPercent),
+      weight: 0.18,
+      scale: 70,
+    },
+    {
+      label: "YouTube",
+      momentumPercent: validMomentum(additional?.youtubeMomentumPercent),
+      weight: 0.16,
+      scale: 22,
+    },
+    {
+      label: "Wikipedia views",
+      momentumPercent: validMomentum(wikipedia?.pageviewMomentumPercent),
+      weight: 0.14,
+      scale: 35,
+    },
+    {
+      label: "NewsData",
+      momentumPercent: validMomentum(external?.newsdataMomentumPercent),
+      weight: 0.08,
+      scale: 70,
+    },
+    {
+      label: "Webz",
+      momentumPercent: validMomentum(external?.webzMomentumPercent),
+      weight: 0.06,
+      scale: 70,
+    },
+    {
+      label: "TMDB",
+      momentumPercent: validMomentum(external?.tmdbMomentumPercent),
+      weight: 0.05,
+      scale: 35,
+    },
+    {
+      label: "Last.fm",
+      momentumPercent: validMomentum(external?.lastfmMomentumPercent),
+      weight: 0.06,
+      scale: 20,
+    },
+    {
+      label: "Wikipedia edits",
+      momentumPercent: validMomentum(wikipedia?.editMomentumPercent),
+      weight: 0.05,
+      scale: 90,
+    },
+  ]);
 }
