@@ -90,6 +90,14 @@ export const countryMetadata: Record<
   "Puerto Rican": { flag: "🇵🇷", label: "Puerto Rico", region: "Americas" },
   Dominican: { flag: "🇩🇴", label: "Dominican Republic", region: "Americas" },
   Russian: { flag: "🇷🇺", label: "Russia", region: "Europe" },
+  Hungarian: { flag: "🇭🇺", label: "Hungary", region: "Europe" },
+  Senegalese: { flag: "🇸🇳", label: "Senegal", region: "Africa" },
+  Ivorian: { flag: "🇨🇮", label: "Ivory Coast", region: "Africa" },
+  Cameroonian: { flag: "🇨🇲", label: "Cameroon", region: "Africa" },
+  Congolese: { flag: "🇨🇩", label: "DR Congo", region: "Africa" },
+  Georgian: { flag: "🇬🇪", label: "Georgia", region: "Europe" },
+  Colombian: { flag: "🇨🇴", label: "Colombia", region: "Americas" },
+  Uruguayan: { flag: "🇺🇾", label: "Uruguay", region: "Americas" },
 };
 
 export function getCountryInfo(nationality: string) {
@@ -458,9 +466,7 @@ export function CategoryMarkets({
                     className="h-full w-full object-contain"
                     onError={(e) => {
                       const target = e.currentTarget;
-                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(
-                        market.name,
-                      )}&background=2a1740&color=fff8f2&bold=true&size=512&rounded=true`;
+                      target.src = `/api/celebrity-images/${encodeURIComponent(market.ticker)}`;
                     }}
                   />
                   <span
