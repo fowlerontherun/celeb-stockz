@@ -2,7 +2,9 @@
 
 CelebStockz separates **price ticks** from **third-party data collection**.
 
-A scheduler may call the market-cycle endpoint every two minutes without causing every external API to be polled every two minutes. Normal tick cycles only use stored observations plus the current 24-hour practice-trade pressure. More expensive collection cycles run at a controlled cadence and store refreshed observations before recalculating source snapshots.
+The market is intentionally designed as a game rather than a literal financial model. Real-world observations establish each celebrity's pricing anchor and momentum context, while short-lived game volatility and player trading pressure make the market feel active between collection cycles.
+
+A scheduler may call the market-cycle endpoint every two minutes without causing every external API to be polled every two minutes. Normal tick cycles use stored observations, the latest real-world anchor, current 24-hour practice-trade pressure, and bounded gameplay volatility. More expensive collection cycles run at a controlled cadence and store refreshed observations before recalculating source snapshots.
 
 ## Endpoint
 
@@ -28,12 +30,22 @@ A normal `cycle` request that is not due for collection:
 1. Acquires the Postgres distributed scheduler lease.
 2. Reads 24-hour buy/sell pressure once for the whole market.
 3. Compares each celebrity's pressure with its previous live-price pressure.
-4. Updates only celebrities whose pressure actually changed.
-5. Caps a single tick to ±1.5% and the displayed daily movement to ±35%.
-6. Processes open orders if any live prices changed.
-7. Releases the lease.
+4. Applies amplified player-pressure movement to active markets.
+5. Gives roughly one third of otherwise quiet markets a rotating deterministic game-buzz pulse, with occasional larger buzz spikes.
+6. Applies gentle mean reversion toward the latest real-world source price so game noise remains short-lived rather than permanently replacing the underlying signal.
+7. Caps a single tick to ±3% and the live cumulative movement envelope to ±45% by default.
+8. Processes open orders if any live prices changed.
+9. Releases the lease.
 
 No Wikimedia, GDELT, DataForSEO, YouTube, NewsData, Webz, TMDB, Last.fm, or SportsDB request is made by a normal price tick.
+
+The default gameplay settings are intentionally lively and can be tuned without a code release:
+
+- `NITRO_GAME_VOLATILITY_PERCENT=0.9` — base quiet-market game pulse.
+- `NITRO_GAME_MAX_TICK_MOVE_PERCENT=3` — hard cap for one live tick.
+- `NITRO_GAME_DAILY_MOVE_CAP_PERCENT=45` — live cumulative movement envelope between source refresh resets.
+
+A full observation refresh reseeds `market_live_prices` from the approved source snapshots, so real-world celebrity attention continues to shape the medium-term market even when short-term game volatility is high.
 
 ## Collection cadence
 
@@ -84,4 +96,4 @@ Do not make that change while the project is on Hobby.
 
 `market_snapshots` remains the approved history of real-world observation recalculations.
 
-`market_live_prices` holds one current row per celebrity. Two-minute practice-trade ticks update this row without inserting hundreds of historical snapshot rows. When a full external observation refresh completes, live prices are reseeded from the newly approved source snapshots.
+`market_live_prices` holds one current row per celebrity plus the most recent real-world source price. Two-minute ticks update this row without inserting hundreds of historical snapshot rows. When a full external observation refresh completes, live prices and their source anchors are reseeded from the newly approved source snapshots.
