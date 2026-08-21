@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   CalendarDays,
@@ -6,13 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
-  EyeOff,
   Flame,
   Lock,
   PackageOpen,
   Sparkles,
-  Tag,
-  Trophy,
   Zap,
 } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
@@ -46,6 +43,8 @@ export function PackCarousels() {
   const [packs, setPacks] = useState<Pack[]>([]);
   const [sale, setSale] = useState<{ active: boolean; discountPercent: number } | null>(null);
   const [unlockingId, setUnlockingId] = useState<number | null>(null);
+  const publishedScrollRef = useRef<HTMLDivElement>(null);
+  const upcomingScrollRef = useRef<HTMLDivElement>(null);
 
   const loadPacks = async () => {
     try {
@@ -79,7 +78,7 @@ export function PackCarousels() {
       const data = (await response.json()) as { statusMessage?: string };
       if (!response.ok) throw new Error(data.statusMessage ?? "Could not unlock pack.");
 
-      showSuccess(`Unlocked ${pack.name}! You can now trade its markets.`);
+      showSuccess(`🎉 Unlocked ${pack.name}! You can now trade its 25+ exclusive markets.`);
       await loadPacks();
       window.dispatchEvent(new Event("markets:updated"));
     } catch (error) {
@@ -89,8 +88,16 @@ export function PackCarousels() {
     }
   };
 
+  const scroll = (ref: React.RefObject<HTMLDivElement | null>, direction: "left" | "right") => {
+    if (ref.current) {
+      const amount = direction === "left" ? -300 : 300;
+      ref.current.scrollBy({ left: amount, behavior: "smooth" });
+    }
+  };
+
   const publishedPacks = packs.filter((p) => p.isAvailable || p.unlocked);
   const upcomingPacks = packs.filter((p) => !p.isAvailable && !p.unlocked);
+  const unlockedCount = packs.filter((p) => p.unlocked).length;
 
   if (packs.length === 0) return null;
 
@@ -121,17 +128,45 @@ export function PackCarousels() {
             </div>
           </div>
 
-          <Link
-            to="/packs"
-            className="inline-flex items-center gap-1.5 rounded-xl bg-[#7c3aed] px-4 py-2 text-xs font-black text-white shadow-md transition hover:bg-[#9361f5]"
-          >
-            Browse All 52 Packs →
-          </Link>
+          <div className="flex items-center gap-2">
+            {unlockedCount > 0 && (
+              <span className="hidden rounded-xl bg-[#62e7b6]/20 px-3 py-1.5 text-xs font-black text-[#62e7b6] sm:inline-flex">
+                {unlockedCount} Unlocked
+              </span>
+            )}
+            <div className="flex gap-1">
+              <button
+                type="button"
+                onClick={() => scroll(publishedScrollRef, "left")}
+                aria-label="Scroll published packs left"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={() => scroll(publishedScrollRef, "right")}
+                aria-label="Scroll published packs right"
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+            <Link
+              to="/packs"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-[#7c3aed] px-3.5 py-2 text-xs font-black text-white shadow-md transition hover:bg-[#9361f5]"
+            >
+              All Packs →
+            </Link>
+          </div>
         </div>
 
         {/* Published Horizontal Carousel */}
-        <div className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-thin">
-          {publishedPacks.slice(0, 12).map((pack) => {
+        <div
+          ref={publishedScrollRef}
+          className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth"
+        >
+          {publishedPacks.slice(0, 16).map((pack) => {
             const isUnlocking = unlockingId === pack.id;
 
             return (
@@ -226,14 +261,37 @@ export function PackCarousels() {
               </div>
             </div>
 
-            <span className="rounded-xl bg-white/5 px-3 py-1 text-xs font-bold text-[#c99bff]">
-              {upcomingPacks.length} upcoming releases
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => scroll(upcomingScrollRef, "left")}
+                  aria-label="Scroll upcoming drops left"
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => scroll(upcomingScrollRef, "right")}
+                  aria-label="Scroll upcoming drops right"
+                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+              <span className="rounded-xl bg-white/5 px-3 py-1 text-xs font-bold text-[#c99bff]">
+                {upcomingPacks.length} upcoming
+              </span>
+            </div>
           </div>
 
           {/* Upcoming Horizontal Carousel */}
-          <div className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-thin">
-            {upcomingPacks.slice(0, 14).map((pack) => (
+          <div
+            ref={upcomingScrollRef}
+            className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth"
+          >
+            {upcomingPacks.slice(0, 16).map((pack) => (
               <article
                 key={pack.id}
                 className="flex w-60 shrink-0 flex-col justify-between rounded-2xl border border-white/5 bg-white/[.02] p-4 hover:border-white/15"

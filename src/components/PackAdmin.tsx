@@ -120,7 +120,7 @@ export function PackAdmin() {
         <PackageOpen size={16} /> Pack release manager
       </p>
       <h2 className="font-display mt-2 text-2xl font-black">
-        Celebrity pack availability
+        Celebrity pack availability (£1.99 base price)
       </h2>
       <p className="mt-2 max-w-3xl text-sm leading-6 text-[#c4b4d0]">
         Toggle whether a pack name is announced to users or masked as a classified mystery pack until you are ready to reveal its theme and members.

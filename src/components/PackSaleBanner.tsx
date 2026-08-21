@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Flame, Sparkles, Tag, X } from "lucide-react";
+import { Clock, Flame, Tag, X } from "lucide-react";
 
 type SaleInfo = {
   active: boolean;
@@ -12,6 +12,7 @@ type SaleInfo = {
 export function PackSaleBanner() {
   const [sale, setSale] = useState<SaleInfo | null>(null);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const loadSale = async () => {
@@ -31,12 +32,30 @@ export function PackSaleBanner() {
     return () => window.removeEventListener("packs:sale_updated", loadSale);
   }, []);
 
+  useEffect(() => {
+    if (!sale?.endsAt) return;
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, [sale?.endsAt]);
+
+  const countdown = useMemo(() => {
+    if (!sale?.endsAt) return null;
+    const diff = new Date(sale.endsAt).getTime() - now;
+    if (diff <= 0) return "Ending soon";
+
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }, [now, sale?.endsAt]);
+
   if (!sale?.active || isDismissed) return null;
 
   return (
     <aside
       aria-label="Promotional pack sale"
-      className="relative z-50 flex items-center justify-between border-b border-[#ffd17b]/40 bg-gradient-to-r from-[#ff416c] via-[#ff4b2b] to-[#8a2387] px-4 py-2.5 text-white shadow-xl backdrop-blur-md"
+      className="relative z-50 flex items-center justify-between border-b border-[#ffd17b]/40 bg-gradient-to-r from-[#ff416c] via-[#ff4b2b] to-[#8a2387] px-4 py-2.5 text-white shadow-xl backdrop-blur-md animate-in slide-in-from-top-2 duration-300"
     >
       <div className="mx-auto flex flex-wrap items-center justify-center gap-2.5 text-center text-xs font-black tracking-wide sm:text-sm">
         <span className="inline-flex items-center gap-1 rounded-full bg-black/30 px-2.5 py-0.5 text-[11px] font-black uppercase text-[#ffe2a4]">
@@ -45,6 +64,12 @@ export function PackSaleBanner() {
         </span>
 
         <span>{sale.bannerText}</span>
+
+        {countdown && (
+          <span className="inline-flex items-center gap-1 rounded-lg bg-black/30 px-2 py-0.5 font-mono text-xs font-bold text-[#ffd17b]">
+            <Clock size={12} /> {countdown}
+          </span>
+        )}
 
         <Link
           to="/packs"
