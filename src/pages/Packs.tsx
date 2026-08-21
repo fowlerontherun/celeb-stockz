@@ -5,25 +5,17 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
-  Dumbbell,
+  Coins,
   EyeOff,
-  Flame,
-  Gamepad2,
-  Globe2,
   LoaderCircle,
   Lock,
-  Music2,
   PackageOpen,
   Search,
-  Sparkles,
-  Tag,
-  Trophy,
-  Tv,
   Users,
   X,
   Zap,
 } from "lucide-react";
-import { showError, showSuccess } from "@/utils/toast";
+import { showError } from "@/utils/toast";
 
 type PackMember = {
   ticker: string;
@@ -33,10 +25,6 @@ type PackMember = {
 type Pack = {
   id: number;
   name: string;
-  priceGbp: number;
-  originalPriceGbp: number;
-  isDiscounted: boolean;
-  discountPercent: number;
   availableAt: string | null;
   isPublished: boolean;
   isAnnounced: boolean;
@@ -46,66 +34,11 @@ type Pack = {
   members: PackMember[];
 };
 
-type SaleInfo = {
-  active: boolean;
-  discountPercent: number;
-  bannerText: string;
-  endsAt: string | null;
-};
-
-const packIcons: Record<number, typeof Trophy> = {
-  1: Music2,
-  2: Tv,
-  3: Trophy,
-  4: Sparkles,
-  5: Gamepad2,
-  6: Flame,
-  7: Trophy,
-  8: Zap,
-  9: Dumbbell,
-  10: Globe2,
-  11: Trophy,
-  12: Tv,
-  13: Flame,
-  14: Tv,
-  15: Music2,
-  16: Music2,
-  17: Sparkles,
-  18: Trophy,
-  19: Trophy,
-  20: Sparkles,
-  21: Music2,
-  22: Music2,
-  23: Gamepad2,
-  24: Tv,
-  25: Music2,
-  26: Tv,
-  27: Trophy,
-  28: Trophy,
-  29: Trophy,
-  30: Trophy,
-  31: Sparkles,
-  32: Sparkles,
-  33: Gamepad2,
-  34: Gamepad2,
-  35: Gamepad2,
-  36: Music2,
-  37: Music2,
-  38: Music2,
-  39: Music2,
-  40: Music2,
-  41: Globe2,
-  42: Globe2,
-  43: Tv,
-  44: Tv,
-  45: Globe2,
-  46: Tv,
-  47: Tv,
-  48: Sparkles,
-  49: Tv,
-  50: Sparkles,
-  51: Flame,
-  52: Trophy,
+type StkzBundle = {
+  sku: "STKZ_10000" | "STKZ_30000" | "STKZ_75000" | "STKZ_175000";
+  amount: number;
+  price: string;
+  label: string;
 };
 
 type PackFilter =
@@ -115,11 +48,39 @@ type PackFilter =
   | "Music & Hip Hop"
   | "Digital & Creators";
 
+const stkzBundles: StkzBundle[] = [
+  { sku: "STKZ_10000", amount: 10_000, price: "£1.99", label: "Starter top-up" },
+  { sku: "STKZ_30000", amount: 30_000, price: "£4.99", label: "Popular" },
+  { sku: "STKZ_75000", amount: 75_000, price: "£9.99", label: "Big bankroll" },
+  { sku: "STKZ_175000", amount: 175_000, price: "£19.99", label: "Maximum top-up" },
+];
+
+const sportsPackIds = new Set([3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30]);
+const ukCulturePackIds = new Set([1, 2, 4, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+const musicPackIds = new Set([1, 6, 15, 16, 21, 22, 25, 36, 37, 38, 39, 40]);
+const creatorPackIds = new Set([5, 23, 33, 34, 35]);
+
+function packMatchesFilter(pack: Pack, filter: PackFilter) {
+  if (filter === "Sports") return sportsPackIds.has(pack.id);
+  if (filter === "UK Culture & TV") return ukCulturePackIds.has(pack.id);
+  if (filter === "Music & Hip Hop") return musicPackIds.has(pack.id);
+  if (filter === "Digital & Creators") return creatorPackIds.has(pack.id);
+  return true;
+}
+
+function formatAvailableDate(value: string | null) {
+  if (!value) return "Available now";
+  return new Intl.DateTimeFormat([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
 export default function Packs() {
   const [packs, setPacks] = useState<Pack[]>([]);
-  const [sale, setSale] = useState<SaleInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [unlockingId, setUnlockingId] = useState<number | null>(null);
+  const [busyKey, setBusyKey] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<PackFilter>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [inspectingPack, setInspectingPack] = useState<Pack | null>(null);
@@ -129,16 +90,12 @@ export default function Packs() {
       const response = await fetch("/api/packs", { credentials: "include" });
       const data = (await response.json()) as {
         packs?: Pack[];
-        sale?: SaleInfo;
         statusMessage?: string;
       };
       if (!response.ok || !data.packs) {
         throw new Error(data.statusMessage ?? "Could not load celebrity packs.");
       }
       setPacks(data.packs);
-      if (data.sale) {
-        setSale(data.sale);
-      }
     } catch (error) {
       showError(error instanceof Error ? error.message : "Could not load packs.");
     } finally {
@@ -152,330 +109,220 @@ export default function Packs() {
     return () => window.removeEventListener("packs:sale_updated", loadPacks);
   }, []);
 
-  const handleUnlock = async (pack: Pack) => {
-    setUnlockingId(pack.id);
+  const beginCheckout = async (body: object, key: string) => {
+    setBusyKey(key);
     try {
-      const response = await fetch(`/api/packs/${pack.id}/unlock`, {
+      const response = await fetch("/api/store/checkout", {
         method: "POST",
         credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
       });
-      const data = (await response.json()) as { statusMessage?: string };
-
-      if (!response.ok) {
-        throw new Error(data.statusMessage ?? "Could not unlock this pack.");
+      const data = (await response.json()) as {
+        checkoutUrl?: string;
+        statusMessage?: string;
+      };
+      if (!response.ok || !data.checkoutUrl) {
+        throw new Error(data.statusMessage ?? "Checkout could not be started.");
       }
-
-      showSuccess(`Unlocked ${pack.name}! You can now trade its markets.`);
-      await loadPacks();
-      if (inspectingPack?.id === pack.id) {
-        setInspectingPack((prev) => (prev ? { ...prev, unlocked: true } : null));
-      }
-      window.dispatchEvent(new Event("markets:updated"));
+      window.location.assign(data.checkoutUrl);
     } catch (error) {
-      showError(error instanceof Error ? error.message : "Could not unlock pack.");
-    } finally {
-      setUnlockingId(null);
+      showError(error instanceof Error ? error.message : "Checkout could not be started.");
+      setBusyKey(null);
     }
   };
 
-  const unlockedCount = packs.filter((p) => p.unlocked).length;
-  const sportsPacksCount = packs.filter((p) => [3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30].includes(p.id)).length;
-  const ukCultureCount = packs.filter((p) => [1, 2, 4, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(p.id)).length;
-
   const filteredPacks = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-
     return packs.filter((pack) => {
-      if (activeFilter === "Sports" && ![3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30].includes(pack.id)) return false;
-      if (activeFilter === "UK Culture & TV" && ![1, 2, 4, 12, 13, 14, 15, 16, 17, 18, 19, 20].includes(pack.id)) return false;
-      if (activeFilter === "Music & Hip Hop" && ![1, 6, 15, 16, 21, 22, 25, 36, 37, 38, 39, 40].includes(pack.id)) return false;
-      if (activeFilter === "Digital & Creators" && ![5, 23, 33, 34, 35].includes(pack.id)) return false;
-
-      if (query) {
-        const matchesName = pack.name.toLowerCase().includes(query);
-        const matchesMember = pack.members?.some(
-          (m) =>
-            m.name.toLowerCase().includes(query) ||
-            m.ticker.toLowerCase().includes(query),
-        );
-        return matchesName || matchesMember;
-      }
-
-      return true;
+      if (!packMatchesFilter(pack, activeFilter)) return false;
+      if (!query) return true;
+      return (
+        pack.name.toLowerCase().includes(query) ||
+        pack.members?.some(
+          (member) =>
+            member.name.toLowerCase().includes(query) ||
+            member.ticker.toLowerCase().includes(query),
+        )
+      );
     });
   }, [activeFilter, packs, searchQuery]);
 
-  function formatAvailableDate(dateStr: string | null) {
-    if (!dateStr) return "Available Now";
-    const d = new Date(dateStr);
-    return new Intl.DateTimeFormat([], {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    }).format(d);
-  }
+  const unlockedCount = packs.filter((pack) => pack.unlocked).length;
+  const availableCount = packs.filter((pack) => pack.isAvailable && !pack.unlocked).length;
 
   return (
-    <main className="min-h-screen bg-[#120b20] px-5 py-8 text-[#fff8f2] sm:px-8 lg:px-12">
+    <main className="min-h-screen bg-[#120b20] px-4 py-6 text-[#fff8f2] sm:px-8 lg:px-12">
       <div className="mx-auto max-w-6xl">
-        <Link
-          to="/"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-[#c99bff] hover:text-white"
-        >
-          ← Back to markets
-        </Link>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Link to="/" className="text-sm font-bold text-[#c99bff] hover:text-white">
+            ← Back to markets
+          </Link>
+          <Link
+            to="/store"
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-black text-[#e6d8ff] hover:bg-white/10"
+          >
+            Account reset & store details
+          </Link>
+        </div>
 
-        <header className="mt-8 rounded-[30px] border border-[#c99bff]/30 bg-[#211230] p-6 sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <p className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
-                  <CalendarDays size={15} /> 52-Week Annual Release Schedule (Starting Sept 2025)
-                </p>
-                {sale?.active && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-[#ff4b2b] px-2.5 py-0.5 text-[10px] font-black uppercase text-white animate-pulse">
-                    <Flame size={12} /> {sale.discountPercent}% OFF SALE
-                  </span>
-                )}
-              </div>
-              <h1 className="font-display mt-3 text-3xl font-black sm:text-5xl">
-                52 Weekly Celebrity Packs
-              </h1>
-              <p className="mt-4 max-w-3xl text-sm leading-6 text-[#c9b8d4]">
-                A brand new curated collection of <strong>25+ unique celebrity markets</strong> scheduled to launch every single week throughout the year. Standard pack price is <strong>£1.99</strong>
-                {sale?.active ? ` (currently discounted to £${(1.99 * (1 - sale.discountPercent / 100)).toFixed(2)})` : ""}.
-              </p>
-            </div>
-
-            <div className="flex flex-wrap gap-2 text-xs font-bold">
-              <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[#e6d8ff]">
-                52 Weekly Packs
-              </span>
-              <span className="rounded-xl border border-[#62e7b6]/30 bg-[#162725] px-3 py-2 text-[#62e7b6]">
-                {sportsPacksCount} Sports Collections
-              </span>
-              <span className="rounded-xl border border-[#ffd17b]/30 bg-[#291e30] px-3 py-2 text-[#ffd17b]">
-                {ukCultureCount} UK Culture Sets
-              </span>
-              {unlockedCount > 0 && (
-                <span className="rounded-xl bg-[#7c3aed] px-3 py-2 text-white">
-                  {unlockedCount} Unlocked
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Search and Category Filter Bar */}
-          <div className="mt-7 flex flex-col gap-4 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-wrap gap-2">
-              {(
-                [
-                  "All",
-                  "Sports",
-                  "UK Culture & TV",
-                  "Music & Hip Hop",
-                  "Digital & Creators",
-                ] as PackFilter[]
-              ).map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveFilter(tab)}
-                  className={`rounded-xl px-3.5 py-2 text-xs font-black transition ${
-                    activeFilter === tab
-                      ? "bg-[#7c3aed] text-white shadow-lg"
-                      : "border border-white/10 bg-white/5 text-[#c4b4d0] hover:bg-white/10 hover:text-white"
-                  }`}
-                >
-                  {tab === "Sports" ? `⚽ Sports (${sportsPacksCount})` : tab}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative min-w-[220px]">
-              <Search
-                size={15}
-                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#c99bff]"
-              />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search packs or celebs…"
-                className="w-full rounded-xl border border-white/10 bg-[#160c25] py-2 pl-9 pr-3 text-xs font-bold text-white outline-none focus:border-[#ffd17b]"
-              />
-            </div>
+        <header className="mt-7 rounded-[30px] border border-[#c99bff]/30 bg-[#211230] p-6 sm:p-8">
+          <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">
+            <CalendarDays size={15} /> CelebStockz Store
+          </p>
+          <h1 className="font-display mt-2 text-3xl font-black sm:text-5xl">
+            Packs & <span className="text-[#ffd17b]">STKZ</span>
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-[#c9b8d4]">
+            Top up your closed-loop game currency or permanently unlock celebrity collections. STKZ has no cash value and cannot be withdrawn or redeemed.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-xs font-bold">
+            <span className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[#e6d8ff]">52 weekly packs</span>
+            <span className="rounded-xl border border-[#62e7b6]/30 bg-[#162725] px-3 py-2 text-[#62e7b6]">{availableCount} available now</span>
+            <span className="rounded-xl border border-[#c99bff]/30 bg-[#291845] px-3 py-2 text-[#c99bff]">{unlockedCount} unlocked</span>
           </div>
         </header>
 
+        <section className="mt-6 rounded-[28px] border border-[#ffd17b]/30 bg-[#24162c] p-5 sm:p-7">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.16em] text-[#ffd17b]">
+                <Coins size={16} /> Buy STKZ
+              </p>
+              <h2 className="font-display mt-1 text-2xl font-black sm:text-3xl">Add to your trading bankroll</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#c8b8cc]">
+                Purchased STKZ never expires. Game-earned STKZ is spent first, so any unspent paid balance is preserved if you reset your game.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {stkzBundles.map((bundle) => (
+              <article key={bundle.sku} className="rounded-2xl border border-white/10 bg-[#160c25] p-4">
+                <p className="text-[10px] font-black uppercase tracking-[.15em] text-[#c99bff]">{bundle.label}</p>
+                <p className="font-display mt-2 text-2xl font-black">{bundle.amount.toLocaleString()}</p>
+                <p className="text-xs font-black text-[#ffd17b]">STKZ</p>
+                <button
+                  type="button"
+                  disabled={busyKey !== null}
+                  onClick={() => void beginCheckout({ type: "stkz", sku: bundle.sku }, bundle.sku)}
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#7c3aed] px-4 py-2.5 text-sm font-black text-white transition hover:bg-[#9361f5] disabled:opacity-50"
+                >
+                  {busyKey === bundle.sku ? <LoaderCircle size={16} className="animate-spin" /> : <Coins size={15} />}
+                  {busyKey === bundle.sku ? "Opening Stripe…" : `Buy · ${bundle.price}`}
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-7">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-[.16em] text-[#c99bff]">Celebrity collections</p>
+              <h2 className="font-display mt-1 text-3xl font-black">Browse celebrity packs</h2>
+              <p className="mt-1 text-sm text-[#a99ab7]">Available packs unlock permanently for £1.99 each.</p>
+            </div>
+            <div className="relative min-w-[230px]">
+              <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#c99bff]" />
+              <input
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search packs or celebrities…"
+                className="w-full rounded-xl border border-white/10 bg-[#160c25] py-2.5 pl-9 pr-3 text-xs font-bold text-white outline-none focus:border-[#c99bff]"
+              />
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            {(["All", "Sports", "UK Culture & TV", "Music & Hip Hop", "Digital & Creators"] as PackFilter[]).map((filter) => (
+              <button
+                key={filter}
+                type="button"
+                onClick={() => setActiveFilter(filter)}
+                className={`rounded-xl px-3.5 py-2 text-xs font-black transition ${
+                  activeFilter === filter
+                    ? "bg-[#7c3aed] text-white"
+                    : "border border-white/10 bg-white/5 text-[#c4b4d0] hover:bg-white/10"
+                }`}
+              >
+                {filter}
+              </button>
+            ))}
+          </div>
+        </section>
+
         {isLoading ? (
-          <div className="mt-8 grid min-h-48 place-items-center text-sm font-bold text-[#c99bff]">
+          <div className="mt-8 grid min-h-48 place-items-center text-[#c99bff]">
             <LoaderCircle className="animate-spin" size={24} />
           </div>
         ) : filteredPacks.length === 0 ? (
-          <div className="mt-8 rounded-[28px] border border-dashed border-white/10 bg-white/[.02] p-10 text-center text-sm text-[#a99ab7]">
-            No packs found matching your search criteria.
+          <div className="mt-8 rounded-[26px] border border-dashed border-white/10 bg-white/[.02] p-10 text-center text-sm text-[#a99ab7]">
+            No packs match your current search and filter.
           </div>
         ) : (
-          <section className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredPacks.map((pack) => {
-              const isClassified =
-                !pack.unlocked && !pack.isAvailable && !pack.isAnnounced;
-              const isUnlocking = unlockingId === pack.id;
-              const Icon = packIcons[pack.id] ?? PackageOpen;
-              const isSportsPack = [3, 7, 8, 9, 10, 11, 18, 19, 27, 28, 29, 30].includes(pack.id);
-
+              const isClassified = !pack.unlocked && !pack.isAvailable && !pack.isAnnounced;
+              const checkoutKey = `pack-${pack.id}`;
               return (
                 <article
                   key={pack.id}
-                  className={`relative flex flex-col justify-between overflow-hidden rounded-[26px] border p-5 transition duration-200 ${
-                    isClassified
-                      ? "border-white/10 bg-[#190d26]/85"
-                      : pack.unlocked
+                  className={`flex flex-col justify-between rounded-[24px] border p-5 ${
+                    pack.unlocked
                       ? "border-[#62e7b6]/30 bg-[#162725]"
-                      : "border-white/10 bg-[#211230] hover:border-[#c99bff]/50 hover:bg-[#251438]"
+                      : isClassified
+                      ? "border-white/10 bg-[#190d26]/85"
+                      : "border-white/10 bg-[#211230]"
                   }`}
                 >
                   <div>
                     <div className="flex items-start justify-between gap-3">
-                      <div
-                        className={`grid h-11 w-11 place-items-center rounded-2xl ${
-                          pack.unlocked
-                            ? "bg-[#62e7b6] text-[#112b24]"
-                            : isClassified
-                            ? "bg-white/5 text-[#9a89a8]"
-                            : isSportsPack
-                            ? "bg-[#62e7b6]/20 text-[#62e7b6]"
-                            : "bg-[#7c3aed] text-white"
-                        }`}
-                      >
-                        {pack.unlocked ? (
-                          <CheckCircle2 size={22} />
-                        ) : isClassified ? (
-                          <EyeOff size={20} />
-                        ) : (
-                          <Icon size={21} />
-                        )}
+                      <div className={`grid h-10 w-10 place-items-center rounded-xl ${pack.unlocked ? "bg-[#62e7b6]/20 text-[#62e7b6]" : "bg-[#7c3aed]/25 text-[#c99bff]"}`}>
+                        {pack.unlocked ? <CheckCircle2 size={19} /> : isClassified ? <EyeOff size={18} /> : <PackageOpen size={19} />}
                       </div>
-
-                      <div className="flex flex-col items-end gap-1">
-                        <div className="flex items-center gap-1">
-                          {isSportsPack && (
-                            <span className="rounded-lg bg-[#62e7b6]/15 px-2 py-0.5 text-[9px] font-black text-[#62e7b6]">
-                              SPORTS
-                            </span>
-                          )}
-                          <span
-                            className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${
-                              pack.unlocked
-                                ? "bg-[#62e7b6]/20 text-[#62e7b6]"
-                                : pack.isAvailable
-                                ? "bg-[#ffd17b]/15 text-[#ffd17b]"
-                                : "bg-[#c99bff]/15 text-[#c99bff]"
-                            }`}
-                          >
-                            {pack.unlocked
-                              ? "UNLOCKED"
-                              : pack.isAvailable
-                              ? "AVAILABLE"
-                              : "WEEKLY DROP"}
-                          </span>
-                        </div>
-                        {pack.availableAt && (
-                          <span className="flex items-center gap-1 text-[10px] font-bold text-[#b9a9c5]">
-                            <Clock size={10} className="text-[#ffd17b]" />
-                            {formatAvailableDate(pack.availableAt)}
-                          </span>
-                        )}
-                      </div>
+                      <span className={`rounded-lg px-2.5 py-1 text-[10px] font-black ${pack.unlocked ? "bg-[#62e7b6]/15 text-[#62e7b6]" : pack.isAvailable ? "bg-[#ffd17b]/15 text-[#ffd17b]" : "bg-white/5 text-[#9f90ac]"}`}>
+                        {pack.unlocked ? "UNLOCKED" : pack.isAvailable ? "AVAILABLE" : "UPCOMING"}
+                      </span>
                     </div>
-
-                    <p className="mt-4 text-xs font-extrabold uppercase tracking-[.13em] text-[#c99bff]">
-                      Week {pack.id} Release
+                    <p className="mt-4 text-[10px] font-extrabold uppercase tracking-[.14em] text-[#c99bff]">Week {pack.id}</p>
+                    <h3 className="font-display mt-1 text-xl font-black">{isClassified ? `Classified Pack #${pack.id}` : pack.name}</h3>
+                    <p className="mt-2 text-sm text-[#bbaac6]">
+                      {isClassified ? "Theme and roster will be revealed closer to release." : `${pack.memberCount} celebrity markets`}
                     </p>
-
-                    <h2 className="font-display mt-1 text-xl font-black sm:text-2xl">
-                      {isClassified ? (
-                        <span className="tracking-wide text-[#b5a2c4]">
-                          Classified Pack #{pack.id}
-                        </span>
-                      ) : (
-                        pack.name
-                      )}
-                    </h2>
-
-                    <p className="mt-2 text-sm leading-5 text-[#bbaac6]">
-                      {isClassified
-                        ? "Theme and celebrity market roster will be unveiled upon announcement."
-                        : `${pack.memberCount} exclusive celebrity markets`}
-                    </p>
-
-                    {/* Preview Roster Button */}
-                    {!isClassified && pack.members && pack.members.length > 0 && (
+                    {!isClassified && pack.members?.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setInspectingPack(pack)}
-                        className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#ffd17b] hover:underline"
+                        className="mt-3 inline-flex items-center gap-1 text-xs font-black text-[#ffd17b] hover:underline"
                       >
-                        <Users size={13} /> View {pack.members.length} member roster <ChevronRight size={13} />
+                        <Users size={13} /> View roster <ChevronRight size={13} />
                       </button>
                     )}
                   </div>
 
-                  <div className="mt-6 border-t border-white/10 pt-4">
+                  <div className="mt-5 border-t border-white/10 pt-4">
                     {pack.unlocked ? (
-                      <div className="flex items-center justify-between">
-                        <span className="inline-flex items-center gap-1 text-xs font-black text-[#62e7b6]">
-                          <CheckCircle2 size={15} /> Pack Unlocked
-                        </span>
-                        <Link
-                          to="/"
-                          className="rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20"
-                        >
-                          Trade Markets
-                        </Link>
-                      </div>
+                      <Link to="/" className="inline-flex items-center gap-2 text-xs font-black text-[#62e7b6]">
+                        <CheckCircle2 size={14} /> Trade unlocked markets
+                      </Link>
                     ) : pack.isAvailable ? (
                       <div className="flex items-center justify-between gap-3">
-                        <div>
-                          {pack.isDiscounted ? (
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="font-display text-lg font-black text-[#ffd17b]">
-                                £{pack.priceGbp.toFixed(2)}
-                              </span>
-                              <span className="text-xs font-bold text-[#8f7e9f] line-through">
-                                £{pack.originalPriceGbp.toFixed(2)}
-                              </span>
-                            </div>
-                          ) : (
-                            <span className="font-display text-lg font-black text-[#ffd17b]">
-                              £{pack.priceGbp.toFixed(2)}
-                            </span>
-                          )}
-                        </div>
-
+                        <span className="font-display text-lg font-black text-[#ffd17b]">£1.99</span>
                         <button
                           type="button"
-                          disabled={isUnlocking}
-                          onClick={() => void handleUnlock(pack)}
-                          className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#ffd17b] px-4 py-2.5 text-xs font-black text-[#3d2a00] shadow-md transition hover:bg-[#ffe29c] disabled:opacity-50"
+                          disabled={busyKey !== null}
+                          onClick={() => void beginCheckout({ type: "pack", packId: pack.id }, checkoutKey)}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-[#ffd17b] px-4 py-2.5 text-xs font-black text-[#3d2a00] disabled:opacity-50"
                         >
-                          {isUnlocking ? (
-                            <LoaderCircle size={14} className="animate-spin" />
-                          ) : (
-                            <Zap size={14} />
-                          )}
-                          {isUnlocking ? "Unlocking…" : "Unlock Now"}
+                          {busyKey === checkoutKey ? <LoaderCircle size={14} className="animate-spin" /> : <Zap size={14} />}
+                          {busyKey === checkoutKey ? "Opening…" : "Buy Pack"}
                         </button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-between rounded-xl bg-white/[.03] p-2.5 text-xs">
-                        <span className="flex items-center gap-1.5 text-[#8c7b9a]">
-                          <Lock size={13} /> Drops {formatAvailableDate(pack.availableAt)}
-                        </span>
-                        <span className="font-display font-black text-[#ffd17b]">
-                          £1.99
-                        </span>
+                      <div className="flex items-center justify-between text-xs text-[#8c7b9a]">
+                        <span className="flex items-center gap-1.5"><Lock size={13} /> {formatAvailableDate(pack.availableAt)}</span>
+                        <span className="font-black text-[#ffd17b]">£1.99</span>
                       </div>
                     )}
                   </div>
@@ -485,102 +332,41 @@ export default function Packs() {
           </section>
         )}
 
-        {/* Member Roster Inspection Modal */}
         {inspectingPack && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-            <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-[28px] border border-[#c99bff]/30 bg-[#211230] p-6 shadow-2xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={() => setInspectingPack(null)}>
+            <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-[28px] border border-[#c99bff]/30 bg-[#211230] p-6" onClick={(event) => event.stopPropagation()}>
               <div className="flex items-start justify-between border-b border-white/10 pb-4">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-extrabold uppercase tracking-[.14em] text-[#c99bff]">
-                      Week {inspectingPack.id} Pack · {inspectingPack.members.length} Celebrity Markets
-                    </span>
-                    {inspectingPack.availableAt && (
-                      <span className="rounded bg-white/10 px-2 py-0.5 text-[10px] font-bold text-[#ffd17b]">
-                        {formatAvailableDate(inspectingPack.availableAt)}
-                      </span>
-                    )}
-                  </div>
-                  <h2 className="font-display mt-1 text-2xl font-black text-white">
-                    {inspectingPack.name}
-                  </h2>
+                  <p className="text-xs font-extrabold uppercase tracking-[.14em] text-[#c99bff]">Week {inspectingPack.id} · {inspectingPack.members.length} markets</p>
+                  <h2 className="font-display mt-1 text-2xl font-black">{inspectingPack.name}</h2>
+                  {inspectingPack.availableAt && <p className="mt-1 flex items-center gap-1 text-xs text-[#a99ab7]"><Clock size={12} /> {formatAvailableDate(inspectingPack.availableAt)}</p>}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setInspectingPack(null)}
-                  className="rounded-lg p-1 text-[#c4b4d0] hover:bg-white/10 hover:text-white"
-                >
-                  <X size={18} />
-                </button>
+                <button type="button" onClick={() => setInspectingPack(null)} className="rounded-lg p-1 text-[#c4b4d0] hover:bg-white/10"><X size={18} /></button>
               </div>
 
-              <div className="mt-4 flex-1 overflow-y-auto pr-1">
-                <p className="text-xs text-[#a99ab7]">
-                  All {inspectingPack.members.length} celebrity markets in this collection:
-                </p>
+              <div className="mt-4 grid flex-1 gap-2 overflow-y-auto sm:grid-cols-2">
+                {inspectingPack.members.map((member) => (
+                  <div key={member.ticker} className="rounded-xl border border-white/5 bg-white/[.03] p-3">
+                    <p className="text-xs font-black text-white">{member.name}</p>
+                    <p className="mt-0.5 text-[10px] font-bold text-[#8f809e]">${member.ticker}</p>
+                  </div>
+                ))}
+              </div>
 
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  {inspectingPack.members.map((member) => (
-                    <div
-                      key={member.ticker}
-                      className="flex items-center gap-2.5 rounded-xl border border-white/5 bg-white/[.03] p-2.5"
-                    >
-                      <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#7c3aed]/25 font-display text-xs font-black text-[#c99bff]">
-                        ${member.ticker.slice(0, 3)}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-black text-white">{member.name}</p>
-                        <p className="text-[10px] font-bold text-[#8f809e]">${member.ticker}</p>
-                      </div>
-                    </div>
-                  ))}
+              {!inspectingPack.unlocked && inspectingPack.isAvailable && (
+                <div className="mt-5 flex items-center justify-between gap-3 border-t border-white/10 pt-4">
+                  <span className="font-display text-xl font-black text-[#ffd17b]">£1.99</span>
+                  <button
+                    type="button"
+                    disabled={busyKey !== null}
+                    onClick={() => void beginCheckout({ type: "pack", packId: inspectingPack.id }, `pack-${inspectingPack.id}`)}
+                    className="inline-flex items-center gap-2 rounded-xl bg-[#ffd17b] px-5 py-2.5 text-xs font-black text-[#3d2a00] disabled:opacity-50"
+                  >
+                    {busyKey === `pack-${inspectingPack.id}` ? <LoaderCircle size={14} className="animate-spin" /> : <Zap size={14} />}
+                    {busyKey === `pack-${inspectingPack.id}` ? "Opening Stripe…" : "Buy Pack · £1.99"}
+                  </button>
                 </div>
-              </div>
-
-              <div className="mt-5 border-t border-white/10 pt-4">
-                {inspectingPack.unlocked ? (
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-[#62e7b6]">
-                      ✓ You have unlocked this collection
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setInspectingPack(null)}
-                      className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white hover:bg-white/20"
-                    >
-                      Done
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-baseline gap-2">
-                      {inspectingPack.isDiscounted ? (
-                        <>
-                          <span className="font-display text-xl font-black text-[#ffd17b]">
-                            £{inspectingPack.priceGbp.toFixed(2)}
-                          </span>
-                          <span className="text-xs font-bold text-[#8f7e9f] line-through">
-                            £{inspectingPack.originalPriceGbp.toFixed(2)}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="font-display text-xl font-black text-[#ffd17b]">
-                          £{inspectingPack.priceGbp.toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      disabled={unlockingId === inspectingPack.id}
-                      onClick={() => void handleUnlock(inspectingPack)}
-                      className="inline-flex items-center gap-2 rounded-xl bg-[#ffd17b] px-5 py-2.5 text-xs font-black text-[#3d2a00] hover:bg-[#ffe29c] disabled:opacity-50"
-                    >
-                      <Zap size={14} />
-                      {unlockingId === inspectingPack.id ? "Unlocking…" : "Unlock Pack Now"}
-                    </button>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
           </div>
         )}
