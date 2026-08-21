@@ -121,6 +121,31 @@ export async function getRecentVerifiedSignalObservations(
   }
 }
 
+export async function getOldestVerifiedSignalObservation(
+  ticker: string,
+  provider: string,
+  metric: string,
+): Promise<SignalObservation | null> {
+  try {
+    await ensureSchema();
+    const rows = await sql<ObservationRow[]>`
+      SELECT ticker, provider, metric, value, status, captured_at, metadata
+      FROM market_signal_observations
+      WHERE ticker = ${ticker}
+        AND provider = ${provider}
+        AND metric = ${metric}
+        AND status = 'verified'
+        AND value IS NOT NULL
+      ORDER BY captured_at ASC
+      LIMIT 1
+    `;
+    return rows[0] ? mapObservation(rows[0]) : null;
+  } catch (error) {
+    console.warn("Could not read oldest market signal observation", error);
+    return null;
+  }
+}
+
 export async function recordSignalObservation(input: {
   ticker: string;
   provider: string;
