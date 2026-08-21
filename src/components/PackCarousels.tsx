@@ -96,14 +96,15 @@ export function PackCarousels() {
   };
 
   const publishedPacks = packs.filter((p) => p.isAvailable || p.unlocked);
-  const upcomingPacks = packs.filter((p) => !p.isAvailable && !p.unlocked);
+  const upcomingPacks = packs.filter(
+    (p) => p.isPublished && !p.isAvailable && !p.unlocked,
+  );
   const unlockedCount = packs.filter((p) => p.unlocked).length;
 
   if (packs.length === 0) return null;
 
   return (
     <section className="mt-7 space-y-6">
-      {/* 1. PUBLISHED PACKS CAROUSEL */}
       <div className="rounded-[28px] border border-[#ffd17b]/30 bg-[#251538] p-5 sm:p-6 shadow-xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
@@ -135,103 +136,52 @@ export function PackCarousels() {
               </span>
             )}
             <div className="flex gap-1">
-              <button
-                type="button"
-                onClick={() => scroll(publishedScrollRef, "left")}
-                aria-label="Scroll published packs left"
-                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
-              >
+              <button type="button" onClick={() => scroll(publishedScrollRef, "left")} aria-label="Scroll published packs left" className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10">
                 <ChevronLeft size={16} />
               </button>
-              <button
-                type="button"
-                onClick={() => scroll(publishedScrollRef, "right")}
-                aria-label="Scroll published packs right"
-                className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
-              >
+              <button type="button" onClick={() => scroll(publishedScrollRef, "right")} aria-label="Scroll published packs right" className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10">
                 <ChevronRight size={16} />
               </button>
             </div>
-            <Link
-              to="/packs"
-              className="inline-flex items-center gap-1.5 rounded-xl bg-[#7c3aed] px-3.5 py-2 text-xs font-black text-white shadow-md transition hover:bg-[#9361f5]"
-            >
+            <Link to="/packs" className="inline-flex items-center gap-1.5 rounded-xl bg-[#7c3aed] px-3.5 py-2 text-xs font-black text-white shadow-md transition hover:bg-[#9361f5]">
               All Packs →
             </Link>
           </div>
         </div>
 
-        {/* Published Horizontal Carousel */}
-        <div
-          ref={publishedScrollRef}
-          className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth"
-        >
+        <div ref={publishedScrollRef} className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth">
           {publishedPacks.slice(0, 16).map((pack) => {
             const isUnlocking = unlockingId === pack.id;
 
             return (
-              <article
-                key={pack.id}
-                className={`relative flex w-64 shrink-0 flex-col justify-between rounded-2xl border p-4 transition duration-200 ${
-                  pack.unlocked
-                    ? "border-[#62e7b6]/40 bg-[#162925]"
-                    : "border-white/10 bg-[#1a0e2a] hover:border-[#ffd17b]/50 hover:bg-[#201235]"
-                }`}
-              >
+              <article key={pack.id} className={`relative flex w-64 shrink-0 flex-col justify-between rounded-2xl border p-4 transition duration-200 ${pack.unlocked ? "border-[#62e7b6]/40 bg-[#162925]" : "border-white/10 bg-[#1a0e2a] hover:border-[#ffd17b]/50 hover:bg-[#201235]"}`}>
                 <div>
                   <div className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#c99bff]">
-                      Pack #{pack.id}
-                    </span>
-                    <span
-                      className={`rounded-md px-2 py-0.5 text-[9px] font-black ${
-                        pack.unlocked
-                          ? "bg-[#62e7b6]/20 text-[#62e7b6]"
-                          : "bg-[#ffd17b]/15 text-[#ffd17b]"
-                      }`}
-                    >
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#c99bff]">Pack #{pack.id}</span>
+                    <span className={`rounded-md px-2 py-0.5 text-[9px] font-black ${pack.unlocked ? "bg-[#62e7b6]/20 text-[#62e7b6]" : "bg-[#ffd17b]/15 text-[#ffd17b]"}`}>
                       {pack.unlocked ? "UNLOCKED" : "AVAILABLE"}
                     </span>
                   </div>
-
-                  <h3 className="font-display mt-2 line-clamp-1 text-base font-black text-white">
-                    {pack.name}
-                  </h3>
-
-                  <p className="mt-1 text-xs text-[#a99ab7]">
-                    {pack.memberCount} exclusive markets
-                  </p>
+                  <h3 className="font-display mt-2 line-clamp-1 text-base font-black text-white">{pack.name}</h3>
+                  <p className="mt-1 text-xs text-[#a99ab7]">{pack.memberCount} exclusive markets</p>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-white/5 pt-3">
                   <div>
                     {pack.isDiscounted ? (
                       <div className="flex items-baseline gap-1.5">
-                        <span className="font-display text-sm font-black text-[#ffd17b]">
-                          £{pack.priceGbp.toFixed(2)}
-                        </span>
-                        <span className="text-[10px] font-semibold text-[#8f7e9f] line-through">
-                          £{pack.originalPriceGbp.toFixed(2)}
-                        </span>
+                        <span className="font-display text-sm font-black text-[#ffd17b]">£{pack.priceGbp.toFixed(2)}</span>
+                        <span className="text-[10px] font-semibold text-[#8f7e9f] line-through">£{pack.originalPriceGbp.toFixed(2)}</span>
                       </div>
                     ) : (
-                      <span className="font-display text-sm font-black text-[#ffd17b]">
-                        £{pack.priceGbp.toFixed(2)}
-                      </span>
+                      <span className="font-display text-sm font-black text-[#ffd17b]">£{pack.priceGbp.toFixed(2)}</span>
                     )}
                   </div>
 
                   {pack.unlocked ? (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-[#62e7b6]">
-                      <CheckCircle2 size={13} /> Active
-                    </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-black text-[#62e7b6]"><CheckCircle2 size={13} /> Active</span>
                   ) : (
-                    <button
-                      type="button"
-                      disabled={isUnlocking}
-                      onClick={() => void handleQuickUnlock(pack)}
-                      className="inline-flex items-center gap-1 rounded-lg bg-[#ffd17b] px-3 py-1.5 text-xs font-black text-[#3d2a00] hover:bg-[#ffe29c] disabled:opacity-50"
-                    >
+                    <button type="button" disabled={isUnlocking} onClick={() => void handleQuickUnlock(pack)} className="inline-flex items-center gap-1 rounded-lg bg-[#ffd17b] px-3 py-1.5 text-xs font-black text-[#3d2a00] hover:bg-[#ffe29c] disabled:opacity-50">
                       <Zap size={12} />
                       {isUnlocking ? "…" : "Unlock"}
                     </button>
@@ -243,7 +193,6 @@ export function PackCarousels() {
         </div>
       </div>
 
-      {/* 2. UPCOMING WEEKLY DROPS CAROUSEL */}
       {upcomingPacks.length > 0 && (
         <div className="rounded-[28px] border border-white/10 bg-[#1b1029] p-5 sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -252,67 +201,36 @@ export function PackCarousels() {
                 <CalendarDays size={18} />
               </div>
               <div>
-                <h2 className="font-display text-lg font-black text-white sm:text-xl">
-                  Upcoming 52-Week Drops (Sept 2025 – Aug 2026)
-                </h2>
-                <p className="text-xs text-[#a99ab7]">
-                  A brand new celebrity pack scheduled to drop every Monday.
-                </p>
+                <h2 className="font-display text-lg font-black text-white sm:text-xl">Upcoming 52-Week Drops (Sept 2026 – Aug 2027)</h2>
+                <p className="text-xs text-[#a99ab7]">A brand new celebrity pack scheduled to drop every Monday.</p>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
               <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => scroll(upcomingScrollRef, "left")}
-                  aria-label="Scroll upcoming drops left"
-                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
-                >
+                <button type="button" onClick={() => scroll(upcomingScrollRef, "left")} aria-label="Scroll upcoming drops left" className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10">
                   <ChevronLeft size={16} />
                 </button>
-                <button
-                  type="button"
-                  onClick={() => scroll(upcomingScrollRef, "right")}
-                  aria-label="Scroll upcoming drops right"
-                  className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10"
-                >
+                <button type="button" onClick={() => scroll(upcomingScrollRef, "right")} aria-label="Scroll upcoming drops right" className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 bg-white/5 text-white hover:bg-white/10">
                   <ChevronRight size={16} />
                 </button>
               </div>
-              <span className="rounded-xl bg-white/5 px-3 py-1 text-xs font-bold text-[#c99bff]">
-                {upcomingPacks.length} upcoming
-              </span>
+              <span className="rounded-xl bg-white/5 px-3 py-1 text-xs font-bold text-[#c99bff]">{upcomingPacks.length} upcoming</span>
             </div>
           </div>
 
-          {/* Upcoming Horizontal Carousel */}
-          <div
-            ref={upcomingScrollRef}
-            className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth"
-          >
+          <div ref={upcomingScrollRef} className="mt-4 flex gap-3.5 overflow-x-auto pb-2 scrollbar-none scroll-smooth">
             {upcomingPacks.slice(0, 16).map((pack) => (
-              <article
-                key={pack.id}
-                className="flex w-60 shrink-0 flex-col justify-between rounded-2xl border border-white/5 bg-white/[.02] p-4 hover:border-white/15"
-              >
+              <article key={pack.id} className="flex w-60 shrink-0 flex-col justify-between rounded-2xl border border-white/5 bg-white/[.02] p-4 hover:border-white/15">
                 <div>
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a99ab7]">
-                      Week {pack.id}
-                    </span>
+                    <span className="text-[10px] font-extrabold uppercase tracking-[.14em] text-[#a99ab7]">Week {pack.id}</span>
                     <span className="flex items-center gap-1 rounded bg-white/5 px-1.5 py-0.5 text-[9px] font-bold text-[#b9acc9]">
                       <Clock size={10} /> {formatDate(pack.availableAt)}
                     </span>
                   </div>
-
-                  <h3 className="font-display mt-2 line-clamp-1 text-sm font-black text-white">
-                    {pack.name}
-                  </h3>
-
-                  <p className="mt-1 text-[11px] text-[#8f7f9f]">
-                    {pack.memberCount} celebrity markets
-                  </p>
+                  <h3 className="font-display mt-2 line-clamp-1 text-sm font-black text-white">{pack.name}</h3>
+                  <p className="mt-1 text-[11px] text-[#8f7f9f]">{pack.memberCount} celebrity markets</p>
                 </div>
 
                 <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-2 text-xs">
