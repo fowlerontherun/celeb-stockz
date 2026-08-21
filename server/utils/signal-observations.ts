@@ -60,7 +60,10 @@ function mapObservation(row: ObservationRow): SignalObservation {
     ticker: row.ticker,
     provider: row.provider,
     metric: row.metric,
-    value: numericValue !== null && Number.isFinite(numericValue) ? numericValue : null,
+    value:
+      numericValue !== null && Number.isFinite(numericValue)
+        ? numericValue
+        : null,
     status: row.status,
     capturedAt: row.captured_at,
     metadata: row.metadata ?? {},
@@ -90,6 +93,59 @@ export async function getLatestSignalObservation(
   }
 }
 
+export async function getRecentVerifiedSignalObservations(
+  ticker: string,
+  provider: string,
+  metric: string,
+  limit = 6,
+): Promise<SignalObservation[]> {
+  const safeLimit = Math.max(1, Math.min(30, Math.floor(limit)));
+
+  try {
+    await ensureSchema();
+    const rows = await sql<ObservationRow[]>`
+      SELECT ticker, provider, metric, value, status, captured_at, metadata
+      FROM market_signal_observations
+      WHERE ticker = ${ticker}
+        AND provider = ${provider}
+        AND metric = ${metric}
+        AND status = 'verified'
+        AND value IS NOT NULL
+      ORDER BY captured_at DESC
+      LIMIT ${safeLimit}
+    `;
+    return rows.map(mapObservation);
+  } catch (error) {
+    console.warn("Could not read market signal observation history", error);
+    return [];
+  }
+}
+
+export async function getOldestVerifiedSignalObservation(
+  ticker: string,
+  provider: string,
+  metric: string,
+): Promise<SignalObservation | null> {
+  try {
+    await ensureSchema();
+    const rows = await sql<ObservationRow[]>`
+      SELECT ticker, provider, metric, value, status, captured_at, metadata
+      FROM market_signal_observations
+      WHERE ticker = ${ticker}
+        AND provider = ${provider}
+        AND metric = ${metric}
+        AND status = 'verified'
+        AND value IS NOT NULL
+      ORDER BY captured_at ASC
+      LIMIT 1
+    `;
+    return rows[0] ? mapObservation(rows[0]) : null;
+  } catch (error) {
+    console.warn("Could not read oldest market signal observation", error);
+    return null;
+  }
+}
+
 export async function recordSignalObservation(input: {
   ticker: string;
   provider: string;
@@ -100,7 +156,25 @@ export async function recordSignalObservation(input: {
 }) {
   try {
     await ensureSchema();
-    const metadata = input.metadata ?? {};
+
+    let metadata = input.metadata ?? {};
+    if (
+      input.status === "verified" &&
+      input.value !== null &&
+      Number.isFinite(input.value)
+    ) {
+      const existingAnchor = await getOldestVerifiedSignalObservation(
+        input.ticker,
+        input.provider,
+        input.metric,
+      );
+      const inheritedAnchor = Number(existingAnchor?.metadata?.anchorValue);
+      const anchorValue = Number.isFinite(inheritedAnchor)
+        ? inheritedAnchor
+        : existingAnchor?.value ?? input.value;
+      metadata = { ...metadata, anchorValue };
+    }
+
     await sql`
       INSERT INTO market_signal_observations (
         ticker, provider, metric, value, status, metadata
