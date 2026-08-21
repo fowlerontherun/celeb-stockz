@@ -361,7 +361,13 @@ export async function refreshMarketSnapshots() {
     const missingPreviouslyVerifiedGroups = previousVerifiedGroups
       ? previousVerifiedGroups.filter((group) => !verifiedGroups.includes(group))
       : [];
+    const addedVerifiedGroups = previousVerifiedGroups
+      ? verifiedGroups.filter((group) => !previousVerifiedGroups.includes(group))
+      : [];
     const confidenceDegraded = missingPreviouslyVerifiedGroups.length > 0;
+    const sourceCoverageChanged =
+      previousVerifiedGroups !== null &&
+      (missingPreviouslyVerifiedGroups.length > 0 || addedVerifiedGroups.length > 0);
     const previousVerifiedCount = previousVerifiedGroups?.length ?? null;
 
     if (verifiedGroups.length === 0) {
@@ -392,7 +398,9 @@ export async function refreshMarketSnapshots() {
               previousVerifiedGroups,
               previousVerifiedCount,
               missingPreviouslyVerifiedGroups,
+              addedVerifiedGroups,
               degradedFromPrevious: previousVerifiedGroups !== null,
+              changedFromPrevious: previousVerifiedGroups !== null,
             },
             fallback: {
               capturedAt: previous?.captured_at ?? null,
@@ -417,19 +425,26 @@ export async function refreshMarketSnapshots() {
     const targetRawMove = previousPrice
       ? ((score - previousPrice) / previousPrice) * 100
       : 0;
-    const rawMove =
-      confidenceDegraded && targetRawMove < 0 ? 0 : targetRawMove;
-    const confidenceReason =
-      confidenceDegraded && targetRawMove < 0
-        ? ` Missing ${missingPreviouslyVerifiedGroups.join(", ")} data was not treated as negative celebrity momentum.`
-        : "";
+    const rawMove = sourceCoverageChanged ? 0 : targetRawMove;
+    const coverageReason = sourceCoverageChanged
+      ? ` Public-signal coverage changed (${[
+          missingPreviouslyVerifiedGroups.length
+            ? `missing ${missingPreviouslyVerifiedGroups.join(", ")}`
+            : "",
+          addedVerifiedGroups.length
+            ? `added ${addedVerifiedGroups.join(", ")}`
+            : "",
+        ]
+          .filter(Boolean)
+          .join("; ")}); price movement was held for this snapshot so provider availability is not mistaken for celebrity momentum.`
+      : "";
     const movementReason = `${describePageviewChange(
       pageviews.views,
       previousPageviews,
       pageviews.status,
     )} ${describeEditActivity(editActivity.recentEdits)} ${describeAdditionalSignals(
       additionalSignals,
-    )} ${describeExternalSignals(externalSignals)}${confidenceReason}`;
+    )} ${describeExternalSignals(externalSignals)}${coverageReason}`;
 
     if (previous && Math.abs(rawMove) > REVIEW_MOVE_THRESHOLD) {
       flaggedCount += 1;
@@ -455,7 +470,9 @@ export async function refreshMarketSnapshots() {
               previousVerifiedGroups,
               previousVerifiedCount,
               missingPreviouslyVerifiedGroups,
+              addedVerifiedGroups,
               degradedFromPrevious: confidenceDegraded,
+              changedFromPrevious: sourceCoverageChanged,
             },
             anomaly: {
               rawMove: Number(rawMove.toFixed(3)),
@@ -500,7 +517,9 @@ export async function refreshMarketSnapshots() {
             previousVerifiedGroups,
             previousVerifiedCount,
             missingPreviouslyVerifiedGroups,
+            addedVerifiedGroups,
             degradedFromPrevious: confidenceDegraded,
+            changedFromPrevious: sourceCoverageChanged,
           },
           movementReason,
           priceMovementModel: "verified-public-signal-snapshot",
@@ -523,7 +542,7 @@ export async function refreshMarketSnapshots() {
   `;
   await sql`
     INSERT INTO market_refresh_log (started_at, completed_at, status, refreshed_count, verified_count, unavailable_count, flagged_count, detail)
-    VALUES (${startedAt}, now(), ${status}, ${eligibleMarkets.length}, ${verifiedCount}, ${unavailableCount}, ${flaggedCount}, ${"Multi-source public signal refresh; Wikipedia is optional and missing feeds never create synthetic negative movement."})
+    VALUES (${startedAt}, now(), ${status}, ${eligibleMarkets.length}, ${verifiedCount}, ${unavailableCount}, ${flaggedCount}, ${"Multi-source public signal refresh; Wikipedia is optional and provider coverage changes never create synthetic price movement."})
   `;
 
   return {
