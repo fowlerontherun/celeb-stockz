@@ -2,17 +2,24 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Link } from "react-router-dom";
 import {
   Bell,
+  BookOpen,
   ChartNoAxesCombined,
+  ChevronRight,
+  Database,
   Home,
   LayoutGrid,
+  LockKeyhole,
+  Menu,
   PackageOpen,
   Shield,
+  Sparkles,
   Star,
   Trophy,
   TrendingUp,
   Users,
   Wallet,
   X,
+  Zap,
 } from "lucide-react";
 import { ClubsPanel, WatchlistPanel, type Celebrity } from "@/components/ExperiencePanels";
 import { CategoryMarkets, type CategorizedCelebrity } from "@/components/CategoryMarkets";
@@ -51,7 +58,7 @@ const fallbackMarkets: CelebrityMarket[] = [
 
 type Page = "Home" | "Markets" | "Movers" | "Leagues" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs";
 
-const navItems: Array<{ page: Page; icon: ComponentType<{ size?: number; className?: string }> }> = [
+const desktopNavItems: Array<{ page: Page; icon: ComponentType<{ size?: number; className?: string }> }> = [
   { page: "Home", icon: Home },
   { page: "Markets", icon: LayoutGrid },
   { page: "Movers", icon: TrendingUp },
@@ -68,6 +75,7 @@ export default function Index() {
   const [selected, setSelected] = useState<CelebrityMarket>(fallbackMarkets[0]);
   const [tradeOpen, setTradeOpen] = useState(false);
   const [follows, setFollows] = useState<Follow[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const watchlist = follows
     .map((follow) => markets.find((market) => market.ticker === follow.ticker))
@@ -141,6 +149,12 @@ export default function Index() {
     setTradeOpen(true);
   };
 
+  const selectPage = (newPage: Page) => {
+    setPage(newPage);
+    setIsMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   const content =
     page === "Markets" ? <CategoryMarkets markets={markets} onTrade={openTrade} /> :
     page === "Movers" ? <TopMovers markets={markets} onTrade={openTrade} /> :
@@ -151,27 +165,54 @@ export default function Index() {
     page === "Clubs" ? <ClubsPanel /> : (
       <div className="animate-in fade-in duration-300">
         <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Signal-priced practice markets</p>
-        <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
-        <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for live trading only.</p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <button type="button" onClick={() => setPage("Markets")} className="rounded-xl bg-[#7c3aed] px-5 py-3 text-sm font-black text-white hover:bg-[#9361f5]">Browse market categories</button>
-          <button type="button" onClick={() => setPage("Leagues")} className="rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-5 py-3 text-sm font-black text-[#ffe2a3] hover:bg-[#ffd17b]/20">Player Leagues</button>
-          <button type="button" onClick={() => setPage("Movers")} className="rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-[#e6d8ff] hover:bg-white/10">View top movers</button>
+        <h1 className="font-display mt-1 text-3xl font-black sm:text-4xl md:text-5xl">Fame moves the <span className="text-[#ff7282]">market.</span></h1>
+        <p className="mt-3 max-w-2xl text-xs sm:text-sm leading-6 text-[#b8a9c4]">Explore public figures across music, sport, film, TV, and politics. Every price uses modeled signals and is for live trading only.</p>
+        
+        <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
+          <button type="button" onClick={() => selectPage("Markets")} className="flex-1 sm:flex-none rounded-xl bg-[#7c3aed] px-5 py-3 text-xs sm:text-sm font-black text-white active:scale-95 transition hover:bg-[#9361f5]">Browse markets</button>
+          <button type="button" onClick={() => selectPage("Leagues")} className="flex-1 sm:flex-none rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-5 py-3 text-xs sm:text-sm font-black text-[#ffe2a3] active:scale-95 transition hover:bg-[#ffd17b]/20">Player Leagues</button>
+          <button type="button" onClick={() => selectPage("Movers")} className="w-full sm:w-auto rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-xs sm:text-sm font-black text-[#e6d8ff] active:scale-95 transition hover:bg-white/10">View top movers</button>
         </div>
 
-        {/* On-screen Presence: Featured & Upcoming Packs Carousels */}
+        {/* Horizontal Carousel for Published & Upcoming Packs */}
         <PackCarousels />
 
-        <OnboardingRecap onStartTrading={() => setPage("Markets")} />
+        <OnboardingRecap onStartTrading={() => selectPage("Markets")} />
       </div>
     );
 
   return (
     <main className="min-h-screen bg-[#120b20] text-[#fff8f2]">
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
+        {/* Desktop Sidebar Navigation */}
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-white/10 bg-[#170d29] px-5 py-7 lg:flex">
-          <div className="flex items-center gap-2 px-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={20} /></div><span className="font-display text-xl font-black">Celeb<span className="text-[#ff7282]">Stockz</span></span></div>
-          <div className="mt-11 space-y-2">{navItems.map(({ page: itemPage, icon: Icon }) => <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${page === itemPage ? "bg-[#7c3aed] text-white shadow-lg" : "text-[#b9acc9] hover:bg-white/5 hover:text-white"}`}><Icon size={18} />{itemPage}</button>)}</div>
+          <div className="flex items-center gap-2 px-2">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]">
+              <ChartNoAxesCombined size={20} />
+            </div>
+            <span className="font-display text-xl font-black">
+              Celeb<span className="text-[#ff7282]">Stockz</span>
+            </span>
+          </div>
+
+          <div className="mt-11 space-y-1.5">
+            {desktopNavItems.map(({ page: itemPage, icon: Icon }) => (
+              <button
+                key={itemPage}
+                type="button"
+                onClick={() => selectPage(itemPage)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
+                  page === itemPage
+                    ? "bg-[#7c3aed] text-white shadow-lg"
+                    : "text-[#b9acc9] hover:bg-white/5 hover:text-white"
+                }`}
+              >
+                <Icon size={18} />
+                {itemPage}
+              </button>
+            ))}
+          </div>
+
           <div className="mt-auto space-y-3 px-2">
             <Link
               to="/packs"
@@ -185,40 +226,242 @@ export default function Index() {
                 £1.99
               </span>
             </Link>
-            <p className="text-[10px] leading-4 text-[#7c6d8e]">Live celebrity assets for entertainment only. Not investment advice.</p>
+            <p className="text-[10px] leading-4 text-[#7c6d8e]">
+              Live celebrity assets for entertainment only. Not investment advice.
+            </p>
           </div>
         </aside>
 
+        {/* Main Content Area */}
         <section className="w-full overflow-hidden">
-          <header className="flex items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
-            <div className="flex items-center gap-2"><div className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={19} /></div><span className="font-display text-lg font-black lg:hidden">Celeb<span className="text-[#ff7282]">Stockz</span></span></div>
-            <div className="flex items-center gap-3">
+          {/* Top Bar Header */}
+          <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-[#120b20]/90 px-4 py-3.5 sm:px-8 sm:py-5 backdrop-blur-md">
+            <div className="flex items-center gap-2">
+              <div className="grid h-8 w-8 place-items-center rounded-xl bg-[#7c3aed] lg:hidden">
+                <ChartNoAxesCombined size={17} />
+              </div>
+              <span className="font-display text-base font-black lg:hidden">
+                Celeb<span className="text-[#ff7282]">Stockz</span>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-3">
               <Link
                 to="/packs"
                 className="hidden items-center gap-1.5 rounded-xl border border-[#ffd17b]/40 bg-[#ffd17b]/15 px-3 py-2 text-xs font-black text-[#ffd17b] hover:bg-[#ffd17b]/25 sm:inline-flex"
               >
                 <PackageOpen size={14} />
-                <span>Celebrity Packs · £1.99</span>
+                <span>Packs · £1.99</span>
               </Link>
-              <button type="button" aria-label="Market alerts" className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5"><Bell size={18} /><i className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#ff7282]" /></button>
               <WalletBalance />
             </div>
           </header>
-          <div className="px-5 pb-28 sm:px-8 lg:px-10">{content}</div>
+
+          {/* Page Body with Mobile Bottom Padding */}
+          <div className="px-4 pb-28 pt-4 sm:px-8 sm:pb-28 sm:pt-6 lg:px-10">
+            {content}
+          </div>
         </section>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 z-20 flex justify-around border-t border-white/10 bg-[#1a0e2a]/95 px-2 py-3 backdrop-blur lg:hidden">
-        {navItems.slice(0, 5).map(({ page: itemPage, icon: Icon }) => <button key={itemPage} type="button" onClick={() => setPage(itemPage)} className={`flex flex-col items-center gap-1 text-[10px] font-bold ${page === itemPage ? "text-[#c99bff]" : "text-[#897b95]"}`}><Icon size={19} />{itemPage}</button>)}
+      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      <nav
+        aria-label="Mobile Navigation"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#170c2a]/95 pb-safe backdrop-blur-lg lg:hidden shadow-[0_-10px_25px_rgba(0,0,0,0.5)]"
+      >
+        <div className="grid grid-cols-5 items-center px-1 py-1.5 text-center">
+          {[
+            { page: "Home" as Page, label: "Home", icon: Home },
+            { page: "Markets" as Page, label: "Markets", icon: LayoutGrid },
+            { page: "Movers" as Page, label: "Movers", icon: TrendingUp },
+            { page: "Portfolio" as Page, label: "Portfolio", icon: Wallet },
+          ].map(({ page: itemPage, label, icon: Icon }) => {
+            const isActive = page === itemPage;
+
+            return (
+              <button
+                key={itemPage}
+                type="button"
+                onClick={() => selectPage(itemPage)}
+                className={`flex flex-col items-center justify-center py-1.5 transition active:scale-90 ${
+                  isActive ? "text-[#ffd17b]" : "text-[#9d8da9]"
+                }`}
+              >
+                <div
+                  className={`grid h-8 w-8 place-items-center rounded-xl transition ${
+                    isActive ? "bg-[#ffd17b]/20 text-[#ffd17b]" : "text-[#b2a2be]"
+                  }`}
+                >
+                  <Icon size={19} />
+                </div>
+                <span className="mt-0.5 text-[10px] font-extrabold tracking-tight">
+                  {label}
+                </span>
+              </button>
+            );
+          })}
+
+          {/* "More" / Menu Button for mobile drawer */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(true)}
+            className={`flex flex-col items-center justify-center py-1.5 transition active:scale-90 ${
+              ["Leagues", "Watchlist", "Rankings", "Clubs"].includes(page)
+                ? "text-[#c99bff]"
+                : "text-[#9d8da9]"
+            }`}
+          >
+            <div
+              className={`grid h-8 w-8 place-items-center rounded-xl transition ${
+                ["Leagues", "Watchlist", "Rankings", "Clubs"].includes(page)
+                  ? "bg-[#7c3aed]/30 text-[#c99bff]"
+                  : "text-[#b2a2be]"
+              }`}
+            >
+              <Menu size={19} />
+            </div>
+            <span className="mt-0.5 text-[10px] font-extrabold tracking-tight">
+              More
+            </span>
+          </button>
+        </div>
       </nav>
 
+      {/* MOBILE "MORE" DRAWER BOTTOM SHEET */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end bg-black/80 backdrop-blur-sm lg:hidden animate-in fade-in duration-200"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <div
+            className="w-full rounded-t-[32px] border-t border-[#c99bff]/30 bg-[#211230] p-6 pb-safe shadow-2xl animate-in slide-in-from-bottom duration-300"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab Handle */}
+            <div className="mx-auto -mt-2 mb-4 h-1.5 w-12 rounded-full bg-white/20" />
+
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <span className="text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
+                Navigation & Tools
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="rounded-full p-1 text-[#bcaec8] hover:bg-white/10 hover:text-white"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
+              {[
+                { page: "Leagues" as Page, label: "Player Leagues", icon: Shield, desc: "Private leaderboards" },
+                { page: "Watchlist" as Page, label: "Watchlist", icon: Star, desc: `${watchlist.length} pinned` },
+                { page: "Rankings" as Page, label: "Live Rankings", icon: Trophy, desc: "Global standings" },
+                { page: "Clubs" as Page, label: "Trading Clubs", icon: Users, desc: "Community circles" },
+              ].map(({ page: p, label, icon: Icon, desc }) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => selectPage(p)}
+                  className={`flex flex-col items-start rounded-2xl border p-3.5 text-left transition active:scale-95 ${
+                    page === p
+                      ? "border-[#ffd17b] bg-[#ffd17b]/15 text-white"
+                      : "border-white/10 bg-[#160c25] text-[#dcd0e3] hover:bg-white/5"
+                  }`}
+                >
+                  <div className="grid h-8 w-8 place-items-center rounded-lg bg-[#7c3aed]/25 text-[#c99bff]">
+                    <Icon size={16} />
+                  </div>
+                  <span className="mt-2 font-display text-sm font-black">{label}</span>
+                  <span className="text-[10px] text-[#9c8ca8]">{desc}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Links Section in Mobile Drawer */}
+            <div className="mt-4 space-y-2 border-t border-white/10 pt-4">
+              <Link
+                to="/packs"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 p-3 text-xs font-black text-[#ffe2a4]"
+              >
+                <div className="flex items-center gap-2">
+                  <PackageOpen size={16} className="text-[#ffd17b]" />
+                  <span>52 Weekly Celebrity Packs</span>
+                </div>
+                <span className="rounded bg-[#ffd17b] px-2 py-0.5 text-[10px] text-[#382600]">
+                  £1.99
+                </span>
+              </Link>
+
+              <Link
+                to="/market-data"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3 text-xs font-bold text-[#d8c8e1]"
+              >
+                <div className="flex items-center gap-2">
+                  <ChartNoAxesCombined size={15} className="text-[#c99bff]" />
+                  <span>Market Methodology & Transparency</span>
+                </div>
+                <ChevronRight size={14} className="text-[#8c7a9b]" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE & DESKTOP RESPONSIVE TRADE SHEET MODAL */}
       {tradeOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0e0717]/75 p-3 backdrop-blur-sm sm:grid sm:place-items-center sm:p-6">
-          <section className="mx-auto w-full max-w-md rounded-[30px] border border-white/10 bg-[#211230] p-6 shadow-2xl">
-            <div className="flex items-start justify-between"><div><p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">{selected.category} · signal-priced live market</p><h2 className="font-display mt-1 text-2xl font-black">Trade {selected.ticker}</h2></div><button type="button" onClick={() => setTradeOpen(false)} aria-label="Close trade sheet" className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1]"><X size={18} /></button></div>
-            <div className="mt-5 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3"><div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1"><img src={selected.image} alt={selected.name} className="h-full w-full object-contain" /></div><div><p className="font-bold">{selected.name}</p><p className="text-xs text-[#9b8ba8]">{selected.signals.socialFollowersMillions}M followers · {selected.signals.hashtagViewsBillions}B hashtag views</p></div></div>
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-md animate-in fade-in duration-200">
+          <section
+            className="flex max-h-[92vh] sm:max-h-[90vh] w-full max-w-lg flex-col rounded-t-[32px] sm:rounded-[30px] border border-white/15 bg-[#211230] p-5 sm:p-6 shadow-2xl animate-in slide-in-from-bottom duration-300 overflow-y-auto pb-safe"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Grab bar on mobile */}
+            <div className="mx-auto -mt-1 mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" />
+
+            <div className="flex items-start justify-between">
+              <div>
+                <p className="text-xs font-extrabold uppercase tracking-[.17em] text-[#c99bff]">
+                  {selected.category} · Practice Market
+                </p>
+                <h2 className="font-display mt-0.5 text-2xl font-black">
+                  Trade {selected.ticker}
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTradeOpen(false)}
+                aria-label="Close trade sheet"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c7b9d1] hover:bg-white/10 active:scale-95"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#160c25] p-1">
+                <img
+                  src={selected.image}
+                  alt={selected.name}
+                  className="h-full w-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.src = `/api/celebrity-images/${encodeURIComponent(selected.ticker)}`;
+                  }}
+                />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-bold text-white">{selected.name}</p>
+                <p className="text-xs text-[#9b8ba8]">
+                  {selected.signals.socialFollowersMillions}M followers · {selected.signals.hashtagViewsBillions}B hashtag views
+                </p>
+              </div>
+            </div>
+
             <MarketDetailPanel market={selected} />
-            <div className="mt-5">
+
+            <div className="mt-4">
               <TradeControls
                 key={selected.ticker}
                 ticker={selected.ticker}
@@ -227,7 +470,10 @@ export default function Index() {
                 onTradeComplete={() => setTradeOpen(false)}
               />
             </div>
-            <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">Prices use a reproducible fame-signal model and are for live trading only.</p>
+
+            <p className="mt-4 text-center text-[10px] leading-4 text-[#81738d]">
+              Prices use a reproducible fame-signal model and are for practice trading only.
+            </p>
           </section>
         </div>
       )}

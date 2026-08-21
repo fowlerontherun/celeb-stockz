@@ -26,7 +26,10 @@ export function MarketTicker() {
   );
 
   return (
-    <div className="fixed bottom-20 left-3 right-3 z-30 mx-auto flex max-w-3xl items-center gap-3 rounded-2xl border border-[#a97cff]/30 bg-[#211230]/95 px-4 py-3 text-xs shadow-2xl backdrop-blur sm:bottom-5 sm:left-auto sm:right-5 sm:max-w-none">
+    <aside
+      aria-label="Market refresh status"
+      className="hidden sm:flex fixed bottom-5 right-5 z-30 items-center gap-3 rounded-2xl border border-[#a97cff]/30 bg-[#211230]/95 px-4 py-3 text-xs shadow-2xl backdrop-blur-md"
+    >
       <div className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-[#7c3aed]/25 text-[#c99bff]">
         <Activity size={16} />
       </div>
@@ -38,10 +41,10 @@ export function MarketTicker() {
           Real-time signal tracking · price movements update every minute
         </p>
       </div>
-      <span className="hidden items-center gap-1.5 rounded-lg bg-[#183b33] px-2.5 py-1 text-[10px] font-black text-[#62e7b6] sm:inline-flex">
+      <span className="inline-flex items-center gap-1.5 rounded-lg bg-[#183b33] px-2.5 py-1 text-[10px] font-black text-[#62e7b6]">
         <Radio size={12} className="animate-pulse" />
         LIVE
       </span>
-    </div>
+    </aside>
   );
 }

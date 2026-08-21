@@ -88,37 +88,6 @@ export function MarketDiscovery() {
     void loadDiscovery();
   }, []);
 
-  useEffect(() => {
-    if (!alertsAllowed) return;
-
-    const alertedTickers = new Set(
-      JSON.parse(sessionStorage.getItem("market-alerts") ?? "[]") as string[],
-    );
-
-    const newAlerts = markets.filter((market) => {
-      const follow = followsByTicker.get(market.ticker);
-      return (
-        follow?.alertsEnabled &&
-        Math.abs(market.change) >= 10 &&
-        !alertedTickers.has(`${market.ticker}-${market.change}`)
-      );
-    });
-
-    newAlerts.forEach((market) => {
-      alertedTickers.add(`${market.ticker}-${market.change}`);
-      showSuccess(
-        `${market.name} is ${market.change > 0 ? "up" : "down"} ${Math.abs(
-          market.change,
-        ).toFixed(1)}% in the current modeled cycle.`,
-      );
-    });
-
-    sessionStorage.setItem(
-      "market-alerts",
-      JSON.stringify(Array.from(alertedTickers)),
-    );
-  }, [alertsAllowed, followsByTicker, markets]);
-
   const updateFollow = async (
     ticker: string,
     following: boolean,
@@ -168,41 +137,32 @@ export function MarketDiscovery() {
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 left-3 z-30 inline-flex items-center gap-2 rounded-2xl border border-[#c99bff]/35 bg-[#211230]/95 px-4 py-3 text-xs font-black text-[#f3ebfa] shadow-2xl backdrop-blur transition hover:bg-[#2b1840] sm:bottom-5"
-      >
-        <Sparkles size={16} className="text-[#ffd17b]" />
-        Discover
-      </button>
-
       {isOpen && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0e0717]/80 p-4 backdrop-blur-sm sm:grid sm:place-items-center">
-          <section className="mx-auto w-full max-w-3xl rounded-[30px] border border-white/10 bg-[#211230] p-5 shadow-2xl sm:p-7">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[#0e0717]/85 p-3 sm:p-4 backdrop-blur-md sm:grid sm:place-items-center">
+          <section className="mx-auto my-auto w-full max-w-3xl rounded-[28px] border border-white/10 bg-[#211230] p-5 shadow-2xl sm:p-7">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-[.18em] text-[#c99bff]">
                   <Sparkles size={14} /> Curated discovery
                 </p>
-                <h2 className="font-display mt-2 text-3xl font-black">
+                <h2 className="font-display mt-2 text-2xl sm:text-3xl font-black">
                   Follow the spotlight.
                 </h2>
-                <p className="mt-2 text-sm text-[#c4b4d0]">
-                  Save markets you want to track and choose which ones can send in-app movement alerts.
+                <p className="mt-1.5 text-xs sm:text-sm text-[#c4b4d0]">
+                  Save markets to track movements and receive real-time updates.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsOpen(false)}
                 aria-label="Close discovery"
-                className="grid h-10 w-10 place-items-center rounded-xl bg-white/5 text-[#cdbed9] hover:bg-white/10"
+                className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#cdbed9] hover:bg-white/10 active:scale-95"
               >
                 <X size={18} />
               </button>
             </div>
 
-            <div className="mt-7 grid gap-4 md:grid-cols-3">
+            <div className="mt-6 grid gap-4 sm:grid-cols-2 md:grid-cols-3">
               {collections.map((collection) => (
                 <article
                   key={collection.title}
@@ -211,7 +171,7 @@ export function MarketDiscovery() {
                   <p className="text-xs font-extrabold uppercase tracking-[.13em] text-[#ffd17b]">
                     Collection
                   </p>
-                  <h3 className="font-display mt-2 text-xl font-black">
+                  <h3 className="font-display mt-1.5 text-lg sm:text-xl font-black">
                     {collection.title}
                   </h3>
                   <p className="mt-1 text-xs leading-5 text-[#af9fbb]">
@@ -227,18 +187,18 @@ export function MarketDiscovery() {
                           className="rounded-xl bg-white/[.05] p-3"
                         >
                           <div className="flex items-center justify-between gap-2">
-                            <div>
-                              <p className="text-sm font-black">{market.name}</p>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-black">{market.name}</p>
                               <p className="text-[10px] font-bold text-[#a99ab7]">
                                 ${market.ticker} · {market.price.toFixed(2)} STKZ
                               </p>
                             </div>
                             <span
-                              className={
+                              className={`text-xs font-black shrink-0 ${
                                 market.change >= 0
-                                  ? "text-xs font-black text-[#62e7b6]"
-                                  : "text-xs font-black text-[#ff9ca5]"
-                              }
+                                  ? "text-[#62e7b6]"
+                                  : "text-[#ff9ca5]"
+                              }`}
                             >
                               {market.change >= 0 ? "+" : ""}
                               {market.change}%

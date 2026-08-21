@@ -22,6 +22,7 @@ type TradeControlsProps = {
 };
 
 const TRANSACTION_FEE_RATE = 0.01;
+const PRESET_AMOUNTS = [10, 25, 50, 100, 250];
 
 export function TradeControls({
   ticker,
@@ -167,19 +168,20 @@ export function TradeControls({
         </div>
       )}
 
-      <div className="grid grid-cols-2 rounded-xl bg-white/5 p-1">
+      {/* Buy / Sell Toggle Pill with large tap targets */}
+      <div className="grid grid-cols-2 rounded-2xl bg-white/5 p-1">
         {(["buy", "sell"] as const).map((option) => (
           <button
             key={option}
             type="button"
             disabled={isLocked}
             onClick={() => setSide(option)}
-            className={`rounded-lg py-2.5 text-sm font-black capitalize transition disabled:opacity-40 ${
+            className={`rounded-xl py-3 text-sm font-black capitalize transition active:scale-95 disabled:opacity-40 ${
               side === option
                 ? option === "buy"
-                  ? "bg-[#3ed9a3] text-[#112b24]"
-                  : "bg-[#ff7282] text-[#401b2d]"
-                : "text-[#a89aad]"
+                  ? "bg-[#3ed9a3] text-[#112b24] shadow-lg"
+                  : "bg-[#ff7282] text-[#401b2d] shadow-lg"
+                : "text-[#a89aad] hover:text-white"
             }`}
           >
             {option}
@@ -187,19 +189,20 @@ export function TradeControls({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      {/* Order Type Pills */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
         {([
           ["market", "Market"],
           ["limit", "Limit"],
-          ["stop_market", "Stop market"],
-          ["stop_limit", "Stop limit"],
+          ["stop_market", "Stop"],
+          ["stop_limit", "Stop-Limit"],
         ] as const).map(([value, label]) => (
           <button
             key={value}
             type="button"
             disabled={isLocked}
             onClick={() => setOrderType(value)}
-            className={`rounded-xl border px-3 py-2.5 text-xs font-black transition disabled:opacity-40 ${
+            className={`rounded-xl border px-3 py-2 text-xs font-black transition active:scale-95 disabled:opacity-40 ${
               orderType === value
                 ? "border-[#a97cff] bg-[#7c3aed] text-white"
                 : "border-white/10 bg-white/[.04] text-[#b9acc9]"
@@ -213,7 +216,7 @@ export function TradeControls({
       <div className="rounded-2xl border border-white/10 bg-white/[.04] p-4">
         <div className="flex justify-between text-xs font-bold text-[#b6a8c1]">
           <span>{side === "buy" ? "Available to buy" : `Available ${ticker}`}</span>
-          <span className="text-[#fff8f2]">
+          <span className="text-[#fff8f2] font-black">
             {side === "buy"
               ? `${grossMaxAmount.toLocaleString(undefined, {
                   maximumFractionDigits: 2,
@@ -221,7 +224,8 @@ export function TradeControls({
               : `${positionQuantity.toFixed(4)} shares`}
           </span>
         </div>
-        <label className="mt-4 block text-xs font-bold uppercase tracking-[.13em] text-[#a89aad]">
+
+        <label className="mt-3 block text-xs font-bold uppercase tracking-[.13em] text-[#a89aad]">
           Amount (STKZ)
           <div className="mt-2 flex gap-2">
             <input
@@ -235,39 +239,56 @@ export function TradeControls({
               type="button"
               onClick={() => setAmount(maxAmount.toFixed(2))}
               disabled={isLocked || !wallet || maxAmount <= 0}
-              className="rounded-xl bg-[#7c3aed] px-4 text-xs font-black text-white disabled:opacity-40"
+              className="rounded-xl bg-[#7c3aed] px-4 text-xs font-black text-white active:scale-95 disabled:opacity-40"
             >
               Max
             </button>
           </div>
         </label>
+
+        {/* Quick Amount Presets for Mobile */}
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {PRESET_AMOUNTS.map((preset) => (
+            <button
+              key={preset}
+              type="button"
+              disabled={isLocked}
+              onClick={() => setAmount(String(preset))}
+              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
+                amount === String(preset)
+                  ? "bg-[#c99bff] text-[#1a0e28]"
+                  : "bg-white/5 text-[#c4b4d0] hover:bg-white/10"
+              }`}
+            >
+              +{preset}
+            </button>
+          ))}
+        </div>
+
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {needsLimit && priceInput("Limit price (STKZ)", limitPrice, setLimitPrice)}
           {needsStop && priceInput("Stop price (STKZ)", stopPrice, setStopPrice)}
         </div>
+
         <div className="mt-3 flex justify-between text-xs text-[#b6a8c1]">
           <span>Current modeled price</span>
-          <span className="font-bold text-white">{price.toFixed(2)} STKZ</span>
+          <span className="font-black text-white">{price.toFixed(2)} STKZ</span>
         </div>
+
         <div className="mt-3 flex justify-between rounded-xl bg-[#ffd17b]/10 px-3 py-2 text-xs">
           <span className="font-bold text-[#ffd17b]">Transaction fee · 1%</span>
           <span className="font-black text-[#fff8f2]">~{estimatedFee.toFixed(2)} STKZ</span>
         </div>
-        <p className="mt-2 text-[10px] leading-4 text-[#a89aad]">
-          {side === "buy"
-            ? "The fee is added to your purchase total."
-            : "The fee is deducted from your sale proceeds."}
-        </p>
       </div>
 
       <button
         type="button"
         onClick={() => void submitTrade()}
         disabled={isLocked || isSubmitting || !wallet}
-        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3.5 text-sm font-black disabled:opacity-50 ${
+        className={`flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black shadow-lg transition active:scale-95 disabled:opacity-50 ${
           side === "buy"
-            ? "bg-[#3ed9a3] text-[#112b24]"
-            : "bg-[#ff7282] text-[#401b2d]"
+            ? "bg-[#3ed9a3] text-[#112b24] hover:bg-[#62e7b6]"
+            : "bg-[#ff7282] text-[#401b2d] hover:bg-[#ff8e9a]"
         }`}
       >
         {isSubmitting && <LoaderCircle size={17} className="animate-spin" />}

@@ -19,6 +19,12 @@ import { showError, showSuccess } from "@/utils/toast";
 
 const adminEmails = new Set(["j.fowler1986@gmail.com"]);
 
+function formatCompactBalance(val: number) {
+  if (val >= 1000000) return `${(val / 1000000).toFixed(1)}M`;
+  if (val >= 1000) return `${(val / 1000).toFixed(1)}k`;
+  return val.toFixed(0);
+}
+
 export function WalletBalance() {
   const navigate = useNavigate();
   const { data: session } = useAuthSession();
@@ -59,18 +65,29 @@ export function WalletBalance() {
 
   return (
     <div className="flex items-center gap-2">
+      {/* Desktop / Tablet Balance Pill */}
       <div className="hidden items-center gap-2 rounded-xl border border-[#8a60db]/50 bg-[#291845] px-3 py-2 text-xs font-bold text-[#e6d8ff] sm:flex">
         <Wallet size={15} className="text-[#ffd17b]" />
         {balance === null ? "Loading STKZ…" : `${balance.toLocaleString()} STKZ`}
       </div>
 
+      {/* Mobile Compact Balance Badge */}
+      <div className="flex items-center gap-1.5 rounded-xl border border-[#8a60db]/40 bg-[#291845] px-2.5 py-1.5 text-xs font-black text-[#e6d8ff] sm:hidden">
+        <Wallet size={13} className="text-[#ffd17b]" />
+        <span>{balance === null ? "…" : `${formatCompactBalance(balance)} STKZ`}</span>
+      </div>
+
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button type="button" aria-label="Open account menu" className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-[#c99bff] transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#a97cff]">
-            <UserRound size={18} />
+          <button
+            type="button"
+            aria-label="Open account menu"
+            className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-[#c99bff] transition active:scale-95 hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[#a97cff]"
+          >
+            <UserRound size={17} />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2]">
+        <DropdownMenuContent align="end" className="w-56 rounded-2xl border-white/10 bg-[#211230] p-2 text-[#fff8f2] shadow-2xl">
           <DropdownMenuItem onSelect={() => navigate("/profile")} className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-bold focus:bg-white/10 focus:text-white">
             <Settings size={16} className="mr-2 text-[#c99bff]" />
             Profile & settings
