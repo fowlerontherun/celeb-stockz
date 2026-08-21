@@ -2,28 +2,25 @@ import { useEffect, useState, type ComponentType } from "react";
 import { Link } from "react-router-dom";
 import {
   Bell,
-  BookOpen,
   ChartNoAxesCombined,
-  ChevronRight,
-  Database,
   Home,
   LayoutGrid,
-  LockKeyhole,
   Menu,
   PackageOpen,
+  Search,
   Shield,
-  Sparkles,
   Star,
+  Swords,
   Trophy,
   TrendingUp,
   Users,
   Wallet,
   X,
-  Zap,
 } from "lucide-react";
 import { ClubsPanel, WatchlistPanel, type Celebrity } from "@/components/ExperiencePanels";
 import { CategoryMarkets, type CategorizedCelebrity } from "@/components/CategoryMarkets";
 import { CustomLeagues } from "@/components/CustomLeagues";
+import { CelebrityBattle } from "@/components/CelebrityBattle";
 import { LivePortfolio } from "@/components/LivePortfolio";
 import { LiveRankings } from "@/components/LiveRankings";
 import { TopMovers } from "@/components/TopMovers";
@@ -32,6 +29,7 @@ import { WalletBalance } from "@/components/WalletBalance";
 import { OnboardingRecap } from "@/components/OnboardingRecap";
 import { MarketDetailPanel } from "@/components/MarketDetailPanel";
 import { PackCarousels } from "@/components/PackCarousels";
+import { QuickSearchModal } from "@/components/QuickSearchModal";
 import { showError, showSuccess } from "@/utils/toast";
 
 type CelebrityMarket = CategorizedCelebrity & {
@@ -56,12 +54,13 @@ const fallbackMarkets: CelebrityMarket[] = [
   { name: "Daniel Kaluuya", ticker: "KALUUYA", category: "Film", price: 45.89, change: 4.1, image: "https://commons.wikimedia.org/wiki/Special:FilePath/Daniel%20Kaluuya%20by%20Gage%20Skidmore.jpg?width=900", birthYear: 1989, nationality: "British", signals: { socialFollowersMillions: 2.1, hashtagViewsBillions: 1.7, trendScore: 74, monthlySearchesMillions: 2.4, newsStories: 260 } },
 ];
 
-type Page = "Home" | "Markets" | "Movers" | "Leagues" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs";
+type Page = "Home" | "Markets" | "Movers" | "Battles" | "Leagues" | "Watchlist" | "Portfolio" | "Rankings" | "Clubs";
 
 const desktopNavItems: Array<{ page: Page; icon: ComponentType<{ size?: number; className?: string }> }> = [
   { page: "Home", icon: Home },
   { page: "Markets", icon: LayoutGrid },
   { page: "Movers", icon: TrendingUp },
+  { page: "Battles", icon: Swords },
   { page: "Leagues", icon: Shield },
   { page: "Watchlist", icon: Star },
   { page: "Portfolio", icon: Wallet },
@@ -76,10 +75,23 @@ export default function Index() {
   const [tradeOpen, setTradeOpen] = useState(false);
   const [follows, setFollows] = useState<Follow[]>([]);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isQuickSearchOpen, setIsQuickSearchOpen] = useState(false);
 
   const watchlist = follows
     .map((follow) => markets.find((market) => market.ticker === follow.ticker))
     .filter((market): market is CelebrityMarket => Boolean(market));
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        setIsQuickSearchOpen((prev) => !prev);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const loadMarkets = async () => {
@@ -158,6 +170,7 @@ export default function Index() {
   const content =
     page === "Markets" ? <CategoryMarkets markets={markets} onTrade={openTrade} /> :
     page === "Movers" ? <TopMovers markets={markets} onTrade={openTrade} /> :
+    page === "Battles" ? <CelebrityBattle markets={markets} onTrade={openTrade} /> :
     page === "Leagues" ? <CustomLeagues /> :
     page === "Watchlist" ? <WatchlistPanel celebs={watchlist} onTrade={openTrade} onRemove={(ticker) => void removeFromWatchlist(ticker)} /> :
     page === "Portfolio" ? <LivePortfolio markets={markets} onTrade={openTrade} /> :
@@ -170,6 +183,7 @@ export default function Index() {
         
         <div className="mt-6 flex flex-wrap gap-2.5 sm:gap-3">
           <button type="button" onClick={() => selectPage("Markets")} className="flex-1 sm:flex-none rounded-xl bg-[#7c3aed] px-5 py-3 text-xs sm:text-sm font-black text-white active:scale-95 transition hover:bg-[#9361f5]">Browse markets</button>
+          <button type="button" onClick={() => selectPage("Battles")} className="flex-1 sm:flex-none rounded-xl border border-[#ff7282]/40 bg-[#ff7282]/15 px-5 py-3 text-xs sm:text-sm font-black text-[#ffb2bc] active:scale-95 transition hover:bg-[#ff7282]/25">Culture Battles ⚔️</button>
           <button type="button" onClick={() => selectPage("Leagues")} className="flex-1 sm:flex-none rounded-xl border border-[#ffd17b]/30 bg-[#ffd17b]/10 px-5 py-3 text-xs sm:text-sm font-black text-[#ffe2a3] active:scale-95 transition hover:bg-[#ffd17b]/20">Player Leagues</button>
           <button type="button" onClick={() => selectPage("Movers")} className="w-full sm:w-auto rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-xs sm:text-sm font-black text-[#e6d8ff] active:scale-95 transition hover:bg-white/10">View top movers</button>
         </div>
@@ -183,6 +197,14 @@ export default function Index() {
 
   return (
     <main className="min-h-screen bg-[#120b20] text-[#fff8f2]">
+      {/* Quick Search Spotlight Modal */}
+      <QuickSearchModal
+        isOpen={isQuickSearchOpen}
+        onClose={() => setIsQuickSearchOpen(false)}
+        markets={markets}
+        onSelectMarket={openTrade}
+      />
+
       <div className="mx-auto flex min-h-screen max-w-[1500px]">
         {/* Desktop Sidebar Navigation */}
         <aside className="sticky top-0 hidden h-screen w-[240px] shrink-0 flex-col border-r border-white/10 bg-[#170d29] px-5 py-7 lg:flex">
@@ -195,15 +217,29 @@ export default function Index() {
             </span>
           </div>
 
-          <div className="mt-11 space-y-1.5">
+          <button
+            type="button"
+            onClick={() => setIsQuickSearchOpen(true)}
+            className="mt-6 flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-bold text-[#b9acc9] hover:bg-white/10 hover:text-white"
+          >
+            <span className="flex items-center gap-2">
+              <Search size={14} className="text-[#c99bff]" />
+              Quick search…
+            </span>
+            <kbd className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] text-[#c99bff]">
+              ⌘K
+            </kbd>
+          </button>
+
+          <div className="mt-6 space-y-1.5">
             {desktopNavItems.map(({ page: itemPage, icon: Icon }) => (
               <button
                 key={itemPage}
                 type="button"
                 onClick={() => selectPage(itemPage)}
-                className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold transition ${
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition ${
                   page === itemPage
-                    ? "bg-[#7c3aed] text-white shadow-lg"
+                    ? "bg-[#7c3aed] text-white shadow-lg font-black"
                     : "text-[#b9acc9] hover:bg-white/5 hover:text-white"
                 }`}
               >
@@ -246,6 +282,15 @@ export default function Index() {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={() => setIsQuickSearchOpen(true)}
+                aria-label="Open Quick Search"
+                className="grid h-9 w-9 sm:h-10 sm:w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-[#c99bff] hover:bg-white/10 active:scale-95"
+              >
+                <Search size={17} />
+              </button>
+
               <Link
                 to="/packs"
                 className="hidden items-center gap-1.5 rounded-xl border border-[#ffd17b]/40 bg-[#ffd17b]/15 px-3 py-2 text-xs font-black text-[#ffd17b] hover:bg-[#ffd17b]/25 sm:inline-flex"
@@ -274,7 +319,7 @@ export default function Index() {
             { page: "Home" as Page, label: "Home", icon: Home },
             { page: "Markets" as Page, label: "Markets", icon: LayoutGrid },
             { page: "Movers" as Page, label: "Movers", icon: TrendingUp },
-            { page: "Portfolio" as Page, label: "Portfolio", icon: Wallet },
+            { page: "Battles" as Page, label: "Battles", icon: Swords },
           ].map(({ page: itemPage, label, icon: Icon }) => {
             const isActive = page === itemPage;
 
@@ -306,14 +351,14 @@ export default function Index() {
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
             className={`flex flex-col items-center justify-center py-1.5 transition active:scale-90 ${
-              ["Leagues", "Watchlist", "Rankings", "Clubs"].includes(page)
+              ["Portfolio", "Leagues", "Watchlist", "Rankings", "Clubs"].includes(page)
                 ? "text-[#c99bff]"
                 : "text-[#9d8da9]"
             }`}
           >
             <div
               className={`grid h-8 w-8 place-items-center rounded-xl transition ${
-                ["Leagues", "Watchlist", "Rankings", "Clubs"].includes(page)
+                ["Portfolio", "Leagues", "Watchlist", "Rankings", "Clubs"].includes(page)
                   ? "bg-[#7c3aed]/30 text-[#c99bff]"
                   : "text-[#b2a2be]"
               }`}
@@ -355,7 +400,8 @@ export default function Index() {
 
             <div className="mt-4 grid grid-cols-2 gap-2.5">
               {[
-                { page: "Leagues" as Page, label: "Player Leagues", icon: Shield, desc: "Private leaderboards" },
+                { page: "Portfolio" as Page, label: "My Portfolio", icon: Wallet, desc: "Holdings & orders" },
+                { page: "Leagues" as Page, label: "Player Leagues", icon: Shield, desc: "Private competitions" },
                 { page: "Watchlist" as Page, label: "Watchlist", icon: Star, desc: `${watchlist.length} pinned` },
                 { page: "Rankings" as Page, label: "Live Rankings", icon: Trophy, desc: "Global standings" },
                 { page: "Clubs" as Page, label: "Trading Clubs", icon: Users, desc: "Community circles" },
@@ -393,18 +439,6 @@ export default function Index() {
                 <span className="rounded bg-[#ffd17b] px-2 py-0.5 text-[10px] text-[#382600]">
                   £1.99
                 </span>
-              </Link>
-
-              <Link
-                to="/market-data"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-3 text-xs font-bold text-[#d8c8e1]"
-              >
-                <div className="flex items-center gap-2">
-                  <ChartNoAxesCombined size={15} className="text-[#c99bff]" />
-                  <span>Market Methodology & Transparency</span>
-                </div>
-                <ChevronRight size={14} className="text-[#8c7a9b]" />
               </Link>
             </div>
           </div>
