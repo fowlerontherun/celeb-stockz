@@ -8,6 +8,10 @@ import {
   recordSignalObservation,
   type SignalObservation,
 } from "./signal-observations";
+import {
+  combineMomentum,
+  getStoredMomentumSignal,
+} from "./signal-momentum";
 
 type SignalStatus = "verified" | "unavailable";
 
@@ -19,6 +23,9 @@ export type AdditionalPriceSignals = {
   searchMomentumPercent: number | null;
   youtubeSubscribers: number | null;
   youtubeViews: number | null;
+  youtubeSubscriberMomentumPercent: number | null;
+  youtubeViewMomentumPercent: number | null;
+  youtubeMomentumPercent: number | null;
   practiceTradePressure: number;
   statuses: {
     news: SignalStatus;
@@ -54,6 +61,14 @@ export type SearchMomentumRefreshSummary = {
   unavailableCount: number;
 };
 
+export type YoutubeObservationRefreshSummary = {
+  configured: boolean;
+  mappedCount: number;
+  requestedCount: number;
+  verifiedCount: number;
+  unavailableCount: number;
+};
+
 const CACHE_MS = 10 * 60 * 1000;
 const SEARCH_PROVIDER = "dataforseo-trends";
 const SEARCH_METRIC = "web-interest-30d";
@@ -61,6 +76,12 @@ const SEARCH_FRESH_MS = 20 * 60 * 60 * 1000;
 const SEARCH_MAX_STALE_MS = 7 * 24 * 60 * 60 * 1000;
 const SEARCH_BATCH_SIZE = 5;
 const SEARCH_REQUEST_CONCURRENCY = 20;
+const YOUTUBE_PROVIDER = "youtube";
+const YOUTUBE_SUBSCRIBER_METRIC = "subscriber-count";
+const YOUTUBE_VIEW_METRIC = "channel-view-count";
+const YOUTUBE_FRESH_MS = 20 * 60 * 60 * 1000;
+const YOUTUBE_MAX_STALE_MS = 7 * 24 * 60 * 60 * 1000;
+const YOUTUBE_BATCH_SIZE = 50;
 const cache = new Map<string, CacheEntry>();
 let tradePressureCache:
   | { values: Map<string, number>; expiresAt: number }
@@ -200,7 +221,10 @@ async function getSearchMomentum(
     SEARCH_PROVIDER,
     SEARCH_METRIC,
   );
-  if (!latestObservation || observationAgeMs(latestObservation) > SEARCH_MAX_STALE_MS) {
+  if (
+    !latestObservation ||
+    observationAgeMs(latestObservation) > SEARCH_MAX_STALE_MS
+  ) {
     return {
       interest: null,
       baselineInterest: null,
@@ -313,62 +337,188 @@ export async function refreshSearchMomentumObservations(): Promise<SearchMomentu
   };
 }
 
-async function getYoutubeStatistics(
-  ticker: string,
-  apiKey: string,
-  channelMap: Record<string, string>,
-) {
-  const channelId = channelMap[ticker];
+export async function refreshYoutubeObservations(): Promise<YoutubeObservationRefreshSummary> {
+  const settings = await getSystemSettings();
+  const mappedMarkets = celebrityMarkets
+    .map((market) => ({
+      market,
+      channelId: settings.youtubeChannels[market.ticker]?.trim(),
+    }))
+    .filter(
+      (entry): entry is { market: CelebrityMarket; channelId: string } =>
+        Boolean(entry.channelId?.startsWith("UC")),
+    );
 
-  if (!apiKey || !channelId) {
+  if (!settings.youtubeApiKey) {
     return {
-      subscribers: null,
-      views: null,
-      status: "unavailable" as const,
+      configured: false,
+      mappedCount: mappedMarkets.length,
+      requestedCount: 0,
+      verifiedCount: 0,
+      unavailableCount: mappedMarkets.length,
     };
   }
 
-  const url = new URL("https://www.googleapis.com/youtube/v3/channels");
-  url.searchParams.set("key", apiKey);
-  url.searchParams.set("id", channelId);
-  url.searchParams.set("part", "statistics");
+  const freshness = await Promise.all(
+    mappedMarkets.map(async (entry) => ({
+      ...entry,
+      observation: await getLatestSignalObservation(
+        entry.market.ticker,
+        YOUTUBE_PROVIDER,
+        YOUTUBE_VIEW_METRIC,
+      ),
+    })),
+  );
+  const stale = freshness.filter(
+    ({ observation }) =>
+      !observation || observationAgeMs(observation) > YOUTUBE_FRESH_MS,
+  );
 
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return {
-        subscribers: null,
-        views: null,
-        status: "unavailable" as const,
-      };
+  let verifiedCount = 0;
+  let unavailableCount = 0;
+
+  for (const batch of chunk(stale, YOUTUBE_BATCH_SIZE)) {
+    const url = new URL("https://www.googleapis.com/youtube/v3/channels");
+    url.searchParams.set("key", settings.youtubeApiKey);
+    url.searchParams.set(
+      "id",
+      batch.map((entry) => entry.channelId).join(","),
+    );
+    url.searchParams.set("part", "statistics");
+
+    try {
+      const response = await fetch(url);
+      const payload = response.ok
+        ? ((await response.json()) as {
+            items?: Array<{
+              id?: string;
+              statistics?: {
+                subscriberCount?: string;
+                viewCount?: string;
+              };
+            }>;
+          })
+        : null;
+      const itemByChannel = new Map(
+        (payload?.items ?? [])
+          .filter((item) => item.id)
+          .map((item) => [item.id!, item]),
+      );
+
+      await Promise.all(
+        batch.map(async ({ market, channelId }) => {
+          const statistics = itemByChannel.get(channelId)?.statistics;
+          const subscribers = Number(statistics?.subscriberCount);
+          const views = Number(statistics?.viewCount);
+          const subscriberValid =
+            Number.isSafeInteger(subscribers) && subscribers >= 0;
+          const viewsValid = Number.isSafeInteger(views) && views >= 0;
+
+          await Promise.all([
+            recordSignalObservation({
+              ticker: market.ticker,
+              provider: YOUTUBE_PROVIDER,
+              metric: YOUTUBE_SUBSCRIBER_METRIC,
+              value: subscriberValid ? subscribers : null,
+              status: subscriberValid ? "verified" : "unavailable",
+              metadata: { channelId },
+            }),
+            recordSignalObservation({
+              ticker: market.ticker,
+              provider: YOUTUBE_PROVIDER,
+              metric: YOUTUBE_VIEW_METRIC,
+              value: viewsValid ? views : null,
+              status: viewsValid ? "verified" : "unavailable",
+              metadata: { channelId },
+            }),
+          ]);
+
+          if (subscriberValid || viewsValid) verifiedCount += 1;
+          else unavailableCount += 1;
+        }),
+      );
+    } catch {
+      unavailableCount += batch.length;
+      await Promise.all(
+        batch.flatMap(({ market, channelId }) => [
+          recordSignalObservation({
+            ticker: market.ticker,
+            provider: YOUTUBE_PROVIDER,
+            metric: YOUTUBE_SUBSCRIBER_METRIC,
+            value: null,
+            status: "unavailable",
+            metadata: { channelId, reason: "Provider request unavailable" },
+          }),
+          recordSignalObservation({
+            ticker: market.ticker,
+            provider: YOUTUBE_PROVIDER,
+            metric: YOUTUBE_VIEW_METRIC,
+            value: null,
+            status: "unavailable",
+            metadata: { channelId, reason: "Provider request unavailable" },
+          }),
+        ]),
+      );
     }
+  }
 
-    const data = (await response.json()) as {
-      items?: Array<{
-        statistics?: { subscriberCount?: string; viewCount?: string };
-      }>;
-    };
-    const statistics = data.items?.[0]?.statistics;
-    const subscribers = Number(statistics?.subscriberCount);
-    const views = Number(statistics?.viewCount);
-    const isValid =
-      Number.isSafeInteger(subscribers) &&
-      subscribers >= 0 &&
-      Number.isSafeInteger(views) &&
-      views >= 0;
+  if (verifiedCount > 0) cache.clear();
 
-    return {
-      subscribers: isValid ? subscribers : null,
-      views: isValid ? views : null,
-      status: isValid ? ("verified" as const) : ("unavailable" as const),
-    };
-  } catch {
+  return {
+    configured: true,
+    mappedCount: mappedMarkets.length,
+    requestedCount: stale.length,
+    verifiedCount,
+    unavailableCount,
+  };
+}
+
+async function getStoredYoutubeSignal(ticker: string, configured: boolean) {
+  if (!configured) {
     return {
       subscribers: null,
       views: null,
+      subscriberMomentumPercent: null,
+      viewMomentumPercent: null,
+      momentumPercent: null,
       status: "unavailable" as const,
     };
   }
+
+  const [subscribers, views] = await Promise.all([
+    getStoredMomentumSignal({
+      ticker,
+      provider: YOUTUBE_PROVIDER,
+      metric: YOUTUBE_SUBSCRIBER_METRIC,
+      maxAgeMs: YOUTUBE_MAX_STALE_MS,
+      mode: "counter-velocity",
+    }),
+    getStoredMomentumSignal({
+      ticker,
+      provider: YOUTUBE_PROVIDER,
+      metric: YOUTUBE_VIEW_METRIC,
+      maxAgeMs: YOUTUBE_MAX_STALE_MS,
+      mode: "counter-velocity",
+    }),
+  ]);
+
+  const status =
+    subscribers.status === "verified" || views.status === "verified"
+      ? ("verified" as const)
+      : ("unavailable" as const);
+  const momentumPercent = combineMomentum([
+    { value: subscribers.momentumPercent, weight: 0.35 },
+    { value: views.momentumPercent, weight: 0.65 },
+  ]);
+
+  return {
+    subscribers: subscribers.value,
+    views: views.value,
+    subscriberMomentumPercent: subscribers.momentumPercent,
+    viewMomentumPercent: views.momentumPercent,
+    momentumPercent,
+    status,
+  };
 }
 
 async function getPracticeTradePressure(ticker: string) {
@@ -428,15 +578,15 @@ export async function getAdditionalPriceSignals(
   const searchConfigured = Boolean(
     providerSettings.dataforseoLogin && providerSettings.dataforseoPassword,
   );
+  const youtubeConfigured = Boolean(
+    systemSettings.youtubeApiKey &&
+      systemSettings.youtubeChannels[market.ticker]?.trim(),
+  );
 
   const [news, search, youtube, practiceTradePressure] = await Promise.all([
     getNewsMentions(market.name),
     getSearchMomentum(market.ticker, searchConfigured),
-    getYoutubeStatistics(
-      market.ticker,
-      systemSettings.youtubeApiKey,
-      systemSettings.youtubeChannels,
-    ),
+    getStoredYoutubeSignal(market.ticker, youtubeConfigured),
     getPracticeTradePressure(market.ticker),
   ]);
 
@@ -447,6 +597,9 @@ export async function getAdditionalPriceSignals(
     searchMomentumPercent: search.momentumPercent,
     youtubeSubscribers: youtube.subscribers,
     youtubeViews: youtube.views,
+    youtubeSubscriberMomentumPercent: youtube.subscriberMomentumPercent,
+    youtubeViewMomentumPercent: youtube.viewMomentumPercent,
+    youtubeMomentumPercent: youtube.momentumPercent,
     practiceTradePressure,
     statuses: {
       news: news.status,
@@ -466,29 +619,21 @@ export function getAdditionalSignalBoost(signals: AdditionalPriceSignals) {
       ? 0
       : Math.min(9, Math.log10(signals.newsMentions + 1) * 1.5);
 
-  // Search is now a momentum signal instead of an absolute lifetime/index count.
-  // Cooling interest can reduce the score; sharp upward interest is capped so a
-  // single source cannot dominate the celebrity price.
   const searchBoost =
     signals.searchMomentumPercent === null
       ? 0
       : Math.max(-4, Math.min(6, signals.searchMomentumPercent / 25));
 
-  const youtubeSubscriberBoost =
-    signals.youtubeSubscribers === null
+  const youtubeBoost =
+    signals.youtubeMomentumPercent === null
       ? 0
-      : Math.min(4, Math.log10(signals.youtubeSubscribers + 1) * 0.35);
-  const youtubeViewBoost =
-    signals.youtubeViews === null
-      ? 0
-      : Math.min(2.5, Math.log10(signals.youtubeViews + 1) * 0.12);
+      : Math.max(-2.5, Math.min(4, signals.youtubeMomentumPercent / 25));
 
   return Number(
     (
       newsBoost +
       searchBoost +
-      youtubeSubscriberBoost +
-      youtubeViewBoost +
+      youtubeBoost +
       signals.practiceTradePressure
     ).toFixed(4),
   );
