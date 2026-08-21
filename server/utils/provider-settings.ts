@@ -6,6 +6,8 @@ export type ProviderSettings = {
   lastfmApiKey: string;
   sportsdbApiKey: string;
   newsdataApiKey: string;
+  dataforseoLogin: string;
+  dataforseoPassword: string;
   updatedAt: string | null;
 };
 
@@ -39,6 +41,8 @@ export async function getProviderSettings(): Promise<ProviderSettings> {
     lastfmApiKey: resolveCredential(settings?.lastfm_api_key, "NITRO_LASTFM_API_KEY"),
     sportsdbApiKey: resolveCredential(settings?.sportsdb_api_key, "NITRO_SPORTSDB_API_KEY"),
     newsdataApiKey: resolveCredential(settings?.newsdata_api_key, "NITRO_NEWSDATA_API_KEY"),
+    dataforseoLogin: process.env.NITRO_DATAFORSEO_LOGIN?.trim() ?? "",
+    dataforseoPassword: process.env.NITRO_DATAFORSEO_PASSWORD?.trim() ?? "",
     updatedAt: settings?.updated_at ?? null,
   };
 }
