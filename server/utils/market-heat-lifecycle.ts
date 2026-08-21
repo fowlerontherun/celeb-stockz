@@ -110,10 +110,10 @@ export async function stabilizeMarketHeatLifecycles() {
         if (state === "viral") viralCount += 1;
 
         const previousState = normalizeHeatState(previous?.heat_state);
-        const previousScore = Number(previous?.heat_score ?? 0);
+        const episodeBaselineScore = Number(previous?.heat_score ?? 0);
         const scoreChanged =
-          !Number.isFinite(previousScore) ||
-          Math.abs(safeScore - previousScore) >= MATERIAL_SCORE_CHANGE;
+          !Number.isFinite(episodeBaselineScore) ||
+          Math.abs(safeScore - episodeBaselineScore) >= MATERIAL_SCORE_CHANGE;
         const newEpisode = !previous || previousState !== state || scoreChanged;
         const startedAt = newEpisode
           ? new Date().toISOString()
@@ -122,6 +122,11 @@ export async function stabilizeMarketHeatLifecycles() {
           ? new Date(Date.now() + durationFor(state)).toISOString()
           : previous.expires_at ??
             new Date(Date.now() + durationFor(state)).toISOString();
+        const storedBaselineScore = newEpisode
+          ? safeScore
+          : Number.isFinite(episodeBaselineScore)
+            ? episodeBaselineScore
+            : safeScore;
 
         if (newEpisode) renewedCount += 1;
 
@@ -131,7 +136,7 @@ export async function stabilizeMarketHeatLifecycles() {
               ticker, heat_score, heat_state, started_at, expires_at, updated_at
             )
             VALUES (
-              ${live.ticker}, ${safeScore}, ${state}, ${startedAt}, ${expiresAt}, now()
+              ${live.ticker}, ${storedBaselineScore}, ${state}, ${startedAt}, ${expiresAt}, now()
             )
             ON CONFLICT (ticker) DO UPDATE
             SET
