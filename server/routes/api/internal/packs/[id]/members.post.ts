@@ -26,15 +26,17 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 400, statusMessage: "Invalid pack ID." });
   }
 
-  if (!ticker || !celebrityMarkets.some((m) => m.ticker === ticker)) {
+  const market = celebrityMarkets.find((m) => m.ticker === ticker);
+
+  if (!ticker || !market) {
     throw createError({ statusCode: 400, statusMessage: "Select a valid celebrity market." });
   }
 
   await sql`
-    INSERT INTO celebrity_pack_members (pack_id, ticker)
-    VALUES (${packId}, ${ticker})
-    ON CONFLICT (pack_id, ticker) DO NOTHING
+    INSERT INTO celebrity_pack_members (pack_id, ticker, display_name)
+    VALUES (${packId}, ${ticker}, ${market.name})
+    ON CONFLICT (pack_id, ticker) DO UPDATE SET display_name = EXCLUDED.display_name
   `;
 
-  return { ok: true, packId, ticker };
+  return { ok: true, packId, ticker, displayName: market.name };
 });
