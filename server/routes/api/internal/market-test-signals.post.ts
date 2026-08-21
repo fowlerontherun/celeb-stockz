@@ -221,6 +221,8 @@ export default defineHandler(async (event) => {
     ticker: market.ticker,
     name: market.name,
     wikipediaTitle: metadata.wikipediaTitle,
+    channelMapped: Boolean(systemSettings.youtubeChannels[market.ticker]?.trim()),
+    channelId: systemSettings.youtubeChannels[market.ticker]?.trim() ?? null,
     youtubeConfiguration: {
       apiKeySaved: Boolean(systemSettings.youtubeApiKey),
       mappingSaved: Boolean(systemSettings.youtubeChannels[market.ticker]?.trim()),
@@ -239,12 +241,20 @@ export default defineHandler(async (event) => {
       },
       search: {
         provider: "DataForSEO Google Trends",
+        // Compatibility field for the existing admin card. It now represents
+        // normalized Google Trends interest (0-100), not a web result count.
+        resultsCount: searchDiagnostic.latestInterest,
         latestInterest: searchDiagnostic.latestInterest,
         baselineInterest: searchDiagnostic.baselineInterest,
         momentumPercent: searchDiagnostic.momentumPercent,
         graphPoints: searchDiagnostic.points,
         status: searchDiagnostic.status,
-        detail: searchDiagnostic.detail,
+        detail:
+          searchDiagnostic.status === "verified"
+            ? `${searchDiagnostic.detail} Momentum: ${
+                searchDiagnostic.momentumPercent ?? 0
+              }% versus its recent baseline.`
+            : searchDiagnostic.detail,
       },
       youtube: youtubeDiagnostic,
       trades: {
