@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
+  Flame,
   Globe2,
   LoaderCircle,
   Lock,
   LockKeyholeOpen,
   TrendingUp,
+  Zap,
 } from "lucide-react";
 import { PriceChart } from "@/components/PriceChart";
 import { getCountryInfo, type CategorizedCelebrity } from "@/components/CategoryMarkets";
@@ -15,6 +17,13 @@ import { showError } from "@/utils/toast";
 type Mover = CategorizedCelebrity & {
   change: number | null;
   hasDayComparison: boolean;
+  marketState?: {
+    state: "normal" | "hot" | "viral";
+    heatScore: number;
+    volatilityMultiplier: number;
+    reason: string;
+    expiresAt: string | null;
+  };
 };
 
 type TopMoversProps = {
@@ -87,8 +96,9 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
             Top 40 movers.
           </h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-[#b8a9c4]">
-            Ranked by the difference between the latest verified price and the
-            closest saved snapshot from 24 hours ago.
+            Ranked by the difference between the current live game price and the
+            closest saved source snapshot from 24 hours ago. HOT and VIRAL badges
+            flag elevated real-world attention.
           </p>
         </div>
         <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-[#b9a9c5]">
@@ -143,7 +153,6 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
         </button>
       </div>
 
-      {/* Regional filter pills for top movers */}
       <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-1">
         <span className="flex items-center gap-1 text-xs font-bold text-[#c99bff]">
           <Globe2 size={14} /> Region:
@@ -184,6 +193,8 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
             const positive = (market.change ?? 0) >= 0;
             const isLocked = Boolean(market.access && !market.access.isUnlocked);
             const countryInfo = getCountryInfo(market.nationality);
+            const heatState = market.marketState?.state ?? "normal";
+            const heatScore = market.marketState?.heatScore ?? 0;
 
             return (
               <article key={market.ticker} className="grid grid-cols-[2.5rem_minmax(0,1fr)_auto] items-center gap-3 border-b border-white/5 px-4 py-3 last:border-0 sm:grid-cols-[3rem_minmax(0,1fr)_7rem_7rem_5.5rem]">
@@ -193,9 +204,25 @@ export function TopMovers({ markets, onTrade }: TopMoversProps) {
                     <img src={market.image} alt={market.name} className="h-full w-full object-contain" />
                   </div>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <p className="truncate text-sm font-black">{market.name}</p>
                       <span className="text-xs" title={countryInfo.label}>{countryInfo.flag}</span>
+                      {heatState === "hot" && (
+                        <span
+                          title={market.marketState?.reason}
+                          className="inline-flex items-center gap-1 rounded bg-[#ff7a32]/20 px-1.5 py-0.5 text-[9px] font-black text-[#ffab73]"
+                        >
+                          <Flame size={10} /> HOT {Math.round(heatScore)}
+                        </span>
+                      )}
+                      {heatState === "viral" && (
+                        <span
+                          title={market.marketState?.reason}
+                          className="inline-flex items-center gap-1 rounded bg-[#ffd17b]/20 px-1.5 py-0.5 text-[9px] font-black text-[#ffe2a3]"
+                        >
+                          <Zap size={10} /> VIRAL {Math.round(heatScore)}
+                        </span>
+                      )}
                       {isLocked && (
                         <span className="inline-flex items-center gap-1 rounded bg-[#ff7282]/20 px-1.5 py-0.5 text-[9px] font-black text-[#ff9ca5]">
                           <Lock size={10} /> Locked
