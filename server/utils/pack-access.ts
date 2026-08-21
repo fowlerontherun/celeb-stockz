@@ -19,6 +19,7 @@ export async function getLockedPacksForMarket(userId: string, ticker: string) {
       ON unlocks.pack_id = members.pack_id
       AND unlocks.user_id = ${userId}
     WHERE members.ticker = ${ticker}
+      AND packs.is_standard = false
       AND unlocks.pack_id IS NULL
   `;
 

@@ -6,6 +6,14 @@ import { getSnapshotMarkets } from "../../utils/market-snapshots";
 
 const STALE_AFTER_MS = 8 * 60 * 60 * 1000;
 
+type Membership = {
+  ticker: string;
+  pack_id: number;
+  name: string;
+  is_standard: boolean;
+  unlocked: boolean;
+};
+
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
   if (!userId) {
@@ -19,12 +27,13 @@ export default defineHandler(async (event) => {
       FROM market_source_health
       ORDER BY source_key
     `,
-    sql<{ ticker: string; pack_id: number; name: string; unlocked: boolean }[]>`
+    sql<Membership[]>`
       SELECT
         members.ticker,
         members.pack_id,
         packs.name,
-        (unlocks.pack_id IS NOT NULL) AS unlocked
+        packs.is_standard,
+        (packs.is_standard OR unlocks.pack_id IS NOT NULL) AS unlocked
       FROM celebrity_pack_members AS members
       JOIN celebrity_packs AS packs
         ON packs.id = members.pack_id
@@ -38,7 +47,7 @@ export default defineHandler(async (event) => {
 
   const membershipsByTicker = new Map<
     string,
-    Array<{ id: number; name: string; unlocked: boolean }>
+    Array<{ id: number; name: string; isStandard: boolean; unlocked: boolean }>
   >();
 
   memberships.forEach((membership) => {
@@ -46,6 +55,7 @@ export default defineHandler(async (event) => {
     current.push({
       id: Number(membership.pack_id),
       name: membership.name,
+      isStandard: membership.is_standard,
       unlocked: membership.unlocked,
     });
     membershipsByTicker.set(membership.ticker, current);
@@ -71,12 +81,14 @@ export default defineHandler(async (event) => {
         !capturedAt ||
         Date.now() - new Date(capturedAt).getTime() > STALE_AFTER_MS;
       const packs = membershipsByTicker.get(market.ticker) ?? [];
-      const lockedPacks = packs.filter((pack) => !pack.unlocked);
+      const lockedPacks = packs.filter(
+        (pack) => !pack.isStandard && !pack.unlocked,
+      );
 
       return {
         ...market,
         access: {
-          isStandard: false,
+          isStandard: packs.some((pack) => pack.isStandard),
           isUnlocked: lockedPacks.length === 0,
           requiredPacks: lockedPacks.map(({ id, name }) => ({ id, name })),
         },

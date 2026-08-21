@@ -47,14 +47,19 @@ export default defineHandler(async (event) => {
         ) AS members_json
       FROM celebrity_packs AS packs
       LEFT JOIN celebrity_pack_members AS members ON members.pack_id = packs.id
+      WHERE packs.is_standard = false
       GROUP BY packs.id
       ORDER BY packs.id
     `,
     getSystemSettings(),
   ]);
 
-  const isSale = systemSettings.packSaleActive && systemSettings.packSaleDiscountPercent > 0;
-  const discountMultiplier = isSale ? (1 - systemSettings.packSaleDiscountPercent / 100) : 1;
+  const isSale =
+    systemSettings.packSaleActive &&
+    systemSettings.packSaleDiscountPercent > 0;
+  const discountMultiplier = isSale
+    ? 1 - systemSettings.packSaleDiscountPercent / 100
+    : 1;
 
   return {
     sale: {
@@ -66,10 +71,13 @@ export default defineHandler(async (event) => {
     packs: packs.map((pack) => {
       const isAvailable =
         pack.is_published &&
-        (!pack.available_at || new Date(pack.available_at).getTime() <= Date.now());
+        (!pack.available_at ||
+          new Date(pack.available_at).getTime() <= Date.now());
       const isAnnounced = pack.is_announced || pack.is_published || pack.unlocked;
       const basePrice = Number(pack.price_gbp) || 1.99;
-      const effectivePrice = isSale ? Number(Math.max(0.49, basePrice * discountMultiplier).toFixed(2)) : basePrice;
+      const effectivePrice = isSale
+        ? Number(Math.max(0.49, basePrice * discountMultiplier).toFixed(2))
+        : basePrice;
 
       return {
         id: Number(pack.id),
@@ -85,7 +93,7 @@ export default defineHandler(async (event) => {
         memberCount: Number(pack.member_count),
         unlocked: pack.unlocked,
         isAvailable,
-        members: isAnnounced ? (pack.members_json || []) : [],
+        members: isAnnounced ? pack.members_json || [] : [],
       };
     }),
   };
