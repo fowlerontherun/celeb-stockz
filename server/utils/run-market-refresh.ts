@@ -18,6 +18,7 @@ import {
   type CorePublicRefreshSummary,
 } from "./core-public-observations";
 import { syncLivePricesFromSnapshots } from "./live-prices";
+import { stabilizeMarketHeatLifecycles } from "./market-heat-lifecycle";
 
 const minimumRefreshIntervalMs = 60_000;
 let lastRefreshStartedAt = 0;
@@ -130,6 +131,7 @@ export async function runMarketRefresh() {
 
     const refresh = await refreshMarketSnapshots();
     await syncLivePricesFromSnapshots();
+    const marketHeat = await stabilizeMarketHeatLifecycles();
 
     if (refresh.verifiedCount > 0) {
       await processOpenOrders();
@@ -141,8 +143,9 @@ export async function runMarketRefresh() {
       searchMomentumRefresh,
       youtubeObservationRefresh,
       externalProviderRefresh,
+      marketHeat,
       intracycleUpdated: 0,
-      priceMovementModel: "stored-observation-plus-live-tick-v3",
+      priceMovementModel: "stored-observation-plus-contextual-game-volatility-v4",
     };
   } catch (error) {
     const errorKind =
