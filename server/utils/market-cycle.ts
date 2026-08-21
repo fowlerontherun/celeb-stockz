@@ -12,6 +12,7 @@ type SchedulerRow = {
 export type MarketCycleMode = "cycle" | "collect" | "tick";
 
 const LEASE_MINUTES = 20;
+const TICK_BUCKET_MS = 2 * 60 * 1000;
 let schemaPromise: Promise<void> | null = null;
 
 function getCollectionIntervalMinutes() {
@@ -97,6 +98,17 @@ function isCollectionDue(lastCollectionAt: string | null) {
   );
 }
 
+function isTickDue(lastTickAt: string | null) {
+  if (!lastTickAt) return true;
+  const timestamp = new Date(lastTickAt).getTime();
+  if (!Number.isFinite(timestamp)) return true;
+
+  return (
+    Math.floor(Date.now() / TICK_BUCKET_MS) >
+    Math.floor(timestamp / TICK_BUCKET_MS)
+  );
+}
+
 export async function runMarketCycle(mode: MarketCycleMode = "cycle") {
   const token = randomUUID();
   const state = await acquireLease(token);
@@ -122,6 +134,15 @@ export async function runMarketCycle(mode: MarketCycleMode = "cycle") {
         mode: "collect" as const,
         collectionIntervalMinutes: getCollectionIntervalMinutes(),
         ...result,
+      };
+    }
+
+    if (!isTickDue(state.last_tick_at)) {
+      return {
+        mode: "skipped" as const,
+        reason: "This two-minute live-price bucket has already been processed.",
+        collectionIntervalMinutes: getCollectionIntervalMinutes(),
+        skippedAt: new Date().toISOString(),
       };
     }
 
