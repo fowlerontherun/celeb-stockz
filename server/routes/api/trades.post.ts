@@ -7,6 +7,7 @@ import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
 import { isTradingPaused } from "../../utils/trading-status";
 import { isListingTradingPaused } from "../../utils/listing-settings";
 import { canTradeMarket, getLockedPacksForMarket } from "../../utils/pack-access";
+import { ensureStoreSchema } from "../../utils/store";
 
 type TradeRequest = {
   ticker?: string;
@@ -22,6 +23,8 @@ export default defineHandler(async (event) => {
   if (!userId) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
+
+  await ensureStoreSchema();
 
   if (await isTradingPaused()) {
     throw createError({
@@ -92,7 +95,16 @@ export default defineHandler(async (event) => {
       ? await sql`
           WITH updated_wallet AS (
             UPDATE user_wallets
-            SET balance_stkz = balance_stkz - ${walletAmount}, updated_at = now()
+            SET
+              purchased_stkz_balance = GREATEST(
+                0,
+                purchased_stkz_balance - GREATEST(
+                  0,
+                  ${walletAmount} - GREATEST(balance_stkz - purchased_stkz_balance, 0)
+                )
+              ),
+              balance_stkz = balance_stkz - ${walletAmount},
+              updated_at = now()
             WHERE user_id = ${userId} AND balance_stkz >= ${walletAmount}
             RETURNING balance_stkz
           ),
