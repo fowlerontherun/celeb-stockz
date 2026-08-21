@@ -262,20 +262,34 @@ export async function applyLivePriceTick() {
 
       if (Math.abs(movementPercent) < 0.025) return null;
 
+      const unconstrainedPrice = Math.max(
+        1,
+        currentPrice * (1 + movementPercent / 100),
+      );
+      const lowerPriceBound = Math.max(
+        1,
+        sourcePrice * (1 - dailyMoveCap / 100),
+      );
+      const upperPriceBound = Math.max(
+        lowerPriceBound,
+        sourcePrice * (1 + dailyMoveCap / 100),
+      );
+      const price = Number(
+        Math.max(
+          lowerPriceBound,
+          Math.min(upperPriceBound, unconstrainedPrice),
+        ).toFixed(2),
+      );
+      const actualMovementPercent =
+        currentPrice > 0 ? ((price - currentPrice) / currentPrice) * 100 : 0;
+
+      if (Math.abs(actualMovementPercent) < 0.001) return null;
+
       if (pressureActive) pressureDrivenCount += 1;
       if (gamePulseActive) buzzDrivenCount += 1;
 
-      const price = Number(
-        Math.max(1, currentPrice * (1 + movementPercent / 100)).toFixed(2),
-      );
       const dailyChange = Number(
-        Math.max(
-          -dailyMoveCap,
-          Math.min(
-            dailyMoveCap,
-            Number(row.daily_change) + movementPercent,
-          ),
-        ).toFixed(3),
+        (((price - sourcePrice) / sourcePrice) * 100).toFixed(3),
       );
 
       return {
@@ -283,7 +297,7 @@ export async function applyLivePriceTick() {
         price,
         dailyChange,
         currentPressure,
-        movementPercent: Number(movementPercent.toFixed(4)),
+        movementPercent: Number(actualMovementPercent.toFixed(4)),
       };
     })
     .filter((value): value is NonNullable<typeof value> => value !== null);
