@@ -156,7 +156,25 @@ export async function recordSignalObservation(input: {
 }) {
   try {
     await ensureSchema();
-    const metadata = input.metadata ?? {};
+
+    let metadata = input.metadata ?? {};
+    if (
+      input.status === "verified" &&
+      input.value !== null &&
+      Number.isFinite(input.value)
+    ) {
+      const existingAnchor = await getOldestVerifiedSignalObservation(
+        input.ticker,
+        input.provider,
+        input.metric,
+      );
+      const inheritedAnchor = Number(existingAnchor?.metadata?.anchorValue);
+      const anchorValue = Number.isFinite(inheritedAnchor)
+        ? inheritedAnchor
+        : existingAnchor?.value ?? input.value;
+      metadata = { ...metadata, anchorValue };
+    }
+
     await sql`
       INSERT INTO market_signal_observations (
         ticker, provider, metric, value, status, metadata
