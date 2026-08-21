@@ -11,6 +11,7 @@ type PackRow = {
   is_announced: boolean;
   member_count: string;
   unlocked: boolean;
+  members_json: Array<{ ticker: string; name: string }>;
 };
 
 export default defineHandler(async (event) => {
@@ -32,7 +33,16 @@ export default defineHandler(async (event) => {
       EXISTS(
         SELECT 1 FROM user_pack_unlocks AS unlocks
         WHERE unlocks.pack_id = packs.id AND unlocks.user_id = ${userId}
-      ) AS unlocked
+      ) AS unlocked,
+      COALESCE(
+        json_agg(
+          json_build_object(
+            'ticker', members.ticker,
+            'name', COALESCE(members.display_name, members.ticker)
+          )
+        ) FILTER (WHERE members.ticker IS NOT NULL),
+        '[]'::json
+      ) AS members_json
     FROM celebrity_packs AS packs
     LEFT JOIN celebrity_pack_members AS members ON members.pack_id = packs.id
     GROUP BY packs.id
@@ -57,6 +67,7 @@ export default defineHandler(async (event) => {
         memberCount: Number(pack.member_count),
         unlocked: pack.unlocked,
         isAvailable,
+        members: isAnnounced ? (pack.members_json || []) : [],
       };
     }),
   };
