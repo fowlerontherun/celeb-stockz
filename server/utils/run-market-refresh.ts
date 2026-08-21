@@ -3,7 +3,6 @@ import { sql } from "./db";
 import { refreshMarketSnapshots } from "./market-snapshots";
 import { processOpenOrders } from "./orders";
 import { syncMarketRegistry } from "./market-registry";
-import { applyIntracycleMovements } from "./intracycle-movement";
 import {
   refreshSearchMomentumObservations,
   type SearchMomentumRefreshSummary,
@@ -39,13 +38,13 @@ export async function runMarketRefresh() {
     } catch (error) {
       const errorKind =
         error instanceof Error && error.name ? error.name : "UnknownError";
-      console.warn("Search momentum collection failed; pricing will use stored observations", {
-        errorKind,
-      });
+      console.warn(
+        "Search momentum collection failed; pricing will use stored observations",
+        { errorKind },
+      );
     }
 
     const refresh = await refreshMarketSnapshots();
-    const intracycleUpdated = await applyIntracycleMovements(startedAt);
 
     if (refresh.verifiedCount > 0) {
       await processOpenOrders();
@@ -54,7 +53,11 @@ export async function runMarketRefresh() {
     return {
       ...refresh,
       searchMomentumRefresh,
-      intracycleUpdated,
+      // Compatibility field retained for older admin clients. Synthetic
+      // intracycle movement has been removed; prices move only on verified
+      // signal snapshots and completed trading activity.
+      intracycleUpdated: 0,
+      priceMovementModel: "verified-public-signal-snapshots",
     };
   } catch (error) {
     const errorKind =
