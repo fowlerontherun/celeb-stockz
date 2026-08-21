@@ -1,5 +1,12 @@
 import { sql } from "./db";
 import { getPracticeTradePressureMap } from "./additional-price-signals";
+import {
+  calculateMarketHeatFromMeasurements,
+  getHeatTradePressureMultiplier,
+  getHeatVolatilityMultiplier,
+  normalizeHeatState,
+  type MarketHeatState,
+} from "./market-heat";
 
 type LivePriceRow = {
   ticker: string;
@@ -7,8 +14,20 @@ type LivePriceRow = {
   source_price_stkz: string | null;
   daily_change: string;
   trade_pressure: string;
+  heat_score: string | null;
+  heat_state: string | null;
+  heat_reason: string | null;
+  heat_expires_at: string | null;
   source_captured_at: string | null;
   updated_at: string;
+};
+
+type SnapshotSeedRow = {
+  ticker: string;
+  price_stkz: string;
+  daily_change: string;
+  captured_at: string;
+  source_measurements: Record<string, unknown>;
 };
 
 export type LivePrice = {
@@ -17,6 +36,11 @@ export type LivePrice = {
   sourcePrice: number;
   dailyChange: number;
   tradePressure: number;
+  heatScore: number;
+  heatState: MarketHeatState;
+  heatReason: string;
+  heatExpiresAt: string | null;
+  volatilityMultiplier: number;
   sourceCapturedAt: string | null;
   updatedAt: string;
 };
@@ -27,6 +51,8 @@ const DEFAULT_DAILY_MOVE_CAP = 45;
 const QUIET_MARKET_ROTATION_DIVISOR = 3;
 const UPDATE_CONCURRENCY = 30;
 const TICK_BUCKET_MS = 2 * 60 * 1000;
+const HOT_DURATION_MS = 4 * 60 * 60 * 1000;
+const VIRAL_DURATION_MS = 3 * 60 * 60 * 1000;
 let schemaPromise: Promise<void> | null = null;
 
 function chunk<T>(values: T[], size: number) {
@@ -82,7 +108,7 @@ function tickBucket() {
 }
 
 function signedUnit(seed: string) {
-  return ((stableHash(seed) % 20_001) / 10_000) - 1;
+  return (stableHash(seed) % 20_001) / 10_000 - 1;
 }
 
 function marketVolatilityMultiplier(ticker: string) {
@@ -90,13 +116,47 @@ function marketVolatilityMultiplier(ticker: string) {
 }
 
 function shouldPulseQuietMarket(ticker: string, bucket: number) {
-  return stableHash(`${ticker}:${bucket}:rotation`) % QUIET_MARKET_ROTATION_DIVISOR === 0;
+  return (
+    stableHash(`${ticker}:${bucket}:rotation`) % QUIET_MARKET_ROTATION_DIVISOR ===
+    0
+  );
 }
 
-function gamePulsePercent(ticker: string, bucket: number) {
+function resolveActiveHeatState(
+  state: string | null,
+  expiresAt: string | null,
+): MarketHeatState {
+  const normalized = normalizeHeatState(state);
+  if (normalized === "normal" || !expiresAt) return normalized;
+  const expiry = new Date(expiresAt).getTime();
+  return Number.isFinite(expiry) && expiry > Date.now() ? normalized : "normal";
+}
+
+function heatExpiry(state: MarketHeatState, capturedAt: string) {
+  if (state === "normal") return null;
+  const captured = new Date(capturedAt).getTime();
+  const start = Number.isFinite(captured) ? captured : Date.now();
+  const duration = state === "viral" ? VIRAL_DURATION_MS : HOT_DURATION_MS;
+  return new Date(start + duration).toISOString();
+}
+
+function gamePulsePercent(
+  ticker: string,
+  bucket: number,
+  heatState: MarketHeatState,
+) {
+  const heatMultiplier = getHeatVolatilityMultiplier(heatState);
   const volatility =
-    getGameVolatilityPercent() * marketVolatilityMultiplier(ticker);
-  const spike = stableHash(`${ticker}:${bucket}:buzz-spike`) % 100 < 7 ? 2.2 : 1;
+    getGameVolatilityPercent() *
+    marketVolatilityMultiplier(ticker) *
+    heatMultiplier;
+  const spikeChance = heatState === "viral" ? 22 : heatState === "hot" ? 14 : 7;
+  const spikeMultiplier =
+    heatState === "viral" ? 2.6 : heatState === "hot" ? 2.3 : 2.2;
+  const spike =
+    stableHash(`${ticker}:${bucket}:buzz-spike`) % 100 < spikeChance
+      ? spikeMultiplier
+      : 1;
   return signedUnit(`${ticker}:${bucket}:buzz-direction`) * volatility * spike;
 }
 
@@ -110,6 +170,10 @@ async function ensureSchema() {
           source_price_stkz double precision,
           daily_change double precision NOT NULL DEFAULT 0,
           trade_pressure double precision NOT NULL DEFAULT 0,
+          heat_score double precision NOT NULL DEFAULT 0,
+          heat_state text NOT NULL DEFAULT 'normal',
+          heat_reason text,
+          heat_expires_at timestamptz,
           source_captured_at timestamptz,
           updated_at timestamptz NOT NULL DEFAULT now()
         )
@@ -119,6 +183,22 @@ async function ensureSchema() {
         ADD COLUMN IF NOT EXISTS source_price_stkz double precision
       `;
       await sql`
+        ALTER TABLE market_live_prices
+        ADD COLUMN IF NOT EXISTS heat_score double precision NOT NULL DEFAULT 0
+      `;
+      await sql`
+        ALTER TABLE market_live_prices
+        ADD COLUMN IF NOT EXISTS heat_state text NOT NULL DEFAULT 'normal'
+      `;
+      await sql`
+        ALTER TABLE market_live_prices
+        ADD COLUMN IF NOT EXISTS heat_reason text
+      `;
+      await sql`
+        ALTER TABLE market_live_prices
+        ADD COLUMN IF NOT EXISTS heat_expires_at timestamptz
+      `;
+      await sql`
         UPDATE market_live_prices
         SET source_price_stkz = price_stkz
         WHERE source_price_stkz IS NULL
@@ -126,6 +206,10 @@ async function ensureSchema() {
       await sql`
         CREATE INDEX IF NOT EXISTS market_live_prices_updated_idx
         ON market_live_prices (updated_at DESC)
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS market_live_prices_heat_idx
+        ON market_live_prices (heat_state, heat_score DESC)
       `;
     })().catch((error) => {
       schemaPromise = null;
@@ -138,12 +222,22 @@ async function ensureSchema() {
 function mapLivePrice(row: LivePriceRow): LivePrice {
   const price = Number(row.price_stkz);
   const sourcePrice = Number(row.source_price_stkz ?? row.price_stkz);
+  const heatState = resolveActiveHeatState(row.heat_state, row.heat_expires_at);
   return {
     ticker: row.ticker,
     price,
-    sourcePrice: Number.isFinite(sourcePrice) && sourcePrice > 0 ? sourcePrice : price,
+    sourcePrice:
+      Number.isFinite(sourcePrice) && sourcePrice > 0 ? sourcePrice : price,
     dailyChange: Number(row.daily_change),
     tradePressure: Number(row.trade_pressure),
+    heatScore: Number(row.heat_score ?? 0),
+    heatState,
+    heatReason:
+      heatState === "normal" && normalizeHeatState(row.heat_state) !== "normal"
+        ? "The recent attention spike has cooled."
+        : row.heat_reason ?? "Real-world attention is within its normal range.",
+    heatExpiresAt: heatState === "normal" ? null : row.heat_expires_at,
+    volatilityMultiplier: getHeatVolatilityMultiplier(heatState),
     sourceCapturedAt: row.source_captured_at,
     updatedAt: row.updated_at,
   };
@@ -151,45 +245,96 @@ function mapLivePrice(row: LivePriceRow): LivePrice {
 
 export async function syncLivePricesFromSnapshots() {
   await ensureSchema();
-  await sql`
-    INSERT INTO market_live_prices (
-      ticker,
-      price_stkz,
-      source_price_stkz,
-      daily_change,
-      trade_pressure,
-      source_captured_at,
-      updated_at
-    )
+  const snapshots = await sql<SnapshotSeedRow[]>`
     SELECT DISTINCT ON (ticker)
       ticker,
-      price_stkz::double precision,
-      price_stkz::double precision,
-      daily_change::double precision,
-      COALESCE(
-        NULLIF(source_measurements -> 'additionalSignals' ->> 'practiceTradePressure', '')::double precision,
-        0
-      ),
+      price_stkz,
+      daily_change,
       captured_at,
-      now()
+      source_measurements
     FROM market_snapshots
     WHERE refresh_status = 'verified'
     ORDER BY ticker, captured_at DESC
-    ON CONFLICT (ticker) DO UPDATE
-    SET
-      price_stkz = EXCLUDED.price_stkz,
-      source_price_stkz = EXCLUDED.source_price_stkz,
-      daily_change = EXCLUDED.daily_change,
-      trade_pressure = EXCLUDED.trade_pressure,
-      source_captured_at = EXCLUDED.source_captured_at,
-      updated_at = now()
   `;
+
+  for (const wave of chunk(snapshots, UPDATE_CONCURRENCY)) {
+    await Promise.all(
+      wave.map(async (snapshot) => {
+        const heat = calculateMarketHeatFromMeasurements(
+          snapshot.source_measurements,
+        );
+        const tradePressure = Number(
+          (
+            snapshot.source_measurements?.additionalSignals as
+              | Record<string, unknown>
+              | undefined
+          )?.practiceTradePressure ?? 0,
+        );
+        const safeTradePressure = Number.isFinite(tradePressure)
+          ? tradePressure
+          : 0;
+        const expiresAt = heatExpiry(heat.state, snapshot.captured_at);
+
+        await sql`
+          INSERT INTO market_live_prices (
+            ticker,
+            price_stkz,
+            source_price_stkz,
+            daily_change,
+            trade_pressure,
+            heat_score,
+            heat_state,
+            heat_reason,
+            heat_expires_at,
+            source_captured_at,
+            updated_at
+          )
+          VALUES (
+            ${snapshot.ticker},
+            ${Number(snapshot.price_stkz)},
+            ${Number(snapshot.price_stkz)},
+            ${Number(snapshot.daily_change)},
+            ${safeTradePressure},
+            ${heat.score},
+            ${heat.state},
+            ${heat.reason},
+            ${expiresAt},
+            ${snapshot.captured_at},
+            now()
+          )
+          ON CONFLICT (ticker) DO UPDATE
+          SET
+            price_stkz = EXCLUDED.price_stkz,
+            source_price_stkz = EXCLUDED.source_price_stkz,
+            daily_change = EXCLUDED.daily_change,
+            trade_pressure = EXCLUDED.trade_pressure,
+            heat_score = EXCLUDED.heat_score,
+            heat_state = EXCLUDED.heat_state,
+            heat_reason = EXCLUDED.heat_reason,
+            heat_expires_at = EXCLUDED.heat_expires_at,
+            source_captured_at = EXCLUDED.source_captured_at,
+            updated_at = now()
+        `;
+      }),
+    );
+  }
 }
 
 export async function getLivePriceMap() {
   await ensureSchema();
   const rows = await sql<LivePriceRow[]>`
-    SELECT ticker, price_stkz, source_price_stkz, daily_change, trade_pressure, source_captured_at, updated_at
+    SELECT
+      ticker,
+      price_stkz,
+      source_price_stkz,
+      daily_change,
+      trade_pressure,
+      heat_score,
+      heat_state,
+      heat_reason,
+      heat_expires_at,
+      source_captured_at,
+      updated_at
     FROM market_live_prices
   `;
   return new Map(rows.map((row) => [row.ticker, mapLivePrice(row)]));
@@ -198,24 +343,48 @@ export async function getLivePriceMap() {
 export async function applyLivePriceTick() {
   await ensureSchema();
   let rows = await sql<LivePriceRow[]>`
-    SELECT ticker, price_stkz, source_price_stkz, daily_change, trade_pressure, source_captured_at, updated_at
+    SELECT
+      ticker,
+      price_stkz,
+      source_price_stkz,
+      daily_change,
+      trade_pressure,
+      heat_score,
+      heat_state,
+      heat_reason,
+      heat_expires_at,
+      source_captured_at,
+      updated_at
     FROM market_live_prices
   `;
 
   if (!rows.length) {
     await syncLivePricesFromSnapshots();
     rows = await sql<LivePriceRow[]>`
-      SELECT ticker, price_stkz, source_price_stkz, daily_change, trade_pressure, source_captured_at, updated_at
+      SELECT
+        ticker,
+        price_stkz,
+        source_price_stkz,
+        daily_change,
+        trade_pressure,
+        heat_score,
+        heat_state,
+        heat_reason,
+        heat_expires_at,
+        source_captured_at,
+        updated_at
       FROM market_live_prices
     `;
   }
 
   const pressure = await getPracticeTradePressureMap();
   const bucket = tickBucket();
-  const maxTickMovePercent = getMaxTickMovePercent();
+  const baseMaxTickMovePercent = getMaxTickMovePercent();
   const dailyMoveCap = getDailyMoveCap();
   let pressureDrivenCount = 0;
   let buzzDrivenCount = 0;
+  let hotMarketCount = 0;
+  let viralMarketCount = 0;
 
   const updates = rows
     .map((row) => {
@@ -226,7 +395,16 @@ export async function applyLivePriceTick() {
       const pressureDelta = currentPressure - previousPressure;
       const pressureActive =
         Number.isFinite(pressureDelta) && Math.abs(pressureDelta) >= 0.0001;
-      const gamePulseActive = shouldPulseQuietMarket(row.ticker, bucket);
+      const heatState = resolveActiveHeatState(
+        row.heat_state,
+        row.heat_expires_at,
+      );
+      if (heatState === "hot") hotMarketCount += 1;
+      if (heatState === "viral") viralMarketCount += 1;
+      const heatVolatilityMultiplier = getHeatVolatilityMultiplier(heatState);
+      const tradePressureMultiplier = getHeatTradePressureMultiplier(heatState);
+      const gamePulseActive =
+        heatState !== "normal" || shouldPulseQuietMarket(row.ticker, bucket);
 
       if (
         !Number.isFinite(currentPrice) ||
@@ -238,26 +416,36 @@ export async function applyLivePriceTick() {
         return null;
       }
 
-      // Player activity is deliberately amplified because CelebStockz is a game,
-      // not a passive analytics terminal. The hourly real-world snapshot remains
-      // the anchor, while practice trading can create short-lived market drama.
+      const pressureCap = 2.25 * tradePressureMultiplier;
       const pressureMovePercent = pressureActive
-        ? Math.max(-2.25, Math.min(2.25, pressureDelta * 0.45))
+        ? Math.max(
+            -pressureCap,
+            Math.min(
+              pressureCap,
+              pressureDelta * 0.45 * tradePressureMultiplier,
+            ),
+          )
         : 0;
       const pulsePercent = gamePulseActive
-        ? gamePulsePercent(row.ticker, bucket)
+        ? gamePulsePercent(row.ticker, bucket, heatState)
         : 0;
       const distanceFromAnchorPercent =
         ((sourcePrice - currentPrice) / currentPrice) * 100;
+      const reversionStrength =
+        heatState === "viral" ? 0.06 : heatState === "hot" ? 0.1 : 0.18;
       const meanReversionPercent = Math.max(
         -0.75,
-        Math.min(0.75, distanceFromAnchorPercent * 0.18),
+        Math.min(0.75, distanceFromAnchorPercent * reversionStrength),
       );
       const rawMovePercent =
         pressureMovePercent + pulsePercent + meanReversionPercent;
+      const effectiveMaxTickMovePercent = Math.min(
+        8,
+        baseMaxTickMovePercent * heatVolatilityMultiplier,
+      );
       const movementPercent = Math.max(
-        -maxTickMovePercent,
-        Math.min(maxTickMovePercent, rawMovePercent),
+        -effectiveMaxTickMovePercent,
+        Math.min(effectiveMaxTickMovePercent, rawMovePercent),
       );
 
       if (Math.abs(movementPercent) < 0.025) return null;
@@ -306,6 +494,7 @@ export async function applyLivePriceTick() {
         dailyChange,
         currentPressure,
         movementPercent: Number(actualMovementPercent.toFixed(4)),
+        heatState,
       };
     })
     .filter((value): value is NonNullable<typeof value> => value !== null);
@@ -329,8 +518,18 @@ export async function applyLivePriceTick() {
     changedTickers: updates.map((update) => update.ticker),
     pressureDrivenCount,
     buzzDrivenCount,
+    hotMarketCount,
+    viralMarketCount,
     gameVolatilityPercent: getGameVolatilityPercent(),
-    maxTickMovePercent,
+    baseMaxTickMovePercent,
+    hotMaxTickMovePercent: Math.min(
+      8,
+      baseMaxTickMovePercent * getHeatVolatilityMultiplier("hot"),
+    ),
+    viralMaxTickMovePercent: Math.min(
+      8,
+      baseMaxTickMovePercent * getHeatVolatilityMultiplier("viral"),
+    ),
     dailyMoveCapPercent: dailyMoveCap,
     tickedAt: new Date().toISOString(),
   };
