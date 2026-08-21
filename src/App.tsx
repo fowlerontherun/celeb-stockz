@@ -9,6 +9,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import Index from "./pages/Index";
 import LiveStkzPreview from "./pages/LiveStkzPreview";
+import MarketHeat from "./pages/MarketHeat";
 import MarketOperations from "./pages/MarketOperations";
 import MarketTransparency from "./pages/MarketTransparency";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const App = () => (
           <PackSaleBanner />
           <Routes>
             <Route path="/" element={<AccountGate><Index /></AccountGate>} />
+            <Route path="/heat" element={<AccountGate><MarketHeat /></AccountGate>} />
             <Route path="/packs" element={<AccountGate><Packs /></AccountGate>} />
             <Route path="/profile" element={<AccountGate><Profile /></AccountGate>} />
             <Route path="/operations" element={<AccountGate><OperationsShell><MarketOperations /></OperationsShell></AccountGate>} />
