@@ -5,12 +5,11 @@ import {
   checkIsAdmin,
   getSystemSettings,
 } from "../../../utils/system-settings";
+import { getProviderSettings } from "../../../utils/provider-settings";
 import { celebrityMarkets } from "../../../utils/markets";
 import { getMarketMetadata } from "../../../utils/market-metadata";
-import {
-  getAdditionalPriceSignals,
-  testGoogleSearch,
-} from "../../../utils/additional-price-signals";
+import { getAdditionalPriceSignals } from "../../../utils/additional-price-signals";
+import { fetchSearchTrend } from "../../../utils/dataforseo-trends";
 
 type TestRequest = {
   ticker?: string;
@@ -30,15 +29,12 @@ function describeYoutubeFailure(
   if (!hasApiKey) {
     return "No YouTube Data API key is saved. Save the key in Market Control Center, then test again.";
   }
-
   if (!channelId) {
-    return "No channel mapping is saved for this ticker. Add a mapping such as \"KSI\": \"UCVtFOytbRpEvzLjvqGG5gxQ\" and save it.";
+    return "No channel mapping is saved for this ticker. Add a YouTube channel ID beginning with UC.";
   }
-
   if (!channelId.startsWith("UC")) {
-    return "The saved mapping is not a YouTube channel ID. Use the channel ID beginning with UC, not a youtube.com URL or @handle.";
+    return "The saved mapping is not a YouTube channel ID. Use the channel ID beginning with UC, not a URL or @handle.";
   }
-
   return null;
 }
 
@@ -48,7 +44,6 @@ async function testYoutubeChannel(
 ): Promise<YoutubeDiagnostic> {
   const channelId = rawChannelId?.trim();
   const configurationIssue = describeYoutubeFailure(Boolean(apiKey), channelId);
-
   if (configurationIssue) {
     return {
       subscribers: null,
@@ -65,22 +60,17 @@ async function testYoutubeChannel(
 
   try {
     const response = await fetch(url);
-
     if (!response.ok) {
       const payload = (await response.json().catch(() => null)) as
         | { error?: { message?: string } }
         | null;
-      const upstreamMessage = payload?.error?.message
-        ?.replaceAll(apiKey, "[redacted]")
-        .trim();
-
       return {
         subscribers: null,
         views: null,
         status: "unavailable",
         detail:
-          upstreamMessage ||
-          `YouTube Data API returned HTTP ${response.status}. Check API enablement, key restrictions, billing, and quota.`,
+          payload?.error?.message?.replaceAll(apiKey, "[redacted]").trim() ||
+          `YouTube Data API returned HTTP ${response.status}.`,
       };
     }
 
@@ -92,7 +82,6 @@ async function testYoutubeChannel(
     const statistics = payload.items?.[0]?.statistics;
     const subscribers = Number(statistics?.subscriberCount);
     const views = Number(statistics?.viewCount);
-
     if (
       !Number.isSafeInteger(subscribers) ||
       subscribers < 0 ||
@@ -104,7 +93,7 @@ async function testYoutubeChannel(
         views: null,
         status: "unavailable",
         detail:
-          "YouTube accepted the request but returned no public statistics for this channel. Confirm the channel ID and that its subscriber count is public.",
+          "YouTube accepted the request but returned no usable public statistics for this channel.",
       };
     }
 
@@ -119,9 +108,69 @@ async function testYoutubeChannel(
       subscribers: null,
       views: null,
       status: "unavailable",
-      detail:
-        "The server could not reach the YouTube Data API. Check network access and try again.",
+      detail: "The server could not reach the YouTube Data API.",
     };
+  }
+}
+
+async function testWikipediaPageviews(article: string) {
+  try {
+    const yesterday = new Date();
+    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+    const date = yesterday.toISOString().slice(0, 10).replaceAll("-", "");
+    const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${encodeURIComponent(
+      article,
+    )}/daily/${date}/${date}`;
+    const response = await fetch(url, {
+      headers: { "user-agent": "CelebStockz test-signal diagnostic" },
+    });
+    if (!response.ok) {
+      return { value: null, status: "unavailable" as const };
+    }
+    const data = (await response.json()) as {
+      items?: Array<{ views?: number }>;
+    };
+    const value = data.items?.[0]?.views ?? null;
+    return {
+      value,
+      status: value !== null ? ("verified" as const) : ("unavailable" as const),
+    };
+  } catch {
+    return { value: null, status: "unavailable" as const };
+  }
+}
+
+async function testWikipediaEdits(article: string) {
+  try {
+    const since = new Date(Date.now() - 7 * 86400000).toISOString();
+    const url = new URL("https://en.wikipedia.org/w/api.php");
+    url.searchParams.set("action", "query");
+    url.searchParams.set("format", "json");
+    url.searchParams.set("formatversion", "2");
+    url.searchParams.set("prop", "revisions");
+    url.searchParams.set("titles", article);
+    url.searchParams.set("rvprop", "timestamp");
+    url.searchParams.set("rvstart", new Date().toISOString());
+    url.searchParams.set("rvend", since);
+    url.searchParams.set("rvlimit", "35");
+    const response = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        "user-agent": "CelebStockz test-signal diagnostic",
+      },
+    });
+    if (!response.ok) {
+      return { value: null, status: "unavailable" as const };
+    }
+    const data = (await response.json()) as {
+      query?: { pages?: Array<{ revisions?: Array<{ timestamp?: string }> }> };
+    };
+    return {
+      value: data.query?.pages?.[0]?.revisions?.length ?? 0,
+      status: "verified" as const,
+    };
+  } catch {
+    return { value: null, status: "unavailable" as const };
   }
 }
 
@@ -129,9 +178,7 @@ export default defineHandler(async (event) => {
   const session = await getSessionFromCookie(
     getRequestHeader(event, "cookie") ?? null,
   );
-
-  const isAdmin = await checkIsAdmin(session?.user.email);
-  if (!session?.user || !isAdmin) {
+  if (!session?.user || !(await checkIsAdmin(session.user.email))) {
     throw createError({
       statusCode: 403,
       statusMessage: "Administrator access is required.",
@@ -140,7 +187,6 @@ export default defineHandler(async (event) => {
 
   const body = await readBody<TestRequest>(event);
   const ticker = body?.ticker?.trim().toUpperCase();
-
   const market = celebrityMarkets.find((item) => item.ticker === ticker);
   if (!market) {
     throw createError({
@@ -150,114 +196,53 @@ export default defineHandler(async (event) => {
   }
 
   const metadata = getMarketMetadata(market);
-  const settings = await getSystemSettings();
-
-  let wikiViews: number | null = null;
-  let wikiViewsStatus: "verified" | "unavailable" = "unavailable";
-  try {
-    const yesterday = new Date();
-    yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-    const date = yesterday.toISOString().slice(0, 10).replaceAll("-", "");
-    const url = `https://wikimedia.org/api/rest_v1/metrics/pageviews/per-article/en.wikipedia/all-access/user/${encodeURIComponent(
-      metadata.wikipediaTitle,
-    )}/daily/${date}/${date}`;
-
-    const response = await fetch(url, {
-      headers: { "user-agent": "CelebStockz test-signal diagnostic" },
-    });
-    if (response.ok) {
-      const data = (await response.json()) as {
-        items?: Array<{ views?: number }>;
-      };
-      wikiViews = data.items?.[0]?.views ?? null;
-      wikiViewsStatus = wikiViews !== null ? "verified" : "unavailable";
-    }
-  } catch {
-    wikiViewsStatus = "unavailable";
-  }
-
-  let wikiEdits: number | null = null;
-  let wikiEditsStatus: "verified" | "unavailable" = "unavailable";
-  try {
-    const since = new Date(Date.now() - 7 * 86400000).toISOString();
-    const url = new URL("https://en.wikipedia.org/w/api.php");
-    url.searchParams.set("action", "query");
-    url.searchParams.set("format", "json");
-    url.searchParams.set("formatversion", "2");
-    url.searchParams.set("prop", "revisions");
-    url.searchParams.set("titles", metadata.wikipediaTitle);
-    url.searchParams.set("rvprop", "timestamp");
-    url.searchParams.set("rvstart", new Date().toISOString());
-    url.searchParams.set("rvend", since);
-    url.searchParams.set("rvlimit", "25");
-
-    const response = await fetch(url, {
-      headers: {
-        accept: "application/json",
-        "user-agent": "CelebStockz test-signal diagnostic",
-      },
-    });
-    if (response.ok) {
-      const data = (await response.json()) as {
-        query?: {
-          pages?: Array<{ revisions?: Array<{ timestamp?: string }> }>;
-        };
-      };
-      wikiEdits = (data.query?.pages?.[0]?.revisions ?? []).filter(
-        (revision) => {
-          const timestamp = revision.timestamp
-            ? new Date(revision.timestamp)
-            : null;
-          return (
-            timestamp &&
-            Number.isFinite(timestamp.getTime()) &&
-            timestamp >= new Date(since)
-          );
-        },
-      ).length;
-      wikiEditsStatus = "verified";
-    }
-  } catch {
-    wikiEditsStatus = "unavailable";
-  }
-
-  const [additional, searchDiagnostic, youtubeDiagnostic] = await Promise.all([
-    getAdditionalPriceSignals(market),
-    testGoogleSearch(
-      market.name,
-      settings.googleSearchApiKey,
-      settings.googleSearchEngineId,
-    ),
-    testYoutubeChannel(
-      settings.youtubeApiKey,
-      settings.youtubeChannels[market.ticker],
-    ),
+  const [systemSettings, providerSettings] = await Promise.all([
+    getSystemSettings(),
+    getProviderSettings(),
   ]);
+
+  const [wikiViews, wikiEdits, additional, searchDiagnostic, youtubeDiagnostic] =
+    await Promise.all([
+      testWikipediaPageviews(metadata.wikipediaTitle),
+      testWikipediaEdits(metadata.wikipediaTitle),
+      getAdditionalPriceSignals(market),
+      fetchSearchTrend(
+        market.name,
+        providerSettings.dataforseoLogin,
+        providerSettings.dataforseoPassword,
+      ),
+      testYoutubeChannel(
+        systemSettings.youtubeApiKey,
+        systemSettings.youtubeChannels[market.ticker],
+      ),
+    ]);
 
   return {
     ticker: market.ticker,
     name: market.name,
     wikipediaTitle: metadata.wikipediaTitle,
     youtubeConfiguration: {
-      apiKeySaved: Boolean(settings.youtubeApiKey),
-      mappingSaved: Boolean(settings.youtubeChannels[market.ticker]?.trim()),
-      channelId: settings.youtubeChannels[market.ticker]?.trim() ?? null,
+      apiKeySaved: Boolean(systemSettings.youtubeApiKey),
+      mappingSaved: Boolean(systemSettings.youtubeChannels[market.ticker]?.trim()),
+      channelId: systemSettings.youtubeChannels[market.ticker]?.trim() ?? null,
     },
-    channelMapped: Boolean(settings.youtubeChannels[market.ticker]?.trim()),
-    channelId: settings.youtubeChannels[market.ticker]?.trim() ?? null,
     diagnostics: {
       wikipedia: {
-        dailyPageviews: wikiViews,
-        status: wikiViewsStatus,
-        recentRevisions7d: wikiEdits,
-        revisionsStatus: wikiEditsStatus,
+        dailyPageviews: wikiViews.value,
+        status: wikiViews.status,
+        recentRevisions7d: wikiEdits.value,
+        revisionsStatus: wikiEdits.status,
       },
       news: {
         mentions7d: additional.newsMentions,
         status: additional.statuses.news,
       },
       search: {
-        resultsCount: searchDiagnostic.resultsCount,
+        provider: "DataForSEO Google Trends",
+        latestInterest: searchDiagnostic.latestInterest,
+        baselineInterest: searchDiagnostic.baselineInterest,
+        momentumPercent: searchDiagnostic.momentumPercent,
+        graphPoints: searchDiagnostic.points,
         status: searchDiagnostic.status,
         detail: searchDiagnostic.detail,
       },
