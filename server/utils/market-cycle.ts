@@ -135,7 +135,7 @@ export async function runMarketCycle(mode: MarketCycleMode = "cycle") {
       mode: "tick" as const,
       collectionIntervalMinutes: getCollectionIntervalMinutes(),
       ...tick,
-      priceMovementModel: "two-minute-live-pressure-tick",
+      priceMovementModel: "real-world-anchor-plus-game-volatility",
     };
   } finally {
     await releaseLease(token);
