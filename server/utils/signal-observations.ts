@@ -60,7 +60,10 @@ function mapObservation(row: ObservationRow): SignalObservation {
     ticker: row.ticker,
     provider: row.provider,
     metric: row.metric,
-    value: numericValue !== null && Number.isFinite(numericValue) ? numericValue : null,
+    value:
+      numericValue !== null && Number.isFinite(numericValue)
+        ? numericValue
+        : null,
     status: row.status,
     capturedAt: row.captured_at,
     metadata: row.metadata ?? {},
@@ -87,6 +90,34 @@ export async function getLatestSignalObservation(
   } catch (error) {
     console.warn("Could not read market signal observation", error);
     return null;
+  }
+}
+
+export async function getRecentVerifiedSignalObservations(
+  ticker: string,
+  provider: string,
+  metric: string,
+  limit = 6,
+): Promise<SignalObservation[]> {
+  const safeLimit = Math.max(1, Math.min(30, Math.floor(limit)));
+
+  try {
+    await ensureSchema();
+    const rows = await sql<ObservationRow[]>`
+      SELECT ticker, provider, metric, value, status, captured_at, metadata
+      FROM market_signal_observations
+      WHERE ticker = ${ticker}
+        AND provider = ${provider}
+        AND metric = ${metric}
+        AND status = 'verified'
+        AND value IS NOT NULL
+      ORDER BY captured_at DESC
+      LIMIT ${safeLimit}
+    `;
+    return rows.map(mapObservation);
+  } catch (error) {
+    console.warn("Could not read market signal observation history", error);
+    return [];
   }
 }
 
