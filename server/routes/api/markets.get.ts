@@ -12,7 +12,7 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
 
-  const [markets, healthRows, memberships] = await Promise.all([
+  const [allMarkets, healthRows, memberships] = await Promise.all([
     getSnapshotMarkets(),
     sql`
       SELECT source_key, status, last_checked_at, last_success_at, detail
@@ -23,15 +23,15 @@ export default defineHandler(async (event) => {
       SELECT
         members.ticker,
         members.pack_id,
-        CASE
-          WHEN (packs.is_announced OR packs.is_published OR unlocks.pack_id IS NOT NULL) THEN packs.name
-          ELSE 'Classified Pack #' || packs.id
-        END AS name,
+        packs.name,
         (unlocks.pack_id IS NOT NULL) AS unlocked
       FROM celebrity_pack_members AS members
-      JOIN celebrity_packs AS packs ON packs.id = members.pack_id
+      JOIN celebrity_packs AS packs
+        ON packs.id = members.pack_id
+        AND packs.is_published = true
       LEFT JOIN user_pack_unlocks AS unlocks
-        ON unlocks.pack_id = members.pack_id AND unlocks.user_id = ${userId}
+        ON unlocks.pack_id = members.pack_id
+        AND unlocks.user_id = ${userId}
     `,
     syncMarketRegistry(),
   ]);
@@ -40,6 +40,7 @@ export default defineHandler(async (event) => {
     string,
     Array<{ id: number; name: string; unlocked: boolean }>
   >();
+
   memberships.forEach((membership) => {
     const current = membershipsByTicker.get(membership.ticker) ?? [];
     current.push({
@@ -50,6 +51,9 @@ export default defineHandler(async (event) => {
     membershipsByTicker.set(membership.ticker, current);
   });
 
+  const markets = allMarkets.filter((market) =>
+    membershipsByTicker.has(market.ticker),
+  );
   const latestRefresh =
     markets
       .map((market) => market.snapshot.capturedAt)
@@ -72,7 +76,7 @@ export default defineHandler(async (event) => {
       return {
         ...market,
         access: {
-          isStandard: packs.length === 0,
+          isStandard: false,
           isUnlocked: lockedPacks.length === 0,
           requiredPacks: lockedPacks.map(({ id, name }) => ({ id, name })),
         },
