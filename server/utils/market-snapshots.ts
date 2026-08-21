@@ -59,6 +59,12 @@ function asRecord(value: unknown): Record<string, unknown> | null {
     : null;
 }
 
+function hasFiniteMetric(record: Record<string, unknown> | null, key: string) {
+  const value = record?.[key];
+  if (value === null || value === undefined || value === "") return false;
+  return Number.isFinite(Number(value));
+}
+
 function describePageviewChange(
   current: number | null,
   previous: number | null,
@@ -140,16 +146,18 @@ function getVerifiedPublicSignalGroups(
   return [...groups];
 }
 
-function getPreviousVerifiedSignalCount(previous: SnapshotRow | null) {
+function getPreviousVerifiedSignalGroups(previous: SnapshotRow | null) {
   if (!previous) return null;
 
   const measurements = asRecord(previous.source_measurements);
   if (!measurements) return null;
 
   const sourceConfidence = asRecord(measurements.sourceConfidence);
-  const explicitCount = Number(sourceConfidence?.verifiedCount);
-  if (Number.isSafeInteger(explicitCount) && explicitCount >= 0) {
-    return explicitCount;
+  const explicitGroups = sourceConfidence?.verifiedGroups;
+  if (Array.isArray(explicitGroups)) {
+    return explicitGroups.filter(
+      (group): group is string => typeof group === "string" && Boolean(group),
+    );
   }
 
   const groups = new Set<string>();
@@ -158,8 +166,8 @@ function getPreviousVerifiedSignalCount(previous: SnapshotRow | null) {
     wikipedia &&
     (wikipedia.pageviewsStatus === "verified" ||
       wikipedia.editActivityStatus === "verified" ||
-      Number.isFinite(Number(wikipedia.dailyPageviews)) ||
-      Number.isFinite(Number(wikipedia.recentEdits)))
+      hasFiniteMetric(wikipedia, "dailyPageviews") ||
+      hasFiniteMetric(wikipedia, "recentEdits"))
   ) {
     groups.add("wikipedia");
   }
@@ -176,7 +184,7 @@ function getPreviousVerifiedSignalCount(previous: SnapshotRow | null) {
     if (externalStatuses?.[provider] === "verified") groups.add(provider);
   }
 
-  return groups.size || null;
+  return groups.size ? [...groups] : null;
 }
 
 async function getWikipediaViews(article: string): Promise<PageviewResult> {
@@ -348,10 +356,12 @@ export async function refreshMarketSnapshots() {
       additionalSignals,
       externalSignals,
     );
-    const previousVerifiedCount = getPreviousVerifiedSignalCount(previous);
-    const confidenceDegraded =
-      previousVerifiedCount !== null &&
-      verifiedGroups.length < previousVerifiedCount;
+    const previousVerifiedGroups = getPreviousVerifiedSignalGroups(previous);
+    const missingPreviouslyVerifiedGroups = previousVerifiedGroups
+      ? previousVerifiedGroups.filter((group) => !verifiedGroups.includes(group))
+      : [];
+    const confidenceDegraded = missingPreviouslyVerifiedGroups.length > 0;
+    const previousVerifiedCount = previousVerifiedGroups?.length ?? null;
 
     if (verifiedGroups.length === 0) {
       unavailableCount += 1;
@@ -378,8 +388,10 @@ export async function refreshMarketSnapshots() {
             sourceConfidence: {
               verifiedGroups,
               verifiedCount: 0,
+              previousVerifiedGroups,
               previousVerifiedCount,
-              degradedFromPrevious: previousVerifiedCount !== null,
+              missingPreviouslyVerifiedGroups,
+              degradedFromPrevious: previousVerifiedGroups !== null,
             },
             fallback: {
               capturedAt: previous?.captured_at ?? null,
@@ -408,7 +420,7 @@ export async function refreshMarketSnapshots() {
       confidenceDegraded && targetRawMove < 0 ? 0 : targetRawMove;
     const confidenceReason =
       confidenceDegraded && targetRawMove < 0
-        ? " Some feeds were unavailable, so missing data was not treated as negative celebrity momentum."
+        ? ` Missing ${missingPreviouslyVerifiedGroups.join(", ")} data was not treated as negative celebrity momentum.`
         : "";
     const movementReason = `${describePageviewChange(
       pageviews.views,
@@ -439,7 +451,9 @@ export async function refreshMarketSnapshots() {
             sourceConfidence: {
               verifiedGroups,
               verifiedCount: verifiedGroups.length,
+              previousVerifiedGroups,
               previousVerifiedCount,
+              missingPreviouslyVerifiedGroups,
               degradedFromPrevious: confidenceDegraded,
             },
             anomaly: {
@@ -482,7 +496,9 @@ export async function refreshMarketSnapshots() {
           sourceConfidence: {
             verifiedGroups,
             verifiedCount: verifiedGroups.length,
+            previousVerifiedGroups,
             previousVerifiedCount,
+            missingPreviouslyVerifiedGroups,
             degradedFromPrevious: confidenceDegraded,
           },
           movementReason,
