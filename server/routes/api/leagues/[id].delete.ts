@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { createError, getRouterParam } from "nitro/h3";
-import { sql } from "../../../utils/db";
+import { sql } from "../../../../utils/db";
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
@@ -19,12 +19,10 @@ export default defineHandler(async (event) => {
   }
 
   if (league[0].owner_id === userId) {
-    // Owner deletes league
     await sql`DELETE FROM leagues WHERE id = ${leagueId}`;
     return { ok: true, action: "deleted" };
-  } else {
-    // Member leaves league
-    await sql`DELETE FROM league_members WHERE league_id = ${leagueId} AND user_id = ${userId}`;
-    return { ok: true, action: "left" };
   }
+
+  await sql`DELETE FROM league_members WHERE league_id = ${leagueId} AND user_id = ${userId}`;
+  return { ok: true, action: "left" };
 });

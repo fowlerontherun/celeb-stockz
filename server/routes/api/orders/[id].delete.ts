@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { createError, getRouterParam } from "nitro/h3";
-import { sql } from "../../../utils/db";
+import { sql } from "../../../../utils/db";
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;

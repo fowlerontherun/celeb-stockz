@@ -5,9 +5,9 @@ import {
   getRouterParam,
   readBody,
 } from "nitro/h3";
-import { getSessionFromCookie } from "../../../../utils/session";
-import { checkIsAdmin } from "../../../../utils/system-settings";
-import { sql } from "../../../../utils/db";
+import { getSessionFromCookie } from "../../../../../utils/session";
+import { checkIsAdmin } from "../../../../../utils/system-settings";
+import { sql } from "../../../../../utils/db";
 
 type PackUpdate = {
   priceGbp?: number;

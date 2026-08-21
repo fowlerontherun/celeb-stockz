@@ -1,7 +1,7 @@
 import { defineHandler } from "nitro";
 import { createError, getRouterParam } from "nitro/h3";
-import { sql } from "../../../utils/db";
-import { getLatestVerifiedPrices } from "../../../utils/market-snapshots";
+import { sql } from "../../../../utils/db";
+import { getLatestVerifiedPrices } from "../../../../utils/market-snapshots";
 
 type MemberRow = {
   user_id: string;

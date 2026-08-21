@@ -1,6 +1,6 @@
 import { defineHandler } from "nitro";
 import { createError, getRouterParam } from "nitro/h3";
-import { sql } from "../../../../utils/db";
+import { sql } from "../../../../../utils/db";
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
@@ -22,7 +22,7 @@ export default defineHandler(async (event) => {
   }
 
   const code = crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase();
-  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+  const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
 
   await sql`
     INSERT INTO league_invites (code, league_id, created_by, expires_at)
