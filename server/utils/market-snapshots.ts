@@ -128,12 +128,8 @@ function getVerifiedPublicSignalGroups(
 ) {
   const groups = new Set<string>();
 
-  if (
-    pageviews.status === "verified" ||
-    editActivity.status === "verified"
-  ) {
-    groups.add("wikipedia");
-  }
+  if (pageviews.status === "verified") groups.add("wikipedia-pageviews");
+  if (editActivity.status === "verified") groups.add("wikipedia-revisions");
   if (additionalSignals.statuses.news === "verified") groups.add("gdelt");
   if (additionalSignals.statuses.search === "verified") groups.add("search");
   if (additionalSignals.statuses.youtube === "verified") groups.add("youtube");
@@ -165,11 +161,16 @@ function getPreviousVerifiedSignalGroups(previous: SnapshotRow | null) {
   if (
     wikipedia &&
     (wikipedia.pageviewsStatus === "verified" ||
-      wikipedia.editActivityStatus === "verified" ||
-      hasFiniteMetric(wikipedia, "dailyPageviews") ||
+      hasFiniteMetric(wikipedia, "dailyPageviews"))
+  ) {
+    groups.add("wikipedia-pageviews");
+  }
+  if (
+    wikipedia &&
+    (wikipedia.editActivityStatus === "verified" ||
       hasFiniteMetric(wikipedia, "recentEdits"))
   ) {
-    groups.add("wikipedia");
+    groups.add("wikipedia-revisions");
   }
 
   const additional = asRecord(measurements.additionalSignals);
