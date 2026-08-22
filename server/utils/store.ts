@@ -2,12 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { sql } from "./db";
 
 export const PACK_PRICE_ID = "price_1U6z3lBKNMFFRtauAhPiTcvk";
+export const GBP_PER_STKZ = 1;
+export const STARTING_BALANCE_STKZ = 100;
+export const INITIAL_DEPOSIT_GBP = 100;
 
 export const STKZ_BUNDLES = {
-  STKZ_10000: { amount: 10_000, priceId: "price_1U6z4CBKNMFFRtauTK6TKnl2", pricePence: 199 },
-  STKZ_30000: { amount: 30_000, priceId: "price_1U6z4PBKNMFFRtauL3iZt6q5", pricePence: 499 },
-  STKZ_75000: { amount: 75_000, priceId: "price_1U6z4ZBKNMFFRtauXfZZGjXD", pricePence: 999 },
-  STKZ_175000: { amount: 175_000, priceId: "price_1U6z4fBKNMFFRtauTFGOBWfZ", pricePence: 1999 },
+  STKZ_10000: { amount: 1.99, priceId: "price_1U6z4CBKNMFFRtauTK6TKnl2", pricePence: 199 },
+  STKZ_30000: { amount: 4.99, priceId: "price_1U6z4PBKNMFFRtauL3iZt6q5", pricePence: 499 },
+  STKZ_75000: { amount: 9.99, priceId: "price_1U6z4ZBKNMFFRtauXfZZGjXD", pricePence: 999 },
+  STKZ_175000: { amount: 19.99, priceId: "price_1U6z4fBKNMFFRtauTFGOBWfZ", pricePence: 1999 },
 } as const;
 
 export type StkzSku = keyof typeof STKZ_BUNDLES;
@@ -20,6 +23,10 @@ export async function ensureStoreSchema() {
       await sql`
         ALTER TABLE user_wallets
         ADD COLUMN IF NOT EXISTS purchased_stkz_balance double precision NOT NULL DEFAULT 0
+      `;
+      await sql`
+        ALTER TABLE user_wallets
+        ALTER COLUMN balance_stkz SET DEFAULT ${STARTING_BALANCE_STKZ}
       `;
       await sql`
         DO $$
@@ -65,6 +72,33 @@ export async function ensureStoreSchema() {
       await sql`
         CREATE INDEX IF NOT EXISTS payment_orders_user_idx
         ON payment_orders (user_id, created_at DESC)
+      `;
+      await sql`
+        INSERT INTO payment_orders (
+          user_id,
+          provider,
+          provider_session_id,
+          sku,
+          amount_minor,
+          currency,
+          status,
+          fulfilled_at,
+          created_at,
+          updated_at
+        )
+        SELECT
+          user_id,
+          'simulation',
+          'initial-deposit:' || user_id,
+          'INITIAL_DEPOSIT',
+          ${INITIAL_DEPOSIT_GBP * 100},
+          'gbp',
+          'paid',
+          now(),
+          now(),
+          now()
+        FROM user_wallets
+        ON CONFLICT (provider_session_id) DO NOTHING
       `;
       await sql`
         CREATE TABLE IF NOT EXISTS payment_events (
@@ -194,7 +228,7 @@ export async function fulfillStripeCheckout(input: {
     ),
     credit_wallet AS (
       INSERT INTO user_wallets (user_id, balance_stkz, purchased_stkz_balance)
-      SELECT ${input.userId}, 10000 + amount_stkz, amount_stkz FROM grant_currency
+      SELECT ${input.userId}, ${STARTING_BALANCE_STKZ} + amount_stkz, amount_stkz FROM grant_currency
       ON CONFLICT (user_id) DO UPDATE
       SET balance_stkz = user_wallets.balance_stkz + EXCLUDED.purchased_stkz_balance,
           purchased_stkz_balance = user_wallets.purchased_stkz_balance + EXCLUDED.purchased_stkz_balance,
