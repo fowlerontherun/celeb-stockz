@@ -26,7 +26,7 @@ export async function ensureStoreSchema() {
       `;
       await sql`
         ALTER TABLE user_wallets
-        ALTER COLUMN balance_stkz SET DEFAULT ${STARTING_BALANCE_STKZ}
+        ALTER COLUMN balance_stkz SET DEFAULT 100
       `;
       await sql`
         DO $$
