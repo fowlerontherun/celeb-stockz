@@ -2,15 +2,15 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { sql } from "./db";
 
 export const PACK_PRICE_ID = "price_1U6z3lBKNMFFRtauAhPiTcvk";
-export const GBP_PER_STKZ = 1;
+export const GBP_PER_STKZ = 0.01;
 export const STARTING_BALANCE_STKZ = 100;
-export const INITIAL_DEPOSIT_GBP = 100;
+export const INITIAL_DEPOSIT_GBP = 1;
 
 export const STKZ_BUNDLES = {
-  STKZ_10000: { amount: 1.99, priceId: "price_1U6z4CBKNMFFRtauTK6TKnl2", pricePence: 199 },
-  STKZ_30000: { amount: 4.99, priceId: "price_1U6z4PBKNMFFRtauL3iZt6q5", pricePence: 499 },
-  STKZ_75000: { amount: 9.99, priceId: "price_1U6z4ZBKNMFFRtauXfZZGjXD", pricePence: 999 },
-  STKZ_175000: { amount: 19.99, priceId: "price_1U6z4fBKNMFFRtauTFGOBWfZ", pricePence: 1999 },
+  STKZ_10000: { amount: 199, priceId: "price_1U6z4CBKNMFFRtauTK6TKnl2", pricePence: 199 },
+  STKZ_30000: { amount: 499, priceId: "price_1U6z4PBKNMFFRtauL3iZt6q5", pricePence: 499 },
+  STKZ_75000: { amount: 999, priceId: "price_1U6z4ZBKNMFFRtauXfZZGjXD", pricePence: 999 },
+  STKZ_175000: { amount: 1999, priceId: "price_1U6z4fBKNMFFRtauTFGOBWfZ", pricePence: 1999 },
 } as const;
 
 export type StkzSku = keyof typeof STKZ_BUNDLES;
@@ -100,6 +100,15 @@ export async function ensureStoreSchema() {
         FROM user_wallets
         WHERE true
         ON CONFLICT (provider_session_id) DO NOTHING
+      `;
+      await sql`
+        UPDATE payment_orders
+        SET amount_minor = ${INITIAL_DEPOSIT_GBP * 100},
+            updated_at = now()
+        WHERE provider = 'simulation'
+          AND sku = 'INITIAL_DEPOSIT'
+          AND provider_session_id LIKE 'initial-deposit:%'
+          AND amount_minor <> ${INITIAL_DEPOSIT_GBP * 100}
       `;
       await sql`
         CREATE TABLE IF NOT EXISTS payment_events (
