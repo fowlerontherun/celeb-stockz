@@ -3,9 +3,11 @@ import { createError, getRequestHeader } from "nitro/h3";
 import { sql } from "../../../utils/db";
 import { getSessionFromCookie } from "../../../utils/session";
 import { STKZ_BUNDLES, ensureStoreSchema } from "../../../utils/store";
+import { getProfitabilitySettings } from "../../../utils/profitability-settings";
 import { checkIsAdmin } from "../../../utils/system-settings";
 
 const TRANSACTION_FEE_RATE = 0.01;
+const DAYS_PER_MONTH = 30.4375;
 
 const catalogue = Object.values(STKZ_BUNDLES);
 const catalogueGbpPerStkz =
@@ -14,6 +16,18 @@ const catalogueGbpPerStkz =
 
 function money(value: number) {
   return Number(value.toFixed(2));
+}
+
+function paymentProcessingCost(
+  paymentVolumeGbp: number,
+  paymentCount: number,
+  percent: number,
+  fixedPence: number,
+) {
+  return money(
+    paymentVolumeGbp * (percent / 100) +
+      paymentCount * (fixedPence / 100),
+  );
 }
 
 export default defineHandler(async (event) => {
@@ -30,6 +44,7 @@ export default defineHandler(async (event) => {
   }
 
   await ensureStoreSchema();
+  const model = await getProfitabilitySettings();
 
   const [tradeRows, paymentRows, conversionRows, dailyRows] = await Promise.all([
     sql`
@@ -38,6 +53,7 @@ export default defineHandler(async (event) => {
         COUNT(DISTINCT user_id)::int AS active_traders,
         COALESCE(SUM(total_stkz), 0) AS trade_volume_stkz,
         COALESCE(SUM(COALESCE(fee_stkz, total_stkz * ${TRANSACTION_FEE_RATE})), 0) AS fee_stkz,
+        MIN(created_at) AS first_trade_at,
         COUNT(*) FILTER (WHERE created_at >= now() - interval '30 days')::int AS trades_30d,
         COUNT(DISTINCT user_id) FILTER (WHERE created_at >= now() - interval '30 days')::int AS active_traders_30d,
         COALESCE(SUM(total_stkz) FILTER (WHERE created_at >= now() - interval '30 days'), 0) AS trade_volume_stkz_30d,
@@ -51,10 +67,13 @@ export default defineHandler(async (event) => {
         COUNT(DISTINCT user_id) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%')::int AS depositors,
         COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK'), 0)::bigint AS pack_sales_minor,
         COUNT(*) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK')::int AS pack_sales,
+        COUNT(*) FILTER (WHERE status = 'paid')::int AS paid_orders,
+        MIN(created_at) FILTER (WHERE status = 'paid') AS first_payment_at,
         COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%' AND created_at >= now() - interval '30 days'), 0)::bigint AS deposits_minor_30d,
         COUNT(*) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%' AND created_at >= now() - interval '30 days')::int AS deposits_30d,
         COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK' AND created_at >= now() - interval '30 days'), 0)::bigint AS pack_sales_minor_30d,
-        COUNT(*) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK' AND created_at >= now() - interval '30 days')::int AS pack_sales_30d
+        COUNT(*) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK' AND created_at >= now() - interval '30 days')::int AS pack_sales_30d,
+        COUNT(*) FILTER (WHERE status = 'paid' AND created_at >= now() - interval '30 days')::int AS paid_orders_30d
       FROM payment_orders
     `,
     sql`
@@ -87,7 +106,8 @@ export default defineHandler(async (event) => {
         SELECT
           created_at::date AS day,
           COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%'), 0)::bigint AS deposits_minor,
-          COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK'), 0)::bigint AS pack_sales_minor
+          COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK'), 0)::bigint AS pack_sales_minor,
+          COUNT(*) FILTER (WHERE status = 'paid')::int AS paid_orders
         FROM payment_orders
         WHERE created_at >= current_date - interval '89 days'
         GROUP BY created_at::date
@@ -98,7 +118,8 @@ export default defineHandler(async (event) => {
         COALESCE(trades.trade_volume_stkz, 0) AS trade_volume_stkz,
         COALESCE(trades.fee_stkz, 0) AS fee_stkz,
         COALESCE(payments.deposits_minor, 0)::bigint AS deposits_minor,
-        COALESCE(payments.pack_sales_minor, 0)::bigint AS pack_sales_minor
+        COALESCE(payments.pack_sales_minor, 0)::bigint AS pack_sales_minor,
+        COALESCE(payments.paid_orders, 0)::int AS paid_orders
       FROM days
       LEFT JOIN trades USING (day)
       LEFT JOIN payments USING (day)
@@ -128,6 +149,61 @@ export default defineHandler(async (event) => {
   const platformRevenueGbp = money(feeRevenueGbp + packSalesGbp);
   const platformRevenueGbp30d = money(feeRevenueGbp30d + packSalesGbp30d);
 
+  const monthlyFixedCostsGbp = money(
+    model.hostingMonthlyGbp +
+      model.dataMonthlyGbp +
+      model.complianceMonthlyGbp +
+      model.otherMonthlyGbp,
+  );
+  const paymentVolumeGbp = money(depositsGbp + packSalesGbp);
+  const paymentVolumeGbp30d = money(depositsGbp30d + packSalesGbp30d);
+  const processingCostsGbp = paymentProcessingCost(
+    paymentVolumeGbp,
+    Number(payment.paid_orders ?? 0),
+    model.paymentProcessingPercent,
+    model.paymentProcessingFixedPence,
+  );
+  const processingCostsGbp30d = paymentProcessingCost(
+    paymentVolumeGbp30d,
+    Number(payment.paid_orders_30d ?? 0),
+    model.paymentProcessingPercent,
+    model.paymentProcessingFixedPence,
+  );
+  const riskReserveGbp = money(
+    platformRevenueGbp * (model.riskReservePercent / 100),
+  );
+  const riskReserveGbp30d = money(
+    platformRevenueGbp30d * (model.riskReservePercent / 100),
+  );
+
+  const activityDates = [trade.first_trade_at, payment.first_payment_at]
+    .filter(Boolean)
+    .map((value) => new Date(value).getTime())
+    .filter(Number.isFinite);
+  const firstActivityAt = activityDates.length
+    ? new Date(Math.min(...activityDates))
+    : new Date();
+  const operatingDays = Math.max(
+    1,
+    (Date.now() - firstActivityAt.getTime()) / (24 * 60 * 60 * 1000),
+  );
+  const operatingMonths = Math.max(1, operatingDays / DAYS_PER_MONTH);
+  const lifetimeFixedCostsGbp = money(monthlyFixedCostsGbp * operatingMonths);
+  const estimatedCostsGbp = money(
+    processingCostsGbp + lifetimeFixedCostsGbp + riskReserveGbp,
+  );
+  const estimatedCostsGbp30d = money(
+    processingCostsGbp30d + monthlyFixedCostsGbp + riskReserveGbp30d,
+  );
+  const estimatedNetProfitGbp = money(platformRevenueGbp - estimatedCostsGbp);
+  const estimatedNetProfitGbp30d = money(
+    platformRevenueGbp30d - estimatedCostsGbp30d,
+  );
+  const netMarginPercent30d =
+    platformRevenueGbp30d > 0
+      ? money((estimatedNetProfitGbp30d / platformRevenueGbp30d) * 100)
+      : 0;
+
   return {
     assumptions: {
       transactionFeeRate: TRANSACTION_FEE_RATE,
@@ -135,6 +211,7 @@ export default defineHandler(async (event) => {
       conversionBasis: realisedGbpPerStkz === null ? "catalogue" : "realised-deposits",
       note: "Deposits are customer funds, not platform revenue. Platform revenue is transaction fees plus pack sales.",
     },
+    model,
     allTime: {
       depositsGbp,
       depositCount: Number(payment.deposits ?? 0),
@@ -147,6 +224,13 @@ export default defineHandler(async (event) => {
       tradeVolumeStkz: Number(trade.trade_volume_stkz ?? 0),
       trades: Number(trade.trades ?? 0),
       activeTraders: Number(trade.active_traders ?? 0),
+      paymentProcessingCostsGbp: processingCostsGbp,
+      fixedOperatingCostsGbp: lifetimeFixedCostsGbp,
+      riskReserveGbp,
+      estimatedCostsGbp,
+      estimatedNetProfitGbp,
+      operatingMonths: money(operatingMonths),
+      firstActivityAt: firstActivityAt.toISOString(),
     },
     last30Days: {
       depositsGbp: depositsGbp30d,
@@ -159,7 +243,14 @@ export default defineHandler(async (event) => {
       tradeVolumeStkz: Number(trade.trade_volume_stkz_30d ?? 0),
       trades: Number(trade.trades_30d ?? 0),
       activeTraders: Number(trade.active_traders_30d ?? 0),
+      paymentProcessingCostsGbp: processingCostsGbp30d,
+      fixedOperatingCostsGbp: monthlyFixedCostsGbp,
+      riskReserveGbp: riskReserveGbp30d,
+      estimatedCostsGbp: estimatedCostsGbp30d,
+      estimatedNetProfitGbp: estimatedNetProfitGbp30d,
+      netMarginPercent: netMarginPercent30d,
       annualisedRevenueRunRateGbp: money(platformRevenueGbp30d * 12),
+      annualisedNetProfitRunRateGbp: money(estimatedNetProfitGbp30d * 12),
       feesOnlyAnnualisedRunRateGbp: money(feeRevenueGbp30d * 12),
       sustainableMonthlyCostCeilingGbp: platformRevenueGbp30d,
       feesOnlyMonthlyCostCeilingGbp: feeRevenueGbp30d,
@@ -167,14 +258,34 @@ export default defineHandler(async (event) => {
     daily: dailyRows.map((row) => {
       const dailyFeeRevenueGbp = money(Number(row.fee_stkz ?? 0) * gbpPerStkz);
       const dailyPackSalesGbp = money(Number(row.pack_sales_minor ?? 0) / 100);
+      const dailyDepositsGbp = money(Number(row.deposits_minor ?? 0) / 100);
+      const dailyRevenueGbp = money(dailyFeeRevenueGbp + dailyPackSalesGbp);
+      const dailyProcessingGbp = paymentProcessingCost(
+        dailyDepositsGbp + dailyPackSalesGbp,
+        Number(row.paid_orders ?? 0),
+        model.paymentProcessingPercent,
+        model.paymentProcessingFixedPence,
+      );
+      const dailyReserveGbp = money(
+        dailyRevenueGbp * (model.riskReservePercent / 100),
+      );
+      const dailyFixedCostsGbp = money(monthlyFixedCostsGbp / DAYS_PER_MONTH);
+      const dailyEstimatedNetProfitGbp = money(
+        dailyRevenueGbp -
+          dailyProcessingGbp -
+          dailyReserveGbp -
+          dailyFixedCostsGbp,
+      );
+
       return {
         day: row.day,
         trades: Number(row.trades ?? 0),
         tradeVolumeStkz: Number(row.trade_volume_stkz ?? 0),
-        depositsGbp: money(Number(row.deposits_minor ?? 0) / 100),
+        depositsGbp: dailyDepositsGbp,
         feeRevenueGbp: dailyFeeRevenueGbp,
         packSalesGbp: dailyPackSalesGbp,
-        platformRevenueGbp: money(dailyFeeRevenueGbp + dailyPackSalesGbp),
+        platformRevenueGbp: dailyRevenueGbp,
+        estimatedNetProfitGbp: dailyEstimatedNetProfitGbp,
       };
     }),
   };
