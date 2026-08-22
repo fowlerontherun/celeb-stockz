@@ -4,6 +4,7 @@ import { sql } from "../../utils/db";
 import { isTradeableCelebrityMarket } from "../../utils/market-eligibility";
 import { isMarketTicker, marketPrices } from "../../utils/markets";
 import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
+import { runMarketCycle } from "../../utils/market-cycle";
 import { isTradingPaused } from "../../utils/trading-status";
 import { isListingTradingPaused } from "../../utils/listing-settings";
 import { canTradeMarket, getLockedPacksForMarket } from "../../utils/pack-access";
@@ -74,6 +75,12 @@ export default defineHandler(async (event) => {
       statusMessage: "Trading for this listing is currently paused for review.",
     });
   }
+
+  // Ensure the execution price is from the current two-minute gameplay bucket.
+  // If the tick cannot run, trading remains available against the last good price.
+  await runMarketCycle("tick").catch((error) => {
+    console.error("Pre-trade market tick failed", error);
+  });
 
   const latestVerifiedPrice = (await getLatestVerifiedPrices()).get(ticker);
   const price = latestVerifiedPrice ?? marketPrices[ticker];

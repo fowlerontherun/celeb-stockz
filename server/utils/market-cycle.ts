@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { sql } from "./db";
 import { runMarketRefresh } from "./run-market-refresh";
 import { applyLivePriceTick } from "./live-prices";
+import { recordLivePriceHistory } from "./market-live-history";
 import { processOpenOrders } from "./orders";
 
 type SchedulerRow = {
@@ -150,12 +151,14 @@ export async function runMarketCycle(mode: MarketCycleMode = "cycle") {
     if (tick.updatedCount > 0) {
       await processOpenOrders();
     }
+    const historyRecordedCount = await recordLivePriceHistory();
     await markTick(token);
 
     return {
       mode: "tick" as const,
       collectionIntervalMinutes: getCollectionIntervalMinutes(),
       ...tick,
+      historyRecordedCount,
       priceMovementModel: "real-world-anchor-plus-game-volatility",
     };
   } finally {
