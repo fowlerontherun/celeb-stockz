@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AccountGate } from "@/components/AccountGate";
 import { AuthProvider } from "@/components/AuthProvider";
+import { MarketRefreshPulse } from "@/components/MarketRefreshPulse";
 import { OperationsShell } from "@/components/OperationsShell";
 import { PackSaleBanner } from "@/components/PackSaleBanner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -30,6 +31,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <MarketRefreshPulse />
           <PackSaleBanner />
           <Routes>
             <Route path="/" element={<AccountGate><Index /></AccountGate>} />
