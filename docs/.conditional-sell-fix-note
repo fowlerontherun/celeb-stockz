@@ -1,0 +1,1 @@
+Conditional sell orders now persist fixed share quantities so price ticks do not change the number of shares sold at execution time.
