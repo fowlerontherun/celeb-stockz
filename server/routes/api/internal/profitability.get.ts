@@ -2,17 +2,13 @@ import { defineHandler } from "nitro";
 import { createError, getRequestHeader } from "nitro/h3";
 import { sql } from "../../../utils/db";
 import { getSessionFromCookie } from "../../../utils/session";
-import { STKZ_BUNDLES, ensureStoreSchema } from "../../../utils/store";
+import { GBP_PER_STKZ, ensureStoreSchema } from "../../../utils/store";
 import { getProfitabilitySettings } from "../../../utils/profitability-settings";
 import { checkIsAdmin } from "../../../utils/system-settings";
 
 const TRANSACTION_FEE_RATE = 0.01;
 const DAYS_PER_MONTH = 30.4375;
-
-const catalogue = Object.values(STKZ_BUNDLES);
-const catalogueGbpPerStkz =
-  catalogue.reduce((sum, bundle) => sum + bundle.pricePence / 100, 0) /
-  catalogue.reduce((sum, bundle) => sum + bundle.amount, 0);
+const DEPOSIT_FILTER = "(sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')";
 
 function money(value: number) {
   return Number(value.toFixed(2));
@@ -46,7 +42,7 @@ export default defineHandler(async (event) => {
   await ensureStoreSchema();
   const model = await getProfitabilitySettings();
 
-  const [tradeRows, paymentRows, conversionRows, dailyRows] = await Promise.all([
+  const [tradeRows, paymentRows, dailyRows] = await Promise.all([
     sql`
       SELECT
         COUNT(*)::int AS trades,
@@ -62,27 +58,44 @@ export default defineHandler(async (event) => {
     `,
     sql`
       SELECT
-        COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%'), 0)::bigint AS deposits_minor,
-        COUNT(*) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%')::int AS deposits,
-        COUNT(DISTINCT user_id) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%')::int AS depositors,
+        COALESCE(SUM(amount_minor) FILTER (
+          WHERE status = 'paid' AND (sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')
+        ), 0)::bigint AS deposits_minor,
+        COUNT(*) FILTER (
+          WHERE status = 'paid' AND (sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')
+        )::int AS deposits,
+        COUNT(DISTINCT user_id) FILTER (
+          WHERE status = 'paid' AND (sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')
+        )::int AS depositors,
+        COUNT(*) FILTER (
+          WHERE status = 'paid' AND sku = 'INITIAL_DEPOSIT'
+        )::int AS initial_deposits,
+        COALESCE(SUM(amount_minor) FILTER (
+          WHERE status = 'paid' AND sku = 'INITIAL_DEPOSIT'
+        ), 0)::bigint AS initial_deposits_minor,
         COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK'), 0)::bigint AS pack_sales_minor,
         COUNT(*) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK')::int AS pack_sales,
         COUNT(*) FILTER (WHERE status = 'paid')::int AS paid_orders,
         MIN(created_at) FILTER (WHERE status = 'paid') AS first_payment_at,
-        COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%' AND created_at >= now() - interval '30 days'), 0)::bigint AS deposits_minor_30d,
-        COUNT(*) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%' AND created_at >= now() - interval '30 days')::int AS deposits_30d,
+        COALESCE(SUM(amount_minor) FILTER (
+          WHERE status = 'paid'
+            AND (sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')
+            AND created_at >= now() - interval '30 days'
+        ), 0)::bigint AS deposits_minor_30d,
+        COUNT(*) FILTER (
+          WHERE status = 'paid'
+            AND (sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')
+            AND created_at >= now() - interval '30 days'
+        )::int AS deposits_30d,
+        COUNT(*) FILTER (
+          WHERE status = 'paid'
+            AND sku = 'INITIAL_DEPOSIT'
+            AND created_at >= now() - interval '30 days'
+        )::int AS initial_deposits_30d,
         COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK' AND created_at >= now() - interval '30 days'), 0)::bigint AS pack_sales_minor_30d,
         COUNT(*) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK' AND created_at >= now() - interval '30 days')::int AS pack_sales_30d,
         COUNT(*) FILTER (WHERE status = 'paid' AND created_at >= now() - interval '30 days')::int AS paid_orders_30d
       FROM payment_orders
-    `,
-    sql`
-      SELECT
-        COALESCE(SUM(po.amount_minor), 0)::bigint AS paid_minor,
-        COALESCE(SUM(wpl.amount_stkz), 0) AS purchased_stkz
-      FROM payment_orders po
-      JOIN wallet_purchase_ledger wpl ON wpl.payment_order_id = po.id
-      WHERE po.status = 'paid' AND po.sku LIKE 'STKZ_%'
     `,
     sql`
       WITH days AS (
@@ -105,7 +118,9 @@ export default defineHandler(async (event) => {
       payments AS (
         SELECT
           created_at::date AS day,
-          COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku LIKE 'STKZ_%'), 0)::bigint AS deposits_minor,
+          COALESCE(SUM(amount_minor) FILTER (
+            WHERE status = 'paid' AND (sku LIKE 'STKZ_%' OR sku = 'INITIAL_DEPOSIT')
+          ), 0)::bigint AS deposits_minor,
           COALESCE(SUM(amount_minor) FILTER (WHERE status = 'paid' AND sku = 'PACK_UNLOCK'), 0)::bigint AS pack_sales_minor,
           COUNT(*) FILTER (WHERE status = 'paid')::int AS paid_orders
         FROM payment_orders
@@ -129,14 +144,7 @@ export default defineHandler(async (event) => {
 
   const trade = tradeRows[0] ?? {};
   const payment = paymentRows[0] ?? {};
-  const conversion = conversionRows[0] ?? {};
-  const paidMinor = Number(conversion.paid_minor ?? 0);
-  const purchasedStkz = Number(conversion.purchased_stkz ?? 0);
-  const realisedGbpPerStkz =
-    paidMinor > 0 && purchasedStkz > 0
-      ? paidMinor / 100 / purchasedStkz
-      : null;
-  const gbpPerStkz = realisedGbpPerStkz ?? catalogueGbpPerStkz;
+  const gbpPerStkz = GBP_PER_STKZ;
 
   const feeStkz = Number(trade.fee_stkz ?? 0);
   const feeStkz30d = Number(trade.fee_stkz_30d ?? 0);
@@ -144,6 +152,7 @@ export default defineHandler(async (event) => {
   const feeRevenueGbp30d = money(feeStkz30d * gbpPerStkz);
   const depositsGbp = money(Number(payment.deposits_minor ?? 0) / 100);
   const depositsGbp30d = money(Number(payment.deposits_minor_30d ?? 0) / 100);
+  const initialDepositsGbp = money(Number(payment.initial_deposits_minor ?? 0) / 100);
   const packSalesGbp = money(Number(payment.pack_sales_minor ?? 0) / 100);
   const packSalesGbp30d = money(Number(payment.pack_sales_minor_30d ?? 0) / 100);
   const platformRevenueGbp = money(feeRevenueGbp + packSalesGbp);
@@ -208,14 +217,16 @@ export default defineHandler(async (event) => {
     assumptions: {
       transactionFeeRate: TRANSACTION_FEE_RATE,
       gbpPerStkz,
-      conversionBasis: realisedGbpPerStkz === null ? "catalogue" : "realised-deposits",
-      note: "Deposits are customer funds, not platform revenue. Platform revenue is transaction fees plus pack sales.",
+      conversionBasis: "catalogue",
+      note: "1 STKZ is fixed at £1 for the commercial simulation. The initial 100 STKZ is recorded as a £100 customer deposit, not platform revenue.",
     },
     model,
     allTime: {
       depositsGbp,
       depositCount: Number(payment.deposits ?? 0),
       depositorCount: Number(payment.depositors ?? 0),
+      initialDepositCount: Number(payment.initial_deposits ?? 0),
+      initialDepositsGbp,
       packSalesGbp,
       packSaleCount: Number(payment.pack_sales ?? 0),
       feeRevenueGbp,
@@ -235,6 +246,7 @@ export default defineHandler(async (event) => {
     last30Days: {
       depositsGbp: depositsGbp30d,
       depositCount: Number(payment.deposits_30d ?? 0),
+      initialDepositCount: Number(payment.initial_deposits_30d ?? 0),
       packSalesGbp: packSalesGbp30d,
       packSaleCount: Number(payment.pack_sales_30d ?? 0),
       feeRevenueGbp: feeRevenueGbp30d,

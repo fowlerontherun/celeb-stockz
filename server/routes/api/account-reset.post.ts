@@ -1,7 +1,7 @@
 import { defineHandler } from "nitro";
 import { createError } from "nitro/h3";
 import { sql } from "../../utils/db";
-import { ensureStoreSchema } from "../../utils/store";
+import { STARTING_BALANCE_STKZ, ensureStoreSchema } from "../../utils/store";
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
@@ -24,10 +24,10 @@ export default defineHandler(async (event) => {
     ),
     restored_wallet AS (
       INSERT INTO user_wallets (user_id, balance_stkz, purchased_stkz_balance)
-      VALUES (${userId}, 10000, 0)
+      VALUES (${userId}, ${STARTING_BALANCE_STKZ}, 0)
       ON CONFLICT (user_id) DO UPDATE
       SET
-        balance_stkz = 10000 + user_wallets.purchased_stkz_balance,
+        balance_stkz = ${STARTING_BALANCE_STKZ} + user_wallets.purchased_stkz_balance,
         updated_at = now()
       RETURNING balance_stkz, purchased_stkz_balance
     )
