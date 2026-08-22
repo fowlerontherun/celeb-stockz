@@ -1,7 +1,10 @@
 import { defineHandler } from "nitro";
 import { createError } from "nitro/h3";
 import { sql } from "../../utils/db";
-import { ensureStoreSchema } from "../../utils/store";
+import {
+  INITIAL_DEPOSIT_GBP,
+  ensureStoreSchema,
+} from "../../utils/store";
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
@@ -15,6 +18,30 @@ export default defineHandler(async (event) => {
     VALUES (${userId})
     ON CONFLICT (user_id) DO UPDATE SET updated_at = now()
     RETURNING balance_stkz, purchased_stkz_balance
+  `;
+
+  await sql`
+    INSERT INTO payment_orders (
+      user_id,
+      provider,
+      provider_session_id,
+      sku,
+      amount_minor,
+      currency,
+      status,
+      fulfilled_at
+    )
+    VALUES (
+      ${userId},
+      'simulation',
+      ${`initial-deposit:${userId}`},
+      'INITIAL_DEPOSIT',
+      ${INITIAL_DEPOSIT_GBP * 100},
+      'gbp',
+      'paid',
+      now()
+    )
+    ON CONFLICT (provider_session_id) DO NOTHING
   `;
 
   const positions = await sql`
