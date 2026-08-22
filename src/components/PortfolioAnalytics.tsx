@@ -4,20 +4,26 @@ import {
   AreaChart,
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Cell,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
 import {
+  Activity,
   ArrowDownRight,
   ArrowUpRight,
   CircleDollarSign,
+  Gauge,
   Layers3,
+  ShieldAlert,
+  Sparkles,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -37,6 +43,7 @@ type HistoryPoint = {
 };
 
 type RangeKey = "1D" | "1W" | "1M" | "3M" | "1Y" | "ALL";
+type ChartMode = "value" | "return";
 
 const ranges: Array<{ key: RangeKey; ms: number | null }> = [
   { key: "1D", ms: 24 * 60 * 60 * 1000 },
@@ -57,6 +64,10 @@ function percent(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
 
+function compact(value: number) {
+  return value.toLocaleString(undefined, { notation: "compact", maximumFractionDigits: 1 });
+}
+
 export function PortfolioAnalytics({
   holdings,
   balanceStkz,
@@ -65,6 +76,7 @@ export function PortfolioAnalytics({
   balanceStkz: number;
 }) {
   const [range, setRange] = useState<RangeKey>("1M");
+  const [chartMode, setChartMode] = useState<ChartMode>("value");
   const [historyByTicker, setHistoryByTicker] = useState<Record<string, HistoryPoint[]>>({});
 
   useEffect(() => {
@@ -134,6 +146,7 @@ export function PortfolioAnalytics({
 
   const best = holdingStats.length ? [...holdingStats].sort((a, b) => b.pnlPct - a.pnlPct)[0] : null;
   const worst = holdingStats.length ? [...holdingStats].sort((a, b) => a.pnlPct - b.pnlPct)[0] : null;
+  const topContributor = holdingStats.length ? [...holdingStats].sort((a, b) => b.pnl - a.pnl)[0] : null;
 
   const allocation = holdingStats.map((holding) => ({
     name: holding.ticker,
@@ -169,10 +182,10 @@ export function PortfolioAnalytics({
     const timestamps = [...timestampSet].sort((a, b) => a - b);
     if (timestamps.length === 0) return [];
 
-    const step = Math.max(1, Math.ceil(timestamps.length / 70));
+    const step = Math.max(1, Math.ceil(timestamps.length / 90));
     const sampled = timestamps.filter((_, index) => index % step === 0 || index === timestamps.length - 1);
 
-    return sampled.map((timestamp) => {
+    const rawPoints = sampled.map((timestamp) => {
       const invested = holdings.reduce((sum, holding) => {
         const series = historyByTicker[holding.ticker] ?? [];
         let historicalPrice = holding.market.price;
@@ -195,6 +208,12 @@ export function PortfolioAnalytics({
         value: Number((balanceStkz + invested).toFixed(2)),
       };
     });
+
+    const base = rawPoints[0]?.value ?? 0;
+    return rawPoints.map((point) => ({
+      ...point,
+      returnPct: base > 0 ? Number((((point.value - base) / base) * 100).toFixed(3)) : 0,
+    }));
   }, [balanceStkz, historyByTicker, holdings, range]);
 
   const chartChange = performanceData.length >= 2
@@ -205,6 +224,42 @@ export function PortfolioAnalytics({
     : 0;
   const chartPositive = chartChange >= 0;
 
+  const tradingStats = useMemo(() => {
+    let highWater = Number.NEGATIVE_INFINITY;
+    let maxDrawdown = 0;
+    const movements: number[] = [];
+
+    performanceData.forEach((point, index) => {
+      highWater = Math.max(highWater, point.value);
+      if (highWater > 0) {
+        maxDrawdown = Math.min(maxDrawdown, ((point.value - highWater) / highWater) * 100);
+      }
+      if (index > 0 && performanceData[index - 1].value > 0) {
+        movements.push(((point.value - performanceData[index - 1].value) / performanceData[index - 1].value) * 100);
+      }
+    });
+
+    const meanMovement = movements.length
+      ? movements.reduce((sum, value) => sum + value, 0) / movements.length
+      : 0;
+    const movementVolatility = movements.length
+      ? Math.sqrt(movements.reduce((sum, value) => sum + (value - meanMovement) ** 2, 0) / movements.length)
+      : 0;
+
+    const profitablePositions = holdingStats.filter((holding) => holding.pnl > 0).length;
+    const winRate = holdingStats.length ? (profitablePositions / holdingStats.length) * 100 : 0;
+    const topWeight = investedValue > 0 && holdingStats[0] ? (holdingStats[0].value / investedValue) * 100 : 0;
+    const cashWeight = netWorth > 0 ? (balanceStkz / netWorth) * 100 : 0;
+
+    return {
+      maxDrawdown,
+      movementVolatility,
+      winRate,
+      topWeight,
+      cashWeight,
+    };
+  }, [balanceStkz, holdingStats, investedValue, netWorth, performanceData]);
+
   const tooltipStyle = {
     background: "#170d29",
     border: "1px solid rgba(255,255,255,.12)",
@@ -212,6 +267,9 @@ export function PortfolioAnalytics({
     color: "#fff8f2",
     fontSize: 11,
   };
+
+  const chartDataKey = chartMode === "value" ? "value" : "returnPct";
+  const firstChartValue = performanceData[0]?.value ?? 0;
 
   return (
     <div className="mt-7 space-y-5">
@@ -229,7 +287,7 @@ export function PortfolioAnalytics({
         <div className="rounded-2xl border border-white/10 bg-[#211230] p-4">
           <div className="flex items-center justify-between text-[#9f90ac]"><span className="text-[10px] font-black uppercase tracking-[.14em]">Available cash</span><CircleDollarSign size={16} /></div>
           <p className="font-display mt-3 text-2xl font-black">{money(balanceStkz)} <span className="text-xs text-[#8c7c99]">STKZ</span></p>
-          <p className="mt-2 text-xs font-bold text-[#9f90ac]">Ready for new trades</p>
+          <p className="mt-2 text-xs font-bold text-[#9f90ac]">{tradingStats.cashWeight.toFixed(0)}% of portfolio uninvested</p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-[#211230] p-4">
           <div className="flex items-center justify-between text-[#9f90ac]"><span className="text-[10px] font-black uppercase tracking-[.14em]">Unrealised P&L</span>{totalPnl >= 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}</div>
@@ -238,30 +296,42 @@ export function PortfolioAnalytics({
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.65fr_.85fr]">
+      <section className="grid gap-5 xl:grid-cols-[1.7fr_.8fr]">
         <div className="rounded-[24px] border border-white/10 bg-[#1b1029] p-4 sm:p-5">
-          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Performance</p>
-              <div className="mt-1 flex items-baseline gap-2"><p className="font-display text-2xl font-black">{money(netWorth)} STKZ</p>{performanceData.length >= 2 && <span className={`text-xs font-black ${chartPositive ? "text-[#62e7b6]" : "text-[#ff9ca5]"}`}>{percent(chartChangePct)}</span>}</div>
-              <p className="mt-1 text-[11px] text-[#7f718b]">Replays your current holdings against saved market snapshots.</p>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Performance terminal</p>
+              <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                <p className="font-display text-2xl font-black">{money(netWorth)} STKZ</p>
+                {performanceData.length >= 2 && <span className={`text-xs font-black ${chartPositive ? "text-[#62e7b6]" : "text-[#ff9ca5]"}`}>{percent(chartChangePct)} · {range}</span>}
+              </div>
+              <p className="mt-1 text-[11px] text-[#7f718b]">Current positions replayed against saved market snapshots. Use Return to compare percentage movement cleanly.</p>
             </div>
-            <div className="flex flex-wrap gap-1.5">
-              {ranges.map((item) => (
-                <button key={item.key} type="button" onClick={() => setRange(item.key)} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-black transition ${range === item.key ? "bg-[#7c3aed] text-white" : "bg-white/5 text-[#9f90ac] hover:bg-white/10"}`}>{item.key}</button>
-              ))}
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-xl border border-white/10 bg-[#120b20] p-1">
+                {(["value", "return"] as ChartMode[]).map((mode) => (
+                  <button key={mode} type="button" onClick={() => setChartMode(mode)} className={`rounded-lg px-3 py-1.5 text-[10px] font-black capitalize transition ${chartMode === mode ? "bg-white/10 text-white" : "text-[#81738d] hover:text-white"}`}>{mode}</button>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {ranges.map((item) => (
+                  <button key={item.key} type="button" onClick={() => setRange(item.key)} className={`rounded-lg px-2.5 py-1.5 text-[10px] font-black transition ${range === item.key ? "bg-[#7c3aed] text-white" : "bg-white/5 text-[#9f90ac] hover:bg-white/10"}`}>{item.key}</button>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="mt-4 h-[260px]">
+          <div className="mt-4 h-[300px]">
             {performanceData.length >= 2 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={performanceData} margin={{ top: 8, right: 6, left: -12, bottom: 0 }}>
+                <AreaChart data={performanceData} margin={{ top: 8, right: 6, left: -8, bottom: 0 }}>
                   <defs><linearGradient id="portfolio-performance" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor={chartPositive ? "#62e7b6" : "#ff7282"} stopOpacity={0.35} /><stop offset="100%" stopColor={chartPositive ? "#62e7b6" : "#ff7282"} stopOpacity={0} /></linearGradient></defs>
                   <CartesianGrid stroke="rgba(255,255,255,.05)" vertical={false} />
                   <XAxis dataKey="label" tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={36} />
-                  <YAxis tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} width={60} tickFormatter={(value) => Number(value).toLocaleString(undefined, { notation: "compact" })} />
-                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${money(value)} STKZ`, "Portfolio"]} labelStyle={{ color: "#c7b8d2" }} />
-                  <Area type="monotone" dataKey="value" stroke={chartPositive ? "#62e7b6" : "#ff7282"} strokeWidth={2.5} fill="url(#portfolio-performance)" dot={false} activeDot={{ r: 4 }} />
+                  <YAxis tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} width={58} tickFormatter={(value) => chartMode === "value" ? compact(Number(value)) : `${Number(value).toFixed(1)}%`} />
+                  <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => chartMode === "value" ? [`${money(value)} STKZ`, "Portfolio"] : [`${percent(value)}`, "Return"]} labelStyle={{ color: "#c7b8d2" }} />
+                  <ReferenceLine y={chartMode === "value" ? firstChartValue : 0} stroke="rgba(255,255,255,.16)" strokeDasharray="4 5" />
+                  <Area type="monotone" dataKey={chartDataKey} stroke={chartPositive ? "#62e7b6" : "#ff7282"} strokeWidth={2.5} fill="url(#portfolio-performance)" dot={false} activeDot={{ r: 4 }} />
+                  <Brush dataKey="label" height={20} travellerWidth={7} stroke="#7c3aed" fill="#120b20" tickFormatter={() => ""} />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -271,8 +341,10 @@ export function PortfolioAnalytics({
         </div>
 
         <div className="rounded-[24px] border border-white/10 bg-[#1b1029] p-4 sm:p-5">
-          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Allocation by market</p>
-          <h3 className="font-display mt-1 text-lg font-black">Where your STKZ is invested</h3>
+          <div className="flex items-start justify-between gap-3">
+            <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Allocation by market</p><h3 className="font-display mt-1 text-lg font-black">Capital concentration</h3></div>
+            <Gauge size={18} className="text-[#c99bff]" />
+          </div>
           {allocation.length ? (
             <>
               <div className="mt-3 h-[190px]">
@@ -286,21 +358,62 @@ export function PortfolioAnalytics({
         </div>
       </section>
 
+      <section className="rounded-[24px] border border-white/10 bg-[#1b1029] p-4 sm:p-5">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Trading desk stats</p><h3 className="font-display mt-1 text-lg font-black">Risk, concentration & hit rate</h3></div>
+          <p className="max-w-xl text-[10px] leading-4 text-[#756783]">Snapshot analytics use your current positions and available saved prices. They are gameplay diagnostics, not investment-risk calculations.</p>
+        </div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <DeskStat icon={ShieldAlert} label="Max drawdown" value={performanceData.length > 1 ? `${tradingStats.maxDrawdown.toFixed(2)}%` : "—"} detail={`${range} replay`} negative={tradingStats.maxDrawdown < -10} />
+          <DeskStat icon={Activity} label="Movement volatility" value={performanceData.length > 2 ? `${tradingStats.movementVolatility.toFixed(2)}%` : "—"} detail="Between snapshots" />
+          <DeskStat icon={Layers3} label="Top holding" value={holdings.length ? `${tradingStats.topWeight.toFixed(0)}%` : "—"} detail={holdingStats[0]?.ticker ?? "No positions"} negative={tradingStats.topWeight > 50} />
+          <DeskStat icon={Sparkles} label="Profitable positions" value={holdings.length ? `${tradingStats.winRate.toFixed(0)}%` : "—"} detail={`${holdingStats.filter((item) => item.pnl > 0).length}/${holdingStats.length} above cost`} />
+          <DeskStat icon={CircleDollarSign} label="Cash weight" value={`${tradingStats.cashWeight.toFixed(0)}%`} detail={`${categoryExposure.length} categories held`} />
+        </div>
+        {topContributor && (
+          <div className="mt-3 rounded-xl border border-white/5 bg-white/[.025] px-3 py-2 text-[11px] text-[#9f90ac]">
+            Biggest current P&L contributor: <strong className={topContributor.pnl >= 0 ? "text-[#62e7b6]" : "text-[#ff9ca5]"}>{topContributor.ticker} {topContributor.pnl >= 0 ? "+" : ""}{money(topContributor.pnl)} STKZ</strong>
+          </div>
+        )}
+      </section>
+
       <section className="grid gap-5 lg:grid-cols-2">
         <div className="rounded-[24px] border border-white/10 bg-[#1b1029] p-4 sm:p-5">
           <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Position performance</p><h3 className="font-display mt-1 text-lg font-black">Profit & loss by celebrity</h3></div>{best && <span className="text-right text-[10px] text-[#8c7c99]">Best <strong className="block text-[#62e7b6]">{best.ticker} {percent(best.pnlPct)}</strong></span>}</div>
           <div className="mt-4 h-[230px]">
-            {pnlBars.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={pnlBars} layout="vertical" margin={{ top: 0, right: 8, left: 4, bottom: 0 }}><CartesianGrid stroke="rgba(255,255,255,.05)" horizontal={false} /><XAxis type="number" tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} /><YAxis dataKey="ticker" type="category" tick={{ fill: "#a99ab5", fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} width={72} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value >= 0 ? "+" : ""}${money(value)} STKZ`, "P&L"]} /><Bar dataKey="pnl" radius={[0, 5, 5, 0]}>{pnlBars.map((item) => <Cell key={item.ticker} fill={item.pnl >= 0 ? "#62e7b6" : "#ff7282"} />)}</Bar></BarChart></ResponsiveContainer> : <div className="grid h-full place-items-center text-xs text-[#7f718b]">No open positions yet.</div>}
+            {pnlBars.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={pnlBars} layout="vertical" margin={{ top: 0, right: 8, left: 4, bottom: 0 }}><CartesianGrid stroke="rgba(255,255,255,.05)" horizontal={false} /><XAxis type="number" tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} /><YAxis dataKey="ticker" type="category" tick={{ fill: "#a99ab5", fontSize: 10, fontWeight: 700 }} axisLine={false} tickLine={false} width={72} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value >= 0 ? "+" : ""}${money(value)} STKZ`, "P&L"]} /><ReferenceLine x={0} stroke="rgba(255,255,255,.15)" /><Bar dataKey="pnl" radius={[0, 5, 5, 0]}>{pnlBars.map((item) => <Cell key={item.ticker} fill={item.pnl >= 0 ? "#62e7b6" : "#ff7282"} />)}</Bar></BarChart></ResponsiveContainer> : <div className="grid h-full place-items-center text-xs text-[#7f718b]">No open positions yet.</div>}
           </div>
         </div>
 
         <div className="rounded-[24px] border border-white/10 bg-[#1b1029] p-4 sm:p-5">
           <div className="flex items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9f90ac]">Diversification</p><h3 className="font-display mt-1 text-lg font-black">Category exposure</h3></div>{worst && <span className="text-right text-[10px] text-[#8c7c99]">Weakest <strong className={`block ${worst.pnlPct >= 0 ? "text-[#62e7b6]" : "text-[#ff9ca5]"}`}>{worst.ticker} {percent(worst.pnlPct)}</strong></span>}</div>
           <div className="mt-4 h-[230px]">
-            {categoryExposure.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={categoryExposure} margin={{ top: 4, right: 4, left: -4, bottom: 0 }}><CartesianGrid stroke="rgba(255,255,255,.05)" vertical={false} /><XAxis dataKey="category" tick={{ fill: "#8f809b", fontSize: 10 }} axisLine={false} tickLine={false} /><YAxis tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} width={56} tickFormatter={(value) => Number(value).toLocaleString(undefined, { notation: "compact" })} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${money(value)} STKZ`, "Exposure"]} /><Bar dataKey="value" fill="#7c3aed" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer> : <div className="grid h-full place-items-center text-xs text-[#7f718b]">Category exposure appears once you hold shares.</div>}
+            {categoryExposure.length ? <ResponsiveContainer width="100%" height="100%"><BarChart data={categoryExposure} margin={{ top: 4, right: 4, left: -4, bottom: 0 }}><CartesianGrid stroke="rgba(255,255,255,.05)" vertical={false} /><XAxis dataKey="category" tick={{ fill: "#8f809b", fontSize: 10 }} axisLine={false} tickLine={false} /><YAxis tick={{ fill: "#766887", fontSize: 10 }} axisLine={false} tickLine={false} width={56} tickFormatter={(value) => compact(Number(value))} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${money(value)} STKZ`, "Exposure"]} /><Bar dataKey="value" fill="#7c3aed" radius={[6, 6, 0, 0]} /></BarChart></ResponsiveContainer> : <div className="grid h-full place-items-center text-xs text-[#7f718b]">Category exposure appears once you hold shares.</div>}
           </div>
         </div>
       </section>
+    </div>
+  );
+}
+
+function DeskStat({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  negative = false,
+}: {
+  icon: typeof Activity;
+  label: string;
+  value: string;
+  detail: string;
+  negative?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-white/8 bg-[#120b20]/70 p-3.5">
+      <div className="flex items-center justify-between text-[#867791]"><span className="text-[9px] font-black uppercase tracking-[.12em]">{label}</span><Icon size={14} /></div>
+      <p className={`mt-3 text-lg font-black ${negative ? "text-[#ff9ca5]" : "text-[#f5edf8]"}`}>{value}</p>
+      <p className="mt-1 text-[10px] font-bold text-[#73667e]">{detail}</p>
     </div>
   );
 }
