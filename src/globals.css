@@ -75,6 +75,68 @@
   }
 }
 
+/*
+ * Midnight Exchange compatibility bridge.
+ * Older game surfaces still carry the original purple palette as Tailwind
+ * arbitrary-value classes. Mapping those legacy tokens here makes the theme
+ * coherent while individual feature components are migrated over time.
+ */
+[class~="bg-[#120b20]"] { background-color: #080b10 !important; }
+[class~="bg-[#120b20]/90"] { background-color: rgb(8 11 16 / .90) !important; }
+[class~="bg-[#120b20]/70"] { background-color: rgb(8 11 16 / .70) !important; }
+[class~="bg-[#120b20]/50"] { background-color: rgb(8 11 16 / .50) !important; }
+[class~="bg-[#170d29]"],
+[class~="bg-[#170c2a]/95"] { background-color: #0c1118 !important; }
+[class~="bg-[#211230]"],
+[class~="bg-[#211230]/90"],
+[class~="bg-[#1b1029]"],
+[class~="bg-[#1e112f]"],
+[class~="bg-[#160c25]"] { background-color: #10151d !important; }
+
+[class~="bg-[#7c3aed]"] { background-color: #00d4a0 !important; color: #06120f !important; }
+[class~="bg-[#7c3aed]/30"] { background-color: rgb(0 212 160 / .16) !important; }
+[class~="bg-[#7c3aed]/25"] { background-color: rgb(0 212 160 / .14) !important; }
+[class~="bg-[#7c3aed]/20"] { background-color: rgb(0 212 160 / .12) !important; }
+[class~="bg-[#7c3aed]/15"] { background-color: rgb(0 212 160 / .10) !important; }
+[class~="bg-[#7c3aed]/10"] { background-color: rgb(0 212 160 / .08) !important; }
+[class~="border-[#7c3aed]/30"] { border-color: rgb(0 212 160 / .28) !important; }
+[class~="border-[#7c3aed]/20"] { border-color: rgb(0 212 160 / .20) !important; }
+
+[class~="text-[#c99bff]"],
+[class~="text-[#e6d8ff]"] { color: #4da3ff !important; }
+[class~="text-[#ff7282]"] { color: #00d4a0 !important; }
+[class~="text-[#62e7b6]"],
+[class~="text-[#78e8bd]"] { color: #20d997 !important; }
+[class~="text-[#ff9ca5]"],
+[class~="text-[#ffb2bc]"] { color: #ff5263 !important; }
+
+[class~="text-[#9f90ac]"],
+[class~="text-[#8f809b]"],
+[class~="text-[#8c7c99]"],
+[class~="text-[#82738f]"],
+[class~="text-[#81738d]"],
+[class~="text-[#7f718b]"],
+[class~="text-[#756783]"],
+[class~="text-[#746581]"],
+[class~="text-[#73667e]"],
+[class~="text-[#9d8da9]"],
+[class~="text-[#9b8ba8]"],
+[class~="text-[#9c8ca8]"],
+[class~="text-[#8a7b97]"],
+[class~="text-[#7c6d8e]"] { color: #8993a4 !important; }
+
+[class~="text-[#b9a9c5]"],
+[class~="text-[#b9acc9]"],
+[class~="text-[#b8a9c4]"],
+[class~="text-[#b6a7c1]"],
+[class~="text-[#b5a4c0]"],
+[class~="text-[#b2a2be]"],
+[class~="text-[#a99ab7]"],
+[class~="text-[#a99ab5]"],
+[class~="text-[#c7b9d1]"],
+[class~="text-[#c4b4d0]"],
+[class~="text-[#dcd0e3]"] { color: #a8b2c0 !important; }
+
 @layer utilities {
   .font-display {
     font-family: 'Space Grotesk', 'Inter', sans-serif;
