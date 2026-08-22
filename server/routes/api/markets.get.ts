@@ -4,6 +4,7 @@ import { sql } from "../../utils/db";
 import { syncMarketRegistry } from "../../utils/market-registry";
 import { getSnapshotMarkets } from "../../utils/market-snapshots";
 import { getLivePriceMap } from "../../utils/live-prices";
+import { runMarketCycle } from "../../utils/market-cycle";
 
 const STALE_AFTER_MS = 8 * 60 * 60 * 1000;
 
@@ -20,6 +21,13 @@ export default defineHandler(async (event) => {
   if (!userId) {
     throw createError({ statusCode: 401, statusMessage: "Unauthorized" });
   }
+
+  // Vercel Hobby cron can stay infrequent: active users advance the authoritative
+  // two-minute market bucket when they load the market. The distributed lease in
+  // runMarketCycle prevents duplicate ticks from concurrent requests.
+  await runMarketCycle("tick").catch((error) => {
+    console.error("Request-driven market tick failed", error);
+  });
 
   const [allMarkets, healthRows, memberships, livePrices] = await Promise.all([
     getSnapshotMarkets(),
