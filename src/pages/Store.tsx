@@ -19,10 +19,10 @@ type Bundle = {
 };
 
 const bundles: Bundle[] = [
-  { sku: "STKZ_10000", amount: 10_000, price: "£1.99" },
-  { sku: "STKZ_30000", amount: 30_000, price: "£4.99" },
-  { sku: "STKZ_75000", amount: 75_000, price: "£9.99" },
-  { sku: "STKZ_175000", amount: 175_000, price: "£19.99" },
+  { sku: "STKZ_10000", amount: 1.99, price: "£1.99" },
+  { sku: "STKZ_30000", amount: 4.99, price: "£4.99" },
+  { sku: "STKZ_75000", amount: 9.99, price: "£9.99" },
+  { sku: "STKZ_175000", amount: 19.99, price: "£19.99" },
 ];
 
 export default function Store() {
@@ -103,7 +103,7 @@ export default function Store() {
             <p className="mt-5 text-xs font-extrabold uppercase tracking-[.18em] text-[#ffd17b]">CelebStockz Store</p>
             <h1 className="font-display mt-1 text-4xl font-black">Top up your game.</h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[#b9a9c5]">
-              Buy permanent celebrity packs or add closed-loop STKZ. STKZ is an in-game currency only and cannot be withdrawn, redeemed or exchanged for cash.
+              Buy permanent celebrity packs or add closed-loop STKZ. For the market simulation, 1 STKZ is valued at £1. STKZ remains an in-game currency only and cannot currently be withdrawn, redeemed or exchanged for cash.
             </p>
           </div>
           <WalletBalance />
@@ -111,12 +111,12 @@ export default function Store() {
 
         <section className="mt-8 rounded-[28px] border border-[#ffd17b]/25 bg-[#211230] p-5 sm:p-7">
           <div className="flex items-center gap-2 text-[#ffd17b]"><Coins size={19} /><h2 className="font-display text-2xl font-black">Buy STKZ</h2></div>
-          <p className="mt-2 text-sm text-[#b9a9c5]">Purchased STKZ never expires. Game-earned funds are spent first, so any unspent paid balance survives an account reset.</p>
+          <p className="mt-2 text-sm text-[#b9a9c5]">Top-ups now use exact £1-for-1 STKZ parity: £9.99 adds 9.99 STKZ. Purchased STKZ never expires and any unspent paid balance survives an account reset.</p>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {bundles.map((bundle) => (
               <article key={bundle.sku} className="rounded-2xl border border-white/10 bg-[#160c25] p-4">
-                <p className="font-display text-2xl font-black">{bundle.amount.toLocaleString()}</p>
-                <p className="text-xs font-bold text-[#c99bff]">STKZ</p>
+                <p className="font-display text-2xl font-black">{bundle.amount.toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+                <p className="text-xs font-bold text-[#c99bff]">STKZ · £1 = 1 STKZ</p>
                 <button
                   type="button"
                   disabled={busyKey !== null}
@@ -158,10 +158,10 @@ export default function Store() {
 
         <section className="mt-6 rounded-[28px] border border-[#ff7282]/30 bg-[#2d1428] p-5 sm:p-7">
           <div className="flex items-center gap-2 text-[#ff9ca5]"><RotateCcw size={19} /><h2 className="font-display text-2xl font-black">Start over for free</h2></div>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#d6c6d4]">Reset your game back to 10,000 base STKZ. Your permanent pack unlocks remain yours and any unspent purchased STKZ is added on top of the fresh 10,000.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-[#d6c6d4]">Reset your game back to the £100-equivalent starting balance: 100 base STKZ. Your permanent pack unlocks remain yours and any unspent purchased STKZ is added on top of the fresh 100.</p>
           <button type="button" disabled={isResetting} onClick={() => void resetAccount()} className="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#ff7282] px-5 py-3 text-sm font-black text-[#401b2d] disabled:opacity-50">
             {isResetting ? <LoaderCircle className="animate-spin" size={16} /> : <RotateCcw size={16} />}
-            {isResetting ? "Resetting…" : "Reset to 10,000 STKZ"}
+            {isResetting ? "Resetting…" : "Reset to 100 STKZ"}
           </button>
         </section>
       </div>
