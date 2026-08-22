@@ -98,6 +98,7 @@ export async function ensureStoreSchema() {
           now(),
           now()
         FROM user_wallets
+        WHERE true
         ON CONFLICT (provider_session_id) DO NOTHING
       `;
       await sql`
