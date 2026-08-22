@@ -140,8 +140,8 @@ export default defineHandler(async (event) => {
             RETURNING quantity
           ),
           recorded_trade AS (
-            INSERT INTO trade_history (user_id, ticker, side, quantity, price_stkz, total_stkz)
-            SELECT ${userId}, ${ticker}, 'buy', ${quantity}, ${price}, ${total}
+            INSERT INTO trade_history (user_id, ticker, side, quantity, price_stkz, total_stkz, fee_stkz)
+            SELECT ${userId}, ${ticker}, 'buy', ${quantity}, ${price}, ${total}, ${feeStkz}
             FROM updated_position
           )
           SELECT updated_wallet.balance_stkz, updated_position.quantity
@@ -161,8 +161,8 @@ export default defineHandler(async (event) => {
             RETURNING balance_stkz
           ),
           recorded_trade AS (
-            INSERT INTO trade_history (user_id, ticker, side, quantity, price_stkz, total_stkz)
-            SELECT ${userId}, ${ticker}, 'sell', ${quantity}, ${price}, ${total}
+            INSERT INTO trade_history (user_id, ticker, side, quantity, price_stkz, total_stkz, fee_stkz)
+            SELECT ${userId}, ${ticker}, 'sell', ${quantity}, ${price}, ${total}, ${feeStkz}
             FROM updated_wallet
           )
           SELECT updated_wallet.balance_stkz, updated_position.quantity
