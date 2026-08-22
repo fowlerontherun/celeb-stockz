@@ -22,125 +22,38 @@ import {
 } from "lucide-react";
 
 const howItWorks = [
-  {
-    icon: WalletCards,
-    step: "01",
-    title: "Start with STKZ",
-    body: "Create a free account, get a practice balance and build your first celebrity portfolio.",
-  },
-  {
-    icon: Search,
-    step: "02",
-    title: "Find momentum",
-    body: "Explore music, sport, film, TV, politics, fashion, digital and comedy markets.",
-  },
-  {
-    icon: Activity,
-    step: "03",
-    title: "Read the signals",
-    body: "Use price history, market heat and modelled public-interest signals to decide who is gaining attention.",
-  },
-  {
-    icon: Trophy,
-    step: "04",
-    title: "Outperform players",
-    body: "Manage positions, protect your STKZ and compete through battles, leagues and rankings.",
-  },
+  { icon: WalletCards, step: "01", title: "Start with STKZ", body: "Create a free account, get a practice balance and build your first celebrity portfolio." },
+  { icon: Search, step: "02", title: "Find momentum", body: "Explore music, sport, film, TV, politics, fashion, digital and comedy markets." },
+  { icon: Activity, step: "03", title: "Read the signals", body: "Use price history, market heat and modelled public-interest signals to decide who is gaining attention." },
+  { icon: Trophy, step: "04", title: "Outperform players", body: "Manage positions, protect your STKZ and compete through battles, leagues and rankings." },
 ];
 
 const gameplay = [
-  {
-    icon: ListFilter,
-    title: "Discover",
-    body: "Scan top movers, categories, watchlists and themed packs for the next market worth following.",
-  },
-  {
-    icon: LineChart,
-    title: "Analyse",
-    body: "Open a celebrity market and inspect price movement, hype signals and the story behind the trend.",
-  },
-  {
-    icon: ChartNoAxesCombined,
-    title: "Trade",
-    body: "Buy or sell with STKZ, use market and advanced orders, then track every position from your portfolio.",
-  },
-  {
-    icon: Swords,
-    title: "Compete",
-    body: "Turn good calls into bragging rights in celebrity battles, custom leagues and global rankings.",
-  },
+  { icon: ListFilter, title: "Discover", body: "Scan top movers, categories, watchlists and themed packs for the next market worth following." },
+  { icon: LineChart, title: "Analyse", body: "Open a celebrity market and inspect price movement, hype signals and the story behind the trend." },
+  { icon: ChartNoAxesCombined, title: "Trade", body: "Buy or sell with STKZ, use market and advanced orders, then track every position from your portfolio." },
+  { icon: Swords, title: "Compete", body: "Turn good calls into bragging rights in celebrity battles, custom leagues and global rankings." },
 ];
 
 const features = [
-  {
-    icon: BarChart3,
-    title: "Trading-desk portfolio",
-    body: "Portfolio value, P&L, allocation, exposure, range returns, drawdown and concentration in one dashboard.",
-  },
-  {
-    icon: Flame,
-    title: "Hype-powered markets",
-    body: "Celebrity prices react to modelled popularity and public-interest signals rather than arbitrary dice rolls.",
-  },
-  {
-    icon: PackageOpen,
-    title: "Themed market packs",
-    body: "Expand your market universe with groups built around leagues, events, genres and moments in culture.",
-  },
-  {
-    icon: Users,
-    title: "Social competition",
-    body: "Watchlists, battles, custom leagues and rankings turn market predictions into a multiplayer challenge.",
-  },
-  {
-    icon: Zap,
-    title: "Fast-moving discovery",
-    body: "Top movers and market heat surface the names whose momentum is changing fastest.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Practice-first economy",
-    body: "CelebStockz is a fantasy trading game. Current STKZ balances and celebrity shares are not real investments.",
-  },
+  { icon: BarChart3, title: "Trading-desk portfolio", body: "Portfolio value, P&L, allocation, exposure, range returns, drawdown and concentration in one dashboard." },
+  { icon: Flame, title: "Hype-powered markets", body: "Celebrity prices react to modelled popularity and public-interest signals rather than arbitrary dice rolls." },
+  { icon: PackageOpen, title: "Themed market packs", body: "Expand your market universe with groups built around leagues, events, genres and moments in culture." },
+  { icon: Users, title: "Social competition", body: "Watchlists, battles, custom leagues and rankings turn market predictions into a multiplayer challenge." },
+  { icon: Zap, title: "Fast-moving discovery", body: "Top movers and market heat surface the names whose momentum is changing fastest." },
+  { icon: ShieldCheck, title: "Practice-first economy", body: "CelebStockz is a fantasy trading game. Current STKZ balances and celebrity shares are not real investments." },
 ];
 
 const faqs = [
-  {
-    q: "What is CelebStockz?",
-    a: "CelebStockz is a fantasy celebrity trading game. You use STKZ to take positions in celebrity markets and try to grow your portfolio as modelled hype and public-interest signals change.",
-  },
-  {
-    q: "Is this real-money investing?",
-    a: "No. The current game uses practice STKZ and simulated celebrity shares. They are not securities, investments or ownership in a celebrity.",
-  },
-  {
-    q: "What makes a celebrity price move?",
-    a: "Prices are generated by the platform's market model using available public-interest and trend signals, saved market snapshots and configured pricing rules. It is designed as a game, not a prediction of financial value.",
-  },
-  {
-    q: "What can I do after I sign up?",
-    a: "You can browse celebrity markets, build watchlists, trade with STKZ, manage a portfolio, inspect top movers, join battles and custom leagues, and compete on rankings.",
-  },
-  {
-    q: "Which celebrities can I trade?",
-    a: "Markets span music, sport, film, TV, politics, fashion, digital creators and comedy, with additional names grouped into themed packs.",
-  },
-  {
-    q: "What are celebrity packs?",
-    a: "Packs group extra markets around a theme such as a sport, event, genre or cultural moment. They keep discovery focused while letting the catalogue grow over time.",
-  },
-  {
-    q: "How do I win?",
-    a: "There is no single finish line. The core goal is to grow your portfolio and outperform other players through rankings, leagues and competitive game modes.",
-  },
-  {
-    q: "Can I play for free?",
-    a: "Yes. New accounts currently receive a practice STKZ balance so you can learn the market and start trading without buying anything.",
-  },
-  {
-    q: "Is CelebStockz affiliated with the celebrities listed?",
-    a: "No affiliation or endorsement is implied unless the platform explicitly states otherwise for a particular partnership.",
-  },
+  { q: "What is CelebStockz?", a: "CelebStockz is a fantasy celebrity trading game. You use STKZ to take positions in celebrity markets and try to grow your portfolio as modelled hype and public-interest signals change." },
+  { q: "Is this real-money investing?", a: "No. The current game uses practice STKZ and simulated celebrity shares. They are not securities, investments or ownership in a celebrity." },
+  { q: "What makes a celebrity price move?", a: "Prices are generated by the platform's market model using available public-interest and trend signals, saved market snapshots and configured pricing rules. It is designed as a game, not a prediction of financial value." },
+  { q: "What can I do after I sign up?", a: "You can browse celebrity markets, build watchlists, trade with STKZ, manage a portfolio, inspect top movers, join battles and custom leagues, and compete on rankings." },
+  { q: "Which celebrities can I trade?", a: "Markets span music, sport, film, TV, politics, fashion, digital creators and comedy, with additional names grouped into themed packs." },
+  { q: "What are celebrity packs?", a: "Packs group extra markets around a theme such as a sport, event, genre or cultural moment. They keep discovery focused while letting the catalogue grow over time." },
+  { q: "How do I win?", a: "There is no single finish line. The core goal is to grow your portfolio and outperform other players through rankings, leagues and competitive game modes." },
+  { q: "Can I play for free?", a: "Yes. New accounts currently receive a practice STKZ balance so you can learn the market and start trading without buying anything." },
+  { q: "Is CelebStockz affiliated with the celebrities listed?", a: "No affiliation or endorsement is implied unless the platform explicitly states otherwise for a particular partnership." },
 ];
 
 function MarketPreview() {
@@ -152,25 +65,25 @@ function MarketPreview() {
   ];
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-white/10 bg-[#160c25] shadow-2xl">
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+    <div className="overflow-hidden rounded-[10px] border border-white/[.08] bg-[#10151d] shadow-[0_18px_50px_rgba(0,0,0,.28)]">
+      <div className="flex items-center justify-between border-b border-white/[.08] px-4 py-3">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#9f90ac]">Market watch</p>
-          <p className="mt-1 text-sm font-black">Top movers</p>
+          <p className="terminal-label">Market watch</p>
+          <p className="mt-1 text-sm font-bold">Top movers</p>
         </div>
-        <span className="rounded-lg bg-[#183b33] px-2 py-1 text-[9px] font-black text-[#78e8bd]">LIVE-STYLE PREVIEW</span>
+        <span className="rounded-md border border-[#20d997]/20 bg-[#20d997]/10 px-2 py-1 text-[9px] font-bold text-[#20d997]">LIVE-STYLE PREVIEW</span>
       </div>
-      <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 px-4 py-2 text-[9px] font-black uppercase tracking-[.12em] text-[#756783]">
+      <div className="grid grid-cols-[1fr_auto_auto] gap-x-3 bg-[#0c1118] px-4 py-2 text-[9px] font-bold uppercase tracking-[.12em] text-[#657082]">
         <span>Market</span><span>Price</span><span>Move</span>
       </div>
       {rows.map(([ticker, price, move]) => (
-        <div key={ticker} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 border-t border-white/5 px-4 py-3">
+        <div key={ticker} className="grid grid-cols-[1fr_auto_auto] items-center gap-x-3 border-t border-white/[.05] px-4 py-3 transition hover:bg-white/[.025]">
           <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#2b1741] text-[9px] font-black text-[#c99bff]">{ticker.slice(0, 2)}</span>
-            <span className="text-xs font-black">{ticker}</span>
+            <span className="grid h-8 w-8 place-items-center rounded-md border border-white/[.06] bg-[#0c1118] text-[9px] font-bold text-[#4da3ff]">{ticker.slice(0, 2)}</span>
+            <span className="text-xs font-bold">{ticker}</span>
           </div>
-          <span className="text-xs font-bold text-[#e7ddef]">{price}</span>
-          <span className="rounded-md bg-[#183b33] px-2 py-1 text-[9px] font-black text-[#78e8bd]">{move}</span>
+          <span className="font-data text-xs font-semibold text-[#dce3eb]">{price}</span>
+          <span className="font-data rounded-md bg-[#20d997]/10 px-2 py-1 text-[9px] font-bold text-[#20d997]">{move}</span>
         </div>
       ))}
     </div>
@@ -181,29 +94,29 @@ function PortfolioPreview() {
   const path = "M2 86 C18 78, 26 82, 39 69 S62 58, 72 62 S92 43, 106 48 S127 29, 143 35 S164 19, 188 15";
 
   return (
-    <div className="rounded-[24px] border border-white/10 bg-[#160c25] p-4 shadow-2xl">
+    <div className="rounded-[10px] border border-white/[.08] bg-[#10151d] p-4 shadow-[0_18px_50px_rgba(0,0,0,.28)]">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#9f90ac]">Portfolio value</p>
-          <p className="mt-1 text-2xl font-black">14,842.60 <span className="text-xs text-[#8e809a]">STKZ</span></p>
-          <p className="mt-1 text-[10px] font-black text-[#78e8bd]">+486.20 today · +3.39%</p>
+          <p className="terminal-label">Portfolio value</p>
+          <p className="font-data mt-1 text-2xl font-bold">14,842.60 <span className="text-xs text-[#7b8696]">STKZ</span></p>
+          <p className="font-data mt-1 text-[10px] font-bold text-[#20d997]">+486.20 today · +3.39%</p>
         </div>
-        <div className="flex gap-1 rounded-lg bg-white/5 p-1 text-[8px] font-black text-[#8f809b]">
-          <span className="rounded bg-[#7c3aed] px-2 py-1 text-white">1M</span><span className="px-2 py-1">3M</span><span className="px-2 py-1">1Y</span>
+        <div className="flex gap-1 rounded-md border border-white/[.06] bg-[#0c1118] p-1 text-[8px] font-bold text-[#7b8696]">
+          <span className="rounded bg-[#00d4a0] px-2 py-1 text-[#06120f]">1M</span><span className="px-2 py-1">3M</span><span className="px-2 py-1">1Y</span>
         </div>
       </div>
-      <div className="relative mt-4 h-32 overflow-hidden rounded-2xl border border-white/5 bg-[#120b20] p-3">
-        <div className="absolute inset-x-3 top-1/4 border-t border-white/5" /><div className="absolute inset-x-3 top-1/2 border-t border-white/5" /><div className="absolute inset-x-3 top-3/4 border-t border-white/5" />
+      <div className="relative mt-4 h-32 overflow-hidden rounded-lg border border-white/[.05] bg-[#080b10] p-3">
+        <div className="absolute inset-x-3 top-1/4 border-t border-white/[.05]" /><div className="absolute inset-x-3 top-1/2 border-t border-white/[.05]" /><div className="absolute inset-x-3 top-3/4 border-t border-white/[.05]" />
         <svg viewBox="0 0 190 100" className="relative h-full w-full" preserveAspectRatio="none" aria-hidden="true">
-          <defs><linearGradient id="landing-chart" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#62e7b6" stopOpacity=".35" /><stop offset="100%" stopColor="#62e7b6" stopOpacity="0" /></linearGradient></defs>
+          <defs><linearGradient id="landing-chart" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stopColor="#20d997" stopOpacity=".25" /><stop offset="100%" stopColor="#20d997" stopOpacity="0" /></linearGradient></defs>
           <path d={`${path} L188 100 L2 100 Z`} fill="url(#landing-chart)" />
-          <path d={path} fill="none" stroke="#62e7b6" strokeWidth="2.5" vectorEffect="non-scaling-stroke" />
+          <path d={path} fill="none" stroke="#20d997" strokeWidth="2.4" vectorEffect="non-scaling-stroke" />
         </svg>
       </div>
       <div className="mt-3 grid grid-cols-3 gap-2">
-        <div className="rounded-xl bg-white/[.04] p-3"><p className="text-[8px] font-black uppercase text-[#7f708c]">Cash</p><p className="mt-1 text-xs font-black">4,120</p></div>
-        <div className="rounded-xl bg-white/[.04] p-3"><p className="text-[8px] font-black uppercase text-[#7f708c]">Invested</p><p className="mt-1 text-xs font-black">10,722</p></div>
-        <div className="rounded-xl bg-white/[.04] p-3"><p className="text-[8px] font-black uppercase text-[#7f708c]">P&L</p><p className="mt-1 text-xs font-black text-[#78e8bd]">+1,187</p></div>
+        {[["Cash", "4,120"], ["Invested", "10,722"], ["P&L", "+1,187"]].map(([label, value]) => (
+          <div key={label} className="rounded-lg border border-white/[.05] bg-[#0c1118] p-3"><p className="terminal-label text-[8px]">{label}</p><p className={`font-data mt-1 text-xs font-bold ${label === "P&L" ? "text-[#20d997]" : ""}`}>{value}</p></div>
+        ))}
       </div>
     </div>
   );
@@ -211,37 +124,32 @@ function PortfolioPreview() {
 
 function SignalPreview() {
   return (
-    <div className="rounded-[24px] border border-white/10 bg-[#160c25] p-4 shadow-2xl">
+    <div className="rounded-[10px] border border-white/[.08] bg-[#10151d] p-4 shadow-[0_18px_50px_rgba(0,0,0,.28)]">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#9f90ac]">Market detail</p>
-          <p className="mt-1 text-sm font-black">Why is this celebrity moving?</p>
-        </div>
-        <Flame size={20} className="text-[#ff7282]" />
+        <div><p className="terminal-label">Market detail</p><p className="mt-1 text-sm font-bold">Why is this celebrity moving?</p></div>
+        <Flame size={20} className="text-[#4da3ff]" />
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         {[["Trend score", 92], ["Search interest", 78], ["Social momentum", 86], ["News activity", 64]].map(([label, value]) => (
-          <div key={String(label)} className="rounded-xl bg-white/[.035] p-3">
-            <div className="flex items-center justify-between text-[9px] font-bold text-[#aa9ab5]"><span>{label}</span><span>{value}</span></div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/5"><div className="h-full rounded-full bg-[#ff7282]" style={{ width: `${value}%` }} /></div>
+          <div key={String(label)} className="rounded-lg border border-white/[.05] bg-[#0c1118] p-3">
+            <div className="flex items-center justify-between text-[9px] font-semibold text-[#8993a4]"><span>{label}</span><span className="font-data">{value}</span></div>
+            <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[.06]"><div className="h-full rounded-full bg-[#4da3ff]" style={{ width: `${value}%` }} /></div>
           </div>
         ))}
       </div>
-      <div className="mt-3 rounded-xl border border-[#7c3aed]/20 bg-[#7c3aed]/10 p-3 text-[10px] leading-4 text-[#cdbde0]">
-        Signal panels help explain the game model behind a price move instead of leaving you to trade a mystery number.
-      </div>
+      <div className="mt-3 rounded-lg border border-[#4da3ff]/20 bg-[#4da3ff]/[.08] p-3 text-[10px] leading-4 text-[#aab8c8]">Signal panels explain the model behind a price move instead of leaving you to trade a mystery number.</div>
     </div>
   );
 }
 
 function CompetitionPreview() {
   return (
-    <div className="rounded-[24px] border border-white/10 bg-[#160c25] p-4 shadow-2xl">
-      <div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#9f90ac]">Competition</p><p className="mt-1 text-sm font-black">League table</p></div><Trophy size={20} className="text-[#ffd17b]" /></div>
+    <div className="rounded-[10px] border border-white/[.08] bg-[#10151d] p-4 shadow-[0_18px_50px_rgba(0,0,0,.28)]">
+      <div className="flex items-center justify-between"><div><p className="terminal-label">Competition</p><p className="mt-1 text-sm font-bold">League table</p></div><Trophy size={20} className="text-[#f4c95d]" /></div>
       <div className="mt-4 space-y-2">
         {[["1", "Trend Hunter", "18,402"], ["2", "Culture Alpha", "17,966"], ["3", "HypeCycle", "16,711"], ["8", "You", "14,842"]].map(([rank, player, value]) => (
-          <div key={player} className={`grid grid-cols-[28px_1fr_auto] items-center rounded-xl px-3 py-2.5 text-xs ${player === "You" ? "border border-[#7c3aed]/30 bg-[#7c3aed]/15" : "bg-white/[.035]"}`}>
-            <span className="font-black text-[#8f809b]">#{rank}</span><span className="font-black">{player}</span><span className="font-bold text-[#b9a9c5]">{value} STKZ</span>
+          <div key={player} className={`grid grid-cols-[28px_1fr_auto] items-center rounded-lg px-3 py-2.5 text-xs ${player === "You" ? "border border-[#00d4a0]/25 bg-[#00d4a0]/[.07]" : "border border-white/[.04] bg-[#0c1118]"}`}>
+            <span className="font-data font-bold text-[#727e8e]">#{rank}</span><span className="font-bold">{player}</span><span className="font-data font-semibold text-[#a8b2c0]">{value} STKZ</span>
           </div>
         ))}
       </div>
@@ -251,154 +159,49 @@ function CompetitionPreview() {
 
 export function PublicLanding() {
   return (
-    <main className="min-h-screen bg-[#120b20] text-[#fff8f2]">
-      <header className="sticky top-0 z-40 border-b border-white/10 bg-[#120b20]/90 backdrop-blur-xl">
+    <main className="min-h-screen bg-[#080b10] text-[#f4f7fa]">
+      <header className="sticky top-0 z-40 border-b border-white/[.08] bg-[#080b10]/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-[1280px] items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <a href="#top" className="flex items-center gap-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#7c3aed]"><ChartNoAxesCombined size={20} /></span>
-            <span className="font-display text-xl font-black">Celeb<span className="text-[#ff7282]">Stockz</span></span>
-          </a>
-          <nav className="hidden items-center gap-6 text-xs font-black text-[#b9a9c5] md:flex">
-            <a href="#how-it-works" className="transition hover:text-white">How it works</a>
-            <a href="#gameplay" className="transition hover:text-white">Gameplay</a>
-            <a href="#screens" className="transition hover:text-white">Game screens</a>
-            <a href="#faq" className="transition hover:text-white">FAQ</a>
-          </nav>
-          <div className="flex items-center gap-2">
-            <Link to="/auth/sign-in" className="hidden rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-black text-[#e9dff1] transition hover:bg-white/10 sm:inline-flex">Sign in</Link>
-            <Link to="/auth/sign-up" className="rounded-xl bg-[#ff7282] px-4 py-2.5 text-xs font-black text-[#401b2d] transition hover:bg-[#ff8f9b]">Play free</Link>
-          </div>
+          <a href="#top" className="flex items-center gap-2.5"><span className="grid h-9 w-9 place-items-center rounded-lg bg-[#00d4a0] text-[#06120f]"><ChartNoAxesCombined size={20} /></span><span className="font-display text-xl font-bold">Celeb<span className="text-[#00d4a0]">Stockz</span></span></a>
+          <nav className="hidden items-center gap-6 text-xs font-semibold text-[#8993a4] md:flex"><a href="#how-it-works" className="transition hover:text-white">How it works</a><a href="#gameplay" className="transition hover:text-white">Gameplay</a><a href="#screens" className="transition hover:text-white">Game screens</a><a href="#faq" className="transition hover:text-white">FAQ</a></nav>
+          <div className="flex items-center gap-2"><Link to="/auth/sign-in" className="hidden rounded-lg border border-white/[.1] bg-[#10151d] px-4 py-2.5 text-xs font-bold text-[#dce3eb] transition hover:bg-[#151c25] sm:inline-flex">Sign in</Link><Link to="/auth/sign-up" className="rounded-lg bg-[#00d4a0] px-4 py-2.5 text-xs font-bold text-[#06120f] transition hover:bg-[#20d997]">Play free</Link></div>
         </div>
       </header>
 
-      <section id="top" className="relative overflow-hidden border-b border-white/10">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-[#7c3aed]/15 blur-3xl" />
+      <section id="top" className="relative overflow-hidden border-b border-white/[.08]">
+        <div className="pointer-events-none absolute left-1/2 top-0 h-[480px] w-[760px] -translate-x-1/2 rounded-full bg-[#00d4a0]/[.055] blur-3xl" />
         <div className="relative mx-auto grid max-w-[1280px] gap-12 px-5 py-16 sm:px-8 sm:py-24 lg:grid-cols-[.95fr_1.05fr] lg:items-center lg:py-28">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[#c99bff]/20 bg-[#7c3aed]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[.16em] text-[#c99bff]"><Sparkles size={14} /> Fantasy celebrity trading</div>
-            <h1 className="font-display mt-6 max-w-3xl text-5xl font-black leading-[.95] sm:text-6xl lg:text-7xl">Spot the hype <span className="text-[#ff7282]">before everyone else.</span></h1>
-            <p className="mt-6 max-w-2xl text-base leading-7 text-[#c0b2ca] sm:text-lg">CelebStockz turns pop culture into a competitive fantasy market. Back the celebrities you think are gaining momentum, build a portfolio and prove your calls against other players.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/auth/sign-up" className="inline-flex items-center gap-2 rounded-xl bg-[#7c3aed] px-6 py-3.5 text-sm font-black text-white transition hover:bg-[#9061ef]">Create free account <ArrowRight size={16} /></Link>
-              <a href="#screens" className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-black text-[#eadff1] transition hover:bg-white/10">See the game</a>
-            </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-bold text-[#9f90ac]">
-              <span className="inline-flex items-center gap-2"><Gamepad2 size={15} className="text-[#c99bff]" /> Free practice play</span>
-              <span className="inline-flex items-center gap-2"><LockKeyhole size={15} className="text-[#c99bff]" /> No real-money investing</span>
-              <span className="inline-flex items-center gap-2"><BarChart3 size={15} className="text-[#c99bff]" /> Trading-style analytics</span>
-            </div>
+            <div className="inline-flex items-center gap-2 rounded-md border border-[#00d4a0]/20 bg-[#00d4a0]/[.07] px-3 py-2 text-[11px] font-bold uppercase tracking-[.16em] text-[#52e6be]"><Sparkles size={14} /> Fantasy celebrity trading</div>
+            <h1 className="font-display mt-6 max-w-3xl text-5xl font-bold leading-[.95] sm:text-6xl lg:text-7xl">Spot the hype <span className="text-[#00d4a0]">before everyone else.</span></h1>
+            <p className="mt-6 max-w-2xl text-base leading-7 text-[#a8b2c0] sm:text-lg">CelebStockz turns pop culture into a competitive fantasy market. Back the celebrities you think are gaining momentum, build a portfolio and prove your calls against other players.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Link to="/auth/sign-up" className="inline-flex items-center gap-2 rounded-lg bg-[#00d4a0] px-6 py-3.5 text-sm font-bold text-[#06120f] transition hover:bg-[#20d997]">Create free account <ArrowRight size={16} /></Link><a href="#screens" className="inline-flex items-center gap-2 rounded-lg border border-white/[.1] bg-[#10151d] px-6 py-3.5 text-sm font-bold text-[#e6ebf1] transition hover:bg-[#151c25]">See the game</a></div>
+            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-xs font-semibold text-[#8993a4]"><span className="inline-flex items-center gap-2"><Gamepad2 size={15} className="text-[#4da3ff]" /> Free practice play</span><span className="inline-flex items-center gap-2"><LockKeyhole size={15} className="text-[#4da3ff]" /> No real-money investing</span><span className="inline-flex items-center gap-2"><BarChart3 size={15} className="text-[#4da3ff]" /> Trading-style analytics</span></div>
           </div>
-          <div className="relative">
-            <div className="absolute -inset-6 rounded-[40px] bg-gradient-to-br from-[#7c3aed]/20 to-[#ff7282]/10 blur-2xl" />
-            <div className="relative rounded-[32px] border border-white/10 bg-[#211230]/90 p-3 shadow-2xl sm:p-5">
-              <div className="mb-3 flex items-center justify-between px-2 text-[9px] font-black uppercase tracking-[.16em] text-[#81718e]"><span>Portfolio screen</span><span>Product-style preview</span></div>
-              <PortfolioPreview />
-            </div>
-          </div>
+          <div className="relative"><div className="absolute -inset-5 rounded-[18px] border border-[#00d4a0]/10 bg-[#00d4a0]/[.025]" /><div className="relative rounded-[12px] border border-white/[.08] bg-[#0c1118] p-3 shadow-[0_28px_80px_rgba(0,0,0,.38)] sm:p-5"><div className="mb-3 flex items-center justify-between px-1 text-[9px] font-bold uppercase tracking-[.16em] text-[#697586]"><span>Portfolio terminal</span><span>Product-style preview</span></div><PortfolioPreview /></div></div>
         </div>
       </section>
 
-      <section className="border-b border-white/10 bg-[#170d29]">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-center gap-x-8 gap-y-3 px-5 py-5 text-[10px] font-black uppercase tracking-[.15em] text-[#8d7f98] sm:px-8">
-          <span>Music</span><span>Sport</span><span>Film</span><span>TV</span><span>Politics</span><span>Fashion</span><span>Digital</span><span>Comedy</span>
-        </div>
-      </section>
+      <section className="border-b border-white/[.08] bg-[#0c1118]"><div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-center gap-x-8 gap-y-3 px-5 py-5 text-[10px] font-bold uppercase tracking-[.15em] text-[#657082] sm:px-8"><span>Music</span><span>Sport</span><span>Film</span><span>TV</span><span>Politics</span><span>Fashion</span><span>Digital</span><span>Comedy</span></div></section>
 
       <section id="how-it-works" className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
-        <div className="max-w-2xl">
-          <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">How it works</p>
-          <h2 className="font-display mt-2 text-3xl font-black sm:text-4xl">A fantasy market built around cultural momentum.</h2>
-          <p className="mt-4 text-sm leading-6 text-[#ad9db8]">You are not buying a real celebrity. You are making a game prediction about attention, momentum and how the CelebStockz market will move.</p>
-        </div>
-        <div className="mt-9 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {howItWorks.map(({ icon: Icon, step, title, body }) => (
-            <article key={title} className="rounded-[22px] border border-white/10 bg-[#1b1029] p-5">
-              <div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#7c3aed]/20 text-[#c99bff]"><Icon size={19} /></span><span className="text-[10px] font-black tracking-[.18em] text-[#665a70]">{step}</span></div>
-              <h3 className="mt-5 text-lg font-black">{title}</h3><p className="mt-2 text-xs leading-5 text-[#9f90ac]">{body}</p>
-            </article>
-          ))}
-        </div>
+        <div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[.2em] text-[#00d4a0]">How it works</p><h2 className="font-display mt-2 text-3xl font-bold sm:text-4xl">A fantasy market built around cultural momentum.</h2><p className="mt-4 text-sm leading-6 text-[#8993a4]">You are not buying a real celebrity. You are making a game prediction about attention, momentum and how the CelebStockz market will move.</p></div>
+        <div className="mt-9 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{howItWorks.map(({ icon: Icon, step, title, body }) => <article key={title} className="rounded-[10px] border border-white/[.08] bg-[#10151d] p-5 transition hover:border-[#00d4a0]/20"><div className="flex items-center justify-between"><span className="grid h-10 w-10 place-items-center rounded-lg bg-[#00d4a0]/10 text-[#00d4a0]"><Icon size={19} /></span><span className="font-data text-[10px] font-bold tracking-[.18em] text-[#586271]">{step}</span></div><h3 className="mt-5 text-lg font-bold">{title}</h3><p className="mt-2 text-xs leading-5 text-[#8993a4]">{body}</p></article>)}</div>
       </section>
 
-      <section id="gameplay" className="border-y border-white/10 bg-[#170d29]">
-        <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
-          <div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#ff9aa7]">The gameplay loop</p>
-              <h2 className="font-display mt-2 text-3xl font-black sm:text-4xl">More than a list of celebrity prices.</h2>
-              <p className="mt-4 max-w-xl text-sm leading-6 text-[#ad9db8]">The fun is deciding where attention is moving, committing your STKZ, then seeing whether your portfolio and competitive results prove you right.</p>
-              <Link to="/auth/sign-up" className="mt-6 inline-flex items-center gap-2 text-sm font-black text-[#c99bff] hover:text-white">Build your first portfolio <ArrowRight size={15} /></Link>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {gameplay.map(({ icon: Icon, title, body }) => (
-                <article key={title} className="rounded-[20px] border border-white/10 bg-[#120b20]/70 p-5"><span className="grid h-9 w-9 place-items-center rounded-xl bg-white/5 text-[#c99bff]"><Icon size={17} /></span><h3 className="mt-4 text-base font-black">{title}</h3><p className="mt-2 text-xs leading-5 text-[#9789a3]">{body}</p></article>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
+      <section id="gameplay" className="border-y border-white/[.08] bg-[#0c1118]"><div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20"><div className="grid gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-start"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-[#4da3ff]">The gameplay loop</p><h2 className="font-display mt-2 text-3xl font-bold sm:text-4xl">More than a list of celebrity prices.</h2><p className="mt-4 max-w-xl text-sm leading-6 text-[#8993a4]">The fun is deciding where attention is moving, committing your STKZ, then seeing whether your portfolio and competitive results prove you right.</p><Link to="/auth/sign-up" className="mt-6 inline-flex items-center gap-2 text-sm font-bold text-[#00d4a0] hover:text-[#52e6be]">Build your first portfolio <ArrowRight size={15} /></Link></div><div className="grid gap-3 sm:grid-cols-2">{gameplay.map(({ icon: Icon, title, body }) => <article key={title} className="rounded-[10px] border border-white/[.07] bg-[#10151d] p-5"><span className="grid h-9 w-9 place-items-center rounded-lg border border-white/[.06] bg-[#0c1118] text-[#4da3ff]"><Icon size={17} /></span><h3 className="mt-4 text-base font-bold">{title}</h3><p className="mt-2 text-xs leading-5 text-[#7f8998]">{body}</p></article>)}</div></div></div></section>
 
-      <section id="screens" className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
-        <div className="max-w-3xl">
-          <p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Inside the game</p>
-          <h2 className="font-display mt-2 text-3xl font-black sm:text-4xl">See what you will actually use.</h2>
-          <p className="mt-4 text-sm leading-6 text-[#ad9db8]">These product-style previews mirror the core CelebStockz experience: finding movement, understanding signals, managing a portfolio and competing with other players.</p>
-        </div>
-        <div className="mt-9 grid gap-5 lg:grid-cols-2">
-          <div><div className="mb-2 flex items-center gap-2 text-xs font-black"><Zap size={14} className="text-[#ff7282]" /> Market discovery</div><MarketPreview /></div>
-          <div><div className="mb-2 flex items-center gap-2 text-xs font-black"><WalletCards size={14} className="text-[#62e7b6]" /> Portfolio terminal</div><PortfolioPreview /></div>
-          <div><div className="mb-2 flex items-center gap-2 text-xs font-black"><Layers3 size={14} className="text-[#c99bff]" /> Market signals</div><SignalPreview /></div>
-          <div><div className="mb-2 flex items-center gap-2 text-xs font-black"><Trophy size={14} className="text-[#ffd17b]" /> Player competition</div><CompetitionPreview /></div>
-        </div>
-      </section>
+      <section id="screens" className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20"><div className="max-w-3xl"><p className="text-xs font-bold uppercase tracking-[.2em] text-[#00d4a0]">Inside the game</p><h2 className="font-display mt-2 text-3xl font-bold sm:text-4xl">See what you will actually use.</h2><p className="mt-4 text-sm leading-6 text-[#8993a4]">These product-style previews mirror the core CelebStockz experience: finding movement, understanding signals, managing a portfolio and competing with other players.</p></div><div className="mt-9 grid gap-5 lg:grid-cols-2"><div><div className="mb-2 flex items-center gap-2 text-xs font-bold"><Zap size={14} className="text-[#00d4a0]" /> Market discovery</div><MarketPreview /></div><div><div className="mb-2 flex items-center gap-2 text-xs font-bold"><WalletCards size={14} className="text-[#20d997]" /> Portfolio terminal</div><PortfolioPreview /></div><div><div className="mb-2 flex items-center gap-2 text-xs font-bold"><Layers3 size={14} className="text-[#4da3ff]" /> Market signals</div><SignalPreview /></div><div><div className="mb-2 flex items-center gap-2 text-xs font-bold"><Trophy size={14} className="text-[#f4c95d]" /> Player competition</div><CompetitionPreview /></div></div></section>
 
-      <section id="features" className="border-y border-white/10 bg-[#170d29]">
-        <div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
-          <div className="max-w-2xl"><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">Built for repeat play</p><h2 className="font-display mt-2 text-3xl font-black sm:text-4xl">A celebrity game with the depth of a trading app.</h2></div>
-          <div className="mt-9 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {features.map(({ icon: Icon, title, body }) => (
-              <article key={title} className="rounded-[22px] border border-white/10 bg-[#120b20]/70 p-5"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[#7c3aed]/15 text-[#c99bff]"><Icon size={18} /></span><h3 className="mt-4 text-base font-black">{title}</h3><p className="mt-2 text-xs leading-5 text-[#95879f]">{body}</p></article>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section id="features" className="border-y border-white/[.08] bg-[#0c1118]"><div className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20"><div className="max-w-2xl"><p className="text-xs font-bold uppercase tracking-[.2em] text-[#00d4a0]">Built for repeat play</p><h2 className="font-display mt-2 text-3xl font-bold sm:text-4xl">A celebrity game with the depth of a trading app.</h2></div><div className="mt-9 grid gap-3 md:grid-cols-2 lg:grid-cols-3">{features.map(({ icon: Icon, title, body }) => <article key={title} className="rounded-[10px] border border-white/[.07] bg-[#10151d] p-5"><span className="grid h-10 w-10 place-items-center rounded-lg bg-[#00d4a0]/10 text-[#00d4a0]"><Icon size={18} /></span><h3 className="mt-4 text-base font-bold">{title}</h3><p className="mt-2 text-xs leading-5 text-[#7f8998]">{body}</p></article>)}</div></div></section>
 
-      <section className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20">
-        <div className="grid gap-8 rounded-[30px] border border-[#ffd17b]/20 bg-gradient-to-br from-[#25172d] to-[#1b1029] p-6 sm:p-9 lg:grid-cols-[1fr_auto] lg:items-center">
-          <div><div className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[.18em] text-[#ffd17b]"><PackageOpen size={16} /> Themed packs</div><h2 className="font-display mt-3 text-3xl font-black">Trade the moment, not just the same permanent list.</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-[#ad9db8]">Packs can focus discovery around football, wrestling, music scenes, major events, business personalities and other topical groups. Your core game stays readable while the market keeps changing with culture.</p></div>
-          <Link to="/auth/sign-up" className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#ffd17b] px-5 py-3 text-sm font-black text-[#382600]">Start playing <ArrowRight size={15} /></Link>
-        </div>
-      </section>
+      <section className="mx-auto max-w-[1280px] px-5 py-16 sm:px-8 sm:py-20"><div className="grid gap-8 rounded-[12px] border border-[#4da3ff]/20 bg-[#10151d] p-6 sm:p-9 lg:grid-cols-[1fr_auto] lg:items-center"><div><div className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[.18em] text-[#4da3ff]"><PackageOpen size={16} /> Themed packs</div><h2 className="font-display mt-3 text-3xl font-bold">Trade the moment, not just the same permanent list.</h2><p className="mt-3 max-w-3xl text-sm leading-6 text-[#8993a4]">Packs can focus discovery around football, wrestling, music scenes, major events, business personalities and other topical groups. Your core game stays readable while the market keeps changing with culture.</p></div><Link to="/auth/sign-up" className="inline-flex items-center justify-center gap-2 rounded-lg bg-[#4da3ff] px-5 py-3 text-sm font-bold text-[#07111d]">Start playing <ArrowRight size={15} /></Link></div></section>
 
-      <section id="faq" className="border-t border-white/10 bg-[#170d29]">
-        <div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[.7fr_1.3fr]">
-          <div><p className="text-xs font-extrabold uppercase tracking-[.2em] text-[#c99bff]">FAQ</p><h2 className="font-display mt-2 text-3xl font-black sm:text-4xl">Before you enter the market.</h2><p className="mt-4 text-sm leading-6 text-[#9f90ac]">The important bits about STKZ, celebrity markets, packs and what CelebStockz is — and is not.</p></div>
-          <div className="space-y-3">
-            {faqs.map((item) => (
-              <details key={item.q} className="group rounded-[18px] border border-white/10 bg-[#120b20]/70 p-4 open:bg-[#1b1029]">
-                <summary className="cursor-pointer list-none pr-6 text-sm font-black marker:hidden">{item.q}<span className="float-right text-[#7c3aed] transition group-open:rotate-45">+</span></summary>
-                <p className="mt-3 max-w-3xl text-xs leading-5 text-[#9f90ac]">{item.a}</p>
-              </details>
-            ))}
-          </div>
-        </div>
-      </section>
+      <section id="faq" className="border-t border-white/[.08] bg-[#0c1118]"><div className="mx-auto grid max-w-[1280px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[.7fr_1.3fr]"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-[#00d4a0]">FAQ</p><h2 className="font-display mt-2 text-3xl font-bold sm:text-4xl">Before you enter the market.</h2><p className="mt-4 text-sm leading-6 text-[#8993a4]">The important bits about STKZ, celebrity markets, packs and what CelebStockz is — and is not.</p></div><div className="space-y-2">{faqs.map((item) => <details key={item.q} className="group rounded-[10px] border border-white/[.07] bg-[#10151d] p-4 open:border-[#00d4a0]/20"><summary className="cursor-pointer list-none pr-6 text-sm font-bold marker:hidden">{item.q}<span className="float-right text-[#00d4a0] transition group-open:rotate-45">+</span></summary><p className="mt-3 max-w-3xl text-xs leading-5 text-[#8993a4]">{item.a}</p></details>)}</div></div></section>
 
-      <section className="border-t border-white/10">
-        <div className="mx-auto flex max-w-[1280px] flex-col items-center px-5 py-16 text-center sm:px-8">
-          <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#7c3aed]"><ChartNoAxesCombined size={24} /></span>
-          <h2 className="font-display mt-5 text-3xl font-black sm:text-4xl">Think you know who is about to blow up?</h2>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#9f90ac]">Turn the prediction into a portfolio and see how it performs.</p>
-          <Link to="/auth/sign-up" className="mt-7 inline-flex items-center gap-2 rounded-xl bg-[#ff7282] px-6 py-3.5 text-sm font-black text-[#401b2d]">Play CelebStockz free <ArrowRight size={16} /></Link>
-        </div>
-      </section>
+      <section className="border-t border-white/[.08]"><div className="mx-auto flex max-w-[1280px] flex-col items-center px-5 py-16 text-center sm:px-8"><span className="grid h-12 w-12 place-items-center rounded-lg bg-[#00d4a0] text-[#06120f]"><ChartNoAxesCombined size={24} /></span><h2 className="font-display mt-5 text-3xl font-bold sm:text-4xl">Think you know who is about to blow up?</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-[#8993a4]">Turn the prediction into a portfolio and see how it performs.</p><Link to="/auth/sign-up" className="mt-7 inline-flex items-center gap-2 rounded-lg bg-[#00d4a0] px-6 py-3.5 text-sm font-bold text-[#06120f]">Play CelebStockz free <ArrowRight size={16} /></Link></div></section>
 
-      <footer className="border-t border-white/10 bg-[#0f081b]">
-        <div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-5 py-7 text-[10px] leading-5 text-[#74667e] sm:px-8 md:flex-row md:items-center md:justify-between">
-          <span className="font-display text-sm font-black text-[#b9a9c5]">Celeb<span className="text-[#ff7282]">Stockz</span></span>
-          <p className="max-w-3xl md:text-right">Fantasy trading for entertainment. STKZ and celebrity shares in the current experience are practice game assets and are not investments, securities or celebrity ownership.</p>
-        </div>
-      </footer>
+      <footer className="border-t border-white/[.08] bg-[#06090d]"><div className="mx-auto flex max-w-[1280px] flex-col gap-3 px-5 py-7 text-[10px] leading-5 text-[#697586] sm:px-8 md:flex-row md:items-center md:justify-between"><span className="font-display text-sm font-bold text-[#a8b2c0]">Celeb<span className="text-[#00d4a0]">Stockz</span></span><p className="max-w-3xl md:text-right">Fantasy trading for entertainment. STKZ and celebrity shares in the current experience are practice game assets and are not investments, securities or celebrity ownership.</p></div></footer>
     </main>
   );
 }
