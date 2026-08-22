@@ -2,6 +2,7 @@ import { defineHandler } from "nitro";
 import { createError } from "nitro/h3";
 import { sql } from "../../utils/db";
 import { celebrityMarkets, marketPrices } from "../../utils/markets";
+import { STARTING_BALANCE_STKZ } from "../../utils/store";
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
@@ -35,7 +36,7 @@ export default defineHandler(async (event) => {
 
   return {
     modeledPortfolioValue: Number(
-      (Number(walletRows[0]?.balance_stkz ?? 10000) + holdingValue).toFixed(2),
+      (Number(walletRows[0]?.balance_stkz ?? STARTING_BALANCE_STKZ) + holdingValue).toFixed(2),
     ),
     weeklyTradeCount: Number(tradeRows[0]?.count ?? 0),
     heldCategoryCount: heldCategories.size,
