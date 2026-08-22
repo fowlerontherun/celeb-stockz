@@ -84,6 +84,12 @@ export function TradeControls({
       showError("Enter a valid STKZ amount.");
       return;
     }
+    if (side === "sell" && amountStkz > maxAmount + 0.01) {
+      showError(
+        `You can sell up to ${maxAmount.toFixed(2)} STKZ of ${ticker} with your current holding.`,
+      );
+      return;
+    }
     if ((needsLimit && (!Number.isFinite(parsedLimit) || parsedLimit <= 0)) ||
       (needsStop && (!Number.isFinite(parsedStop) || parsedStop <= 0))) {
       showError("Enter valid trigger prices.");
@@ -93,13 +99,17 @@ export function TradeControls({
     setIsSubmitting(true);
     try {
       const isMarketOrder = orderType === "market";
+      const sellQuantity =
+        side === "sell"
+          ? Math.min(positionQuantity, amountStkz / price)
+          : undefined;
       const response = await fetch(isMarketOrder ? "/api/trades" : "/api/orders", {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(
           isMarketOrder
-            ? { ticker, side, amountStkz }
+            ? { ticker, side, amountStkz, quantity: sellQuantity }
             : {
                 ticker,
                 side,
@@ -237,7 +247,14 @@ export function TradeControls({
             />
             <button
               type="button"
-              onClick={() => setAmount(maxAmount.toFixed(2))}
+              onClick={() =>
+                setAmount(
+                  (side === "sell"
+                    ? Math.floor(maxAmount * 100) / 100
+                    : maxAmount
+                  ).toFixed(2),
+                )
+              }
               disabled={isLocked || !wallet || maxAmount <= 0}
               className="rounded-xl bg-[#7c3aed] px-4 text-xs font-black text-white active:scale-95 disabled:opacity-40"
             >
@@ -248,21 +265,24 @@ export function TradeControls({
 
         {/* Quick Amount Presets for Mobile */}
         <div className="mt-2.5 flex flex-wrap gap-1.5">
-          {PRESET_AMOUNTS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              disabled={isLocked}
-              onClick={() => setAmount(String(preset))}
-              className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition active:scale-95 ${
-                amount === String(preset)
-                  ? "bg-[#c99bff] text-[#1a0e28]"
-                  : "bg-white/5 text-[#c4b4d0] hover:bg-white/10"
-              }`}
-            >
-              +{preset}
-            </button>
-          ))}
+          {PRESET_AMOUNTS.map((preset) => {
+            const exceedsSellHolding = side === "sell" && preset > maxAmount;
+            return (
+              <button
+                key={preset}
+                type="button"
+                disabled={isLocked || exceedsSellHolding}
+                onClick={() => setAmount(String(preset))}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition active:scale-95 disabled:cursor-not-allowed disabled:opacity-35 ${
+                  amount === String(preset)
+                    ? "bg-[#c99bff] text-[#1a0e28]"
+                    : "bg-white/5 text-[#c4b4d0] hover:bg-white/10"
+                }`}
+              >
+                +{preset}
+              </button>
+            );
+          })}
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
