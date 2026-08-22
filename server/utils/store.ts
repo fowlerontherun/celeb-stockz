@@ -28,8 +28,8 @@ export async function ensureStoreSchema() {
             ALTER TABLE public.trade_orders
             ADD COLUMN IF NOT EXISTS quantity double precision;
           END IF;
-        END
-        $$
+        END;
+        $$;
       `;
       await sql`
         CREATE TABLE IF NOT EXISTS payment_orders (
