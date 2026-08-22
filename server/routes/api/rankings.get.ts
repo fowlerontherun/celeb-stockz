@@ -2,6 +2,7 @@ import { defineHandler } from "nitro";
 import { createError } from "nitro/h3";
 import { sql } from "../../utils/db";
 import { getLatestVerifiedPrices } from "../../utils/market-snapshots";
+import { STARTING_BALANCE_STKZ } from "../../utils/store";
 
 type RankingRow = {
   user_id: string;
@@ -63,7 +64,7 @@ export default defineHandler(async (event) => {
       name: trader.name,
       nickname: trader.nickname,
       netWorth: Number(trader.netWorth.toFixed(2)),
-      profitLoss: Number((trader.netWorth - 10000).toFixed(2)),
+      profitLoss: Number((trader.netWorth - STARTING_BALANCE_STKZ).toFixed(2)),
       isCurrentUser: traderId === userId,
     }))
     .sort((first, second) => second.netWorth - first.netWorth)
