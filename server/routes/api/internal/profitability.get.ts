@@ -218,7 +218,7 @@ export default defineHandler(async (event) => {
       transactionFeeRate: TRANSACTION_FEE_RATE,
       gbpPerStkz,
       conversionBasis: "catalogue",
-      note: "1 STKZ is fixed at £1 for the commercial simulation. The initial 100 STKZ is recorded as a £100 customer deposit, not platform revenue.",
+      note: "100 STKZ is fixed at £1 for the commercial simulation. The initial 100 STKZ is recorded as a £1 customer deposit, not platform revenue.",
     },
     model,
     allTime: {
