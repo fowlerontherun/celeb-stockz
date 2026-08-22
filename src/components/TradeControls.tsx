@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { LoaderCircle, Lock, PackageOpen, Zap } from "lucide-react";
+import { LoaderCircle, Lock, PackageOpen } from "lucide-react";
 import { showError, showSuccess } from "@/utils/toast";
 
 type WalletData = {
@@ -48,6 +48,7 @@ export function TradeControls({
     side === "buy" ? wallet?.balanceStkz ?? 0 : positionQuantity * price;
   const maxAmount =
     side === "buy" ? grossMaxAmount / (1 + TRANSACTION_FEE_RATE) : grossMaxAmount;
+  const sellMaxAmount = Math.floor(maxAmount * 100) / 100;
   const enteredAmount = Number(amount) || 0;
   const estimatedFee = Number(
     (Math.max(0, enteredAmount) * TRANSACTION_FEE_RATE).toFixed(2),
@@ -84,7 +85,7 @@ export function TradeControls({
       showError("Enter a valid STKZ amount.");
       return;
     }
-    if (side === "sell" && amountStkz > maxAmount + 0.01) {
+    if (side === "sell" && amountStkz - maxAmount > 0.005) {
       showError(
         `You can sell up to ${maxAmount.toFixed(2)} STKZ of ${ticker} with your current holding.`,
       );
@@ -99,9 +100,13 @@ export function TradeControls({
     setIsSubmitting(true);
     try {
       const isMarketOrder = orderType === "market";
+      const isSellingMax =
+        side === "sell" && Math.abs(amountStkz - sellMaxAmount) < 0.005;
       const sellQuantity =
         side === "sell"
-          ? Math.min(positionQuantity, amountStkz / price)
+          ? isSellingMax
+            ? positionQuantity
+            : Math.min(positionQuantity, amountStkz / price)
           : undefined;
       const response = await fetch(isMarketOrder ? "/api/trades" : "/api/orders", {
         method: "POST",
@@ -114,6 +119,7 @@ export function TradeControls({
                 ticker,
                 side,
                 amountStkz,
+                quantity: sellQuantity,
                 orderType,
                 limitPrice: needsLimit ? parsedLimit : undefined,
                 stopPrice: needsStop ? parsedStop : undefined,
@@ -249,10 +255,7 @@ export function TradeControls({
               type="button"
               onClick={() =>
                 setAmount(
-                  (side === "sell"
-                    ? Math.floor(maxAmount * 100) / 100
-                    : maxAmount
-                  ).toFixed(2),
+                  (side === "sell" ? sellMaxAmount : maxAmount).toFixed(2),
                 )
               }
               disabled={isLocked || !wallet || maxAmount <= 0}
