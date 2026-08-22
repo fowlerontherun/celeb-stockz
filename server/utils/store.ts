@@ -22,6 +22,16 @@ export async function ensureStoreSchema() {
         ADD COLUMN IF NOT EXISTS purchased_stkz_balance double precision NOT NULL DEFAULT 0
       `;
       await sql`
+        DO $$
+        BEGIN
+          IF to_regclass('public.trade_orders') IS NOT NULL THEN
+            ALTER TABLE public.trade_orders
+            ADD COLUMN IF NOT EXISTS quantity double precision;
+          END IF;
+        END
+        $$
+      `;
+      await sql`
         CREATE TABLE IF NOT EXISTS payment_orders (
           id bigserial PRIMARY KEY,
           user_id text NOT NULL,
