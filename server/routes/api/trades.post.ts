@@ -13,9 +13,11 @@ type TradeRequest = {
   ticker?: string;
   side?: "buy" | "sell";
   amountStkz?: number;
+  quantity?: number;
 };
 
 const TRANSACTION_FEE_RATE = 0.01;
+const QUANTITY_PRECISION = 1_000_000;
 
 export default defineHandler(async (event) => {
   const userId = event.context.userId as string | undefined;
@@ -38,6 +40,8 @@ export default defineHandler(async (event) => {
   const ticker = body?.ticker?.trim().toUpperCase();
   const side = body?.side;
   const amountStkz = Number(body?.amountStkz);
+  const requestedQuantity =
+    body?.quantity === undefined ? null : Number(body.quantity);
 
   if (
     !ticker ||
@@ -45,7 +49,10 @@ export default defineHandler(async (event) => {
     !isTradeableCelebrityMarket(ticker) ||
     (side !== "buy" && side !== "sell") ||
     !Number.isFinite(amountStkz) ||
-    amountStkz <= 0
+    amountStkz <= 0 ||
+    (side === "sell" &&
+      requestedQuantity !== null &&
+      (!Number.isFinite(requestedQuantity) || requestedQuantity <= 0))
   ) {
     throw createError({
       statusCode: 400,
@@ -78,7 +85,10 @@ export default defineHandler(async (event) => {
     });
   }
 
-  const quantity = Number((amountStkz / price).toFixed(6));
+  const quantity =
+    side === "sell" && requestedQuantity !== null
+      ? Math.floor(requestedQuantity * QUANTITY_PRECISION) / QUANTITY_PRECISION
+      : Number((amountStkz / price).toFixed(6));
   const total = Number((quantity * price).toFixed(2));
   const feeStkz = Number((total * TRANSACTION_FEE_RATE).toFixed(2));
   const walletAmount = side === "buy" ? total + feeStkz : total - feeStkz;
