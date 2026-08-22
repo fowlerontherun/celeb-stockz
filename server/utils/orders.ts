@@ -10,6 +10,7 @@ type OpenOrder = {
   side: "buy" | "sell";
   order_type: "limit" | "stop_market" | "stop_limit";
   amount_stkz: string;
+  quantity: string | null;
   limit_price: string | null;
   stop_price: string | null;
   triggered_at: string | null;
@@ -17,10 +18,15 @@ type OpenOrder = {
 
 const TRANSACTION_FEE_RATE = 0.01;
 const FRESH_PRICE_MS = 10 * 60 * 1000;
+const QUANTITY_PRECISION = 1_000_000;
 
 async function fillOrder(order: OpenOrder, price: number) {
   const amount = Number(order.amount_stkz);
-  const quantity = Number((amount / price).toFixed(6));
+  const storedQuantity = Number(order.quantity);
+  const quantity =
+    order.side === "sell" && Number.isFinite(storedQuantity) && storedQuantity > 0
+      ? Math.floor(storedQuantity * QUANTITY_PRECISION) / QUANTITY_PRECISION
+      : Number((amount / price).toFixed(6));
   const total = Number((quantity * price).toFixed(2));
   const feeStkz = Number((total * TRANSACTION_FEE_RATE).toFixed(2));
   const walletAmount =
@@ -99,7 +105,7 @@ export async function processOpenOrders() {
   await ensureStoreSchema();
   const [orders, livePrices, snapshots] = await Promise.all([
     sql<OpenOrder[]>`
-      SELECT id, user_id, ticker, side, order_type, amount_stkz, limit_price, stop_price, triggered_at
+      SELECT id, user_id, ticker, side, order_type, amount_stkz, quantity, limit_price, stop_price, triggered_at
       FROM trade_orders
       WHERE status = 'open'
       ORDER BY created_at ASC
