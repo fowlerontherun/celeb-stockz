@@ -5,6 +5,8 @@ import {
   celebrityMarkets,
   isMarketTicker,
 } from "../../../../utils/markets";
+import { getRecentLivePriceHistory } from "../../../../utils/market-live-history";
+import { runMarketCycle } from "../../../../utils/market-cycle";
 
 type SnapshotPoint = {
   captured_at: string;
@@ -80,7 +82,11 @@ export default defineHandler(async (event) => {
     throw createError({ statusCode: 404, statusMessage: "Market not found." });
   }
 
-  const [history, wikipedia] = await Promise.all([
+  await runMarketCycle("tick").catch((error) => {
+    console.error("Market detail request tick failed", error);
+  });
+
+  const [history, liveHistory, wikipedia] = await Promise.all([
     sql<SnapshotPoint[]>`
       SELECT captured_at, price_stkz
       FROM (
@@ -95,17 +101,37 @@ export default defineHandler(async (event) => {
       ORDER BY captured_at DESC
       LIMIT 1500
     `,
+    getRecentLivePriceHistory(ticker, 500),
     getWikipediaBio(market.name),
   ]);
+
+  const mergedHistory = new Map<string, { capturedAt: string; price: number }>();
+
+  history.forEach((point) => {
+    mergedHistory.set(point.captured_at, {
+      capturedAt: point.captured_at,
+      price: Number(point.price_stkz),
+    });
+  });
+
+  liveHistory.forEach((point) => {
+    mergedHistory.set(point.capturedAt, {
+      capturedAt: point.capturedAt,
+      price: point.price,
+    });
+  });
 
   return {
     ticker,
     bio: wikipedia.bio,
     description: wikipedia.description,
     image: wikipedia.image,
-    history: history.reverse().map((point) => ({
-      capturedAt: point.captured_at,
-      price: Number(point.price_stkz),
-    })),
+    history: [...mergedHistory.values()]
+      .sort(
+        (left, right) =>
+          new Date(left.capturedAt).getTime() -
+          new Date(right.capturedAt).getTime(),
+      )
+      .slice(-1500),
   };
 });
