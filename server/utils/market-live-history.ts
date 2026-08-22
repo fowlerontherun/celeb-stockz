@@ -41,27 +41,25 @@ function chunk<T>(values: T[], size: number) {
 
 async function ensureSchema() {
   if (!schemaPromise) {
-    schemaPromise = sql`
-      CREATE TABLE IF NOT EXISTS market_live_price_history (
-        ticker text NOT NULL,
-        captured_at timestamptz NOT NULL,
-        price_stkz double precision NOT NULL,
-        daily_change double precision NOT NULL DEFAULT 0,
-        created_at timestamptz NOT NULL DEFAULT now(),
-        PRIMARY KEY (ticker, captured_at)
-      )
-    `
-      .then(async () => {
-        await sql`
-          CREATE INDEX IF NOT EXISTS market_live_price_history_ticker_captured_idx
-          ON market_live_price_history (ticker, captured_at DESC)
-        `;
-      })
-      .then(() => undefined)
-      .catch((error) => {
-        schemaPromise = null;
-        throw error;
-      });
+    schemaPromise = (async () => {
+      await sql`
+        CREATE TABLE IF NOT EXISTS market_live_price_history (
+          ticker text NOT NULL,
+          captured_at timestamptz NOT NULL,
+          price_stkz double precision NOT NULL,
+          daily_change double precision NOT NULL DEFAULT 0,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          PRIMARY KEY (ticker, captured_at)
+        )
+      `;
+      await sql`
+        CREATE INDEX IF NOT EXISTS market_live_price_history_ticker_captured_idx
+        ON market_live_price_history (ticker, captured_at DESC)
+      `;
+    })().catch((error) => {
+      schemaPromise = null;
+      throw error;
+    });
   }
 
   return schemaPromise;
