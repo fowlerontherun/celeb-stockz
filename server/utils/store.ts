@@ -32,6 +32,20 @@ export async function ensureStoreSchema() {
         $$;
       `;
       await sql`
+        DO $$
+        BEGIN
+          IF to_regclass('public.trade_history') IS NOT NULL THEN
+            ALTER TABLE public.trade_history
+            ADD COLUMN IF NOT EXISTS fee_stkz double precision;
+
+            UPDATE public.trade_history
+            SET fee_stkz = ROUND((total_stkz * 0.01)::numeric, 2)::double precision
+            WHERE fee_stkz IS NULL;
+          END IF;
+        END;
+        $$;
+      `;
+      await sql`
         CREATE TABLE IF NOT EXISTS payment_orders (
           id bigserial PRIMARY KEY,
           user_id text NOT NULL,
